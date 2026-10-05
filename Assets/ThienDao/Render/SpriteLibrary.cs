@@ -1,0 +1,414 @@
+using ThienDao.Core;
+using ThienDao.World;
+using UnityEngine;
+
+namespace ThienDao.Render
+{
+    public sealed class PixelSprite
+    {
+        public int W, H;
+        public int OffX, OffY; // art-pixel offset from the footprint's bottom-left corner
+        public Color32[] Px;   // a = 255 opaque, 0 < a < 255 shadow (darkens what is below)
+        public Color32 MapColor;
+    }
+
+    // Placeholder pixel art built in code; swap for real sprite sheets later without touching the renderer.
+    public static class SpriteLibrary
+    {
+        static PixelSprite[][] _sprites;
+
+        public static PixelSprite Get(ObjectType type, int variant)
+        {
+            Ensure();
+            var arr = _sprites[(int)type];
+            return arr[variant % arr.Length];
+        }
+
+        public static int VariantCount(ObjectType type)
+        {
+            Ensure();
+            return _sprites[(int)type].Length;
+        }
+
+        static void Ensure()
+        {
+            if (_sprites != null) return;
+            var s = new PixelSprite[(int)ObjectType.Count][];
+            var trunk = C(112, 74, 44);
+
+            s[(int)ObjectType.None] = new[] { new Canvas(1, 1).ToSprite(0, 0, default) };
+
+            s[(int)ObjectType.TreeOak] = new[]
+            {
+                Oak(C(132, 204, 82), C(86, 164, 58), C(52, 120, 44), trunk, 1),
+                Oak(C(118, 196, 90), C(72, 150, 62), C(42, 108, 50), trunk, 2),
+                Oak(C(150, 210, 90), C(104, 174, 60), C(66, 130, 44), trunk, 3),
+            };
+            s[(int)ObjectType.TreeAutumn] = new[]
+            {
+                Oak(C(246, 190, 86), C(226, 140, 52), C(170, 92, 38), trunk, 4),
+                Oak(C(250, 214, 96), C(222, 176, 56), C(168, 124, 40), trunk, 5),
+                Oak(C(236, 120, 80), C(200, 76, 52), C(140, 48, 40), trunk, 6),
+            };
+            s[(int)ObjectType.TreeJungle] = new[]
+            {
+                Jungle(C(96, 176, 78), C(50, 136, 58), C(28, 96, 48), trunk, 7),
+                Jungle(C(110, 186, 70), C(62, 146, 48), C(34, 104, 40), trunk, 8),
+            };
+            s[(int)ObjectType.TreePine] = new[]
+            {
+                Pine(C(74, 150, 96), C(44, 116, 74), C(28, 84, 58), trunk, false),
+                Pine(C(90, 160, 90), C(56, 126, 66), C(34, 92, 52), trunk, false),
+            };
+            s[(int)ObjectType.TreeSnowPine] = new[] { Pine(C(74, 150, 96), C(44, 116, 74), C(28, 84, 58), trunk, true) };
+            s[(int)ObjectType.TreePalm] = new[] { Palm() };
+            s[(int)ObjectType.Cactus] = new[] { Cactus() };
+            s[(int)ObjectType.Bush] = new[]
+            {
+                Blob(9, 7, 4.5f, 3f, 3.8f, 2.6f, C(130, 200, 84), C(84, 160, 60), C(50, 116, 46), false, 11),
+                Blob(9, 7, 4.5f, 3f, 3.8f, 2.6f, C(130, 200, 84), C(84, 160, 60), C(50, 116, 46), true, 12),
+            };
+            s[(int)ObjectType.Rock] = new[]
+            {
+                Blob(9, 7, 4.5f, 2.8f, 3.7f, 2.4f, C(196, 192, 186), C(150, 146, 140), C(108, 104, 100), false, 13),
+                Blob(9, 7, 4.5f, 2.8f, 3.7f, 2.4f, C(186, 164, 136), C(144, 122, 98), C(102, 86, 70), false, 14),
+            };
+            s[(int)ObjectType.House] = new[]
+            {
+                House(C(64, 112, 204)),
+                House(C(196, 72, 52)),
+                House(C(150, 96, 56)),
+                House(C(52, 140, 130)),
+            };
+            s[(int)ObjectType.SectHall] = new[]
+            {
+                SectHall(C(46, 96, 110)),
+                SectHall(C(196, 146, 52)),
+                SectHall(C(104, 68, 146)),
+            };
+            _sprites = s;
+        }
+
+        static Color32 C(int r, int g, int b) => new Color32((byte)r, (byte)g, (byte)b, 255);
+
+        public static Color32 Shade(Color32 c, float k) =>
+            new Color32((byte)Mathf.Clamp(c.r * k, 0, 255), (byte)Mathf.Clamp(c.g * k, 0, 255), (byte)Mathf.Clamp(c.b * k, 0, 255), c.a);
+
+        sealed class Canvas
+        {
+            public readonly int W, H;
+            public readonly Color32[] P;
+
+            public Canvas(int w, int h)
+            {
+                W = w;
+                H = h;
+                P = new Color32[w * h];
+            }
+
+            public void Set(int x, int y, Color32 c)
+            {
+                if ((uint)x < (uint)W && (uint)y < (uint)H) P[y * W + x] = c;
+            }
+
+            public void Rect(int x0, int y0, int x1, int y1, Color32 c)
+            {
+                for (int y = y0; y <= y1; y++)
+                for (int x = x0; x <= x1; x++)
+                    Set(x, y, c);
+            }
+
+            public void Outline(float k)
+            {
+                var src = (Color32[])P.Clone();
+                for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    if (src[y * W + x].a == 255) continue;
+                    if (Opaque(src, x - 1, y, out var n) || Opaque(src, x + 1, y, out n) ||
+                        Opaque(src, x, y - 1, out n) || Opaque(src, x, y + 1, out n))
+                        P[y * W + x] = Shade(n, k);
+                }
+            }
+
+            bool Opaque(Color32[] src, int x, int y, out Color32 c)
+            {
+                if ((uint)x < (uint)W && (uint)y < (uint)H && src[y * W + x].a == 255)
+                {
+                    c = src[y * W + x];
+                    return true;
+                }
+                c = default;
+                return false;
+            }
+
+            public void Shadow(float cx, float cy, float rx, float ry)
+            {
+                for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    float dx = (x + 0.5f - cx) / rx, dy = (y + 0.5f - cy) / ry;
+                    if (dx * dx + dy * dy <= 1f && P[y * W + x].a == 0) P[y * W + x] = new Color32(0, 0, 0, 110);
+                }
+            }
+
+            public PixelSprite ToSprite(int offX, int offY, Color32 map) =>
+                new PixelSprite { W = W, H = H, OffX = offX, OffY = offY, Px = P, MapColor = map };
+        }
+
+        // Shade level from a top-left light: 0 = highlight, 1 = mid, 2 = dark.
+        static int LightLevel(float px, float py, float cx, float cy, float r, uint seed, int x, int y)
+        {
+            float s = (-(px - cx) + (py - cy)) / r;
+            int level = s > 0.55f ? 0 : s < -0.45f ? 2 : 1;
+            if (Hash.U32(seed, x, y) % 7 == 0) level = Mathf.Min(2, level + 1);
+            return level;
+        }
+
+        static PixelSprite RoundTree(int w, int h, float[] blobs, int trunkX0, int trunkX1, int trunkTop,
+            Color32 hi, Color32 mid, Color32 dark, Color32 trunk, int offX, uint seed)
+        {
+            var cv = new Canvas(w, h);
+            var trunkDark = Shade(trunk, 0.8f);
+            for (int y = 1; y <= trunkTop; y++)
+            for (int x = trunkX0; x <= trunkX1; x++)
+                cv.Set(x, y, x == trunkX1 ? trunkDark : trunk);
+
+            var pal = new[] { hi, mid, dark };
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float px = x + 0.5f, py = y + 0.5f;
+                bool inside = false;
+                for (int b = 0; b < blobs.Length; b += 3)
+                {
+                    float dx = px - blobs[b], dy = py - blobs[b + 1];
+                    if (dx * dx + dy * dy <= blobs[b + 2] * blobs[b + 2]) { inside = true; break; }
+                }
+                if (!inside) continue;
+                cv.Set(x, y, pal[LightLevel(px, py, blobs[0], blobs[1], blobs[2], seed, x, y)]);
+            }
+            cv.Outline(0.5f);
+            cv.Shadow(w * 0.5f, 1.2f, w * 0.36f, 1.4f);
+            return cv.ToSprite(offX, 0, mid);
+        }
+
+        static PixelSprite Oak(Color32 hi, Color32 mid, Color32 dark, Color32 trunk, uint seed) =>
+            RoundTree(12, 16, new[] { 6f, 9.5f, 4.3f, 3.9f, 8f, 2.7f, 8.1f, 8f, 2.7f, 6f, 11.5f, 3.2f },
+                5, 6, 5, hi, mid, dark, trunk, -2, seed);
+
+        static PixelSprite Jungle(Color32 hi, Color32 mid, Color32 dark, Color32 trunk, uint seed) =>
+            RoundTree(18, 22, new[] { 9f, 13f, 5.6f, 5.2f, 11f, 3.6f, 12.8f, 11f, 3.6f, 9f, 16.5f, 4f },
+                8, 9, 7, hi, mid, dark, trunk, -1, seed);
+
+        static PixelSprite Pine(Color32 hi, Color32 mid, Color32 dark, Color32 trunk, bool snow)
+        {
+            var cv = new Canvas(11, 17);
+            cv.Rect(5, 1, 5, 2, trunk);
+            var snowLight = C(238, 243, 248);
+            var snowDark = C(196, 208, 222);
+            for (int y = 3; y <= 15; y++)
+            {
+                int t = y - 3;
+                int layer = Mathf.Min(t / 4, 2);
+                int local = t - layer * 4;
+                float hw = Mathf.Max(0.4f, 4.6f - layer * 1.25f - local * 0.95f);
+                for (int x = 0; x < 11; x++)
+                {
+                    float dx = x + 0.5f - 5.5f;
+                    if (Mathf.Abs(dx) > hw + 0.01f) continue;
+                    bool darkSide = dx > hw * 0.35f;
+                    Color32 c = dx < -hw * 0.3f ? hi : darkSide ? dark : mid;
+                    if (snow && local >= 2) c = darkSide ? snowDark : snowLight;
+                    cv.Set(x, y, c);
+                }
+            }
+            cv.Outline(0.5f);
+            cv.Shadow(5.5f, 1.2f, 3.5f, 1.3f);
+            return cv.ToSprite(-1, 0, mid);
+        }
+
+        static PixelSprite Palm()
+        {
+            var cv = new Canvas(14, 17);
+            var trunkA = C(150, 110, 64);
+            var trunkB = C(122, 86, 50);
+            for (int y = 1; y <= 10; y++)
+            {
+                int tx = 5 + y * 2 / 10;
+                cv.Set(tx, y, y % 2 == 0 ? trunkA : trunkB);
+                cv.Set(tx + 1, y, trunkB);
+            }
+            var hi = C(120, 196, 80);
+            var mid = C(70, 150, 60);
+            float cx = 7.5f, cy = 11f;
+            float[] angles = { 165f, 130f, 90f, 50f, 15f, 200f, -20f };
+            foreach (float a in angles)
+            {
+                float rad = a * Mathf.Deg2Rad;
+                for (int step = 1; step <= 5; step++)
+                {
+                    int fx = (int)(cx + Mathf.Cos(rad) * step);
+                    int fy = (int)(cy + Mathf.Sin(rad) * step - step * step * 0.09f);
+                    cv.Set(fx, fy, mid);
+                    cv.Set(fx, fy + 1, step < 4 ? hi : mid);
+                }
+            }
+            cv.Set(7, 10, C(110, 70, 40));
+            cv.Set(9, 10, C(110, 70, 40));
+            cv.Outline(0.5f);
+            cv.Shadow(7f, 1.2f, 3f, 1.2f);
+            return cv.ToSprite(-3, 0, mid);
+        }
+
+        static PixelSprite Cactus()
+        {
+            var cv = new Canvas(8, 11);
+            var hi = C(110, 186, 96);
+            var mid = C(70, 150, 70);
+            var dark = C(50, 118, 56);
+            cv.Rect(3, 1, 3, 9, hi);
+            cv.Rect(4, 1, 4, 9, mid);
+            cv.Rect(1, 4, 1, 7, hi);
+            cv.Set(2, 4, mid);
+            cv.Rect(6, 5, 6, 8, dark);
+            cv.Set(5, 5, mid);
+            cv.Outline(0.5f);
+            cv.Shadow(4f, 1f, 2.5f, 1f);
+            return cv.ToSprite(0, 0, mid);
+        }
+
+        static PixelSprite Blob(int w, int h, float cx, float cy, float rx, float ry,
+            Color32 hi, Color32 mid, Color32 dark, bool berries, uint seed)
+        {
+            var cv = new Canvas(w, h);
+            var pal = new[] { hi, mid, dark };
+            var berry = C(206, 52, 64);
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float px = x + 0.5f, py = y + 0.5f;
+                float dx = (px - cx) / rx, dy = (py - cy) / ry;
+                if (dx * dx + dy * dy > 1f) continue;
+                var c = pal[LightLevel(px, py, cx, cy, Mathf.Max(rx, ry), seed, x, y)];
+                if (berries && Hash.U32(seed + 99u, x, y) % 9 == 0) c = berry;
+                cv.Set(x, y, c);
+            }
+            cv.Outline(0.55f);
+            cv.Shadow(cx, 0.9f, rx + 0.2f, 1f);
+            return cv.ToSprite(0, 0, mid);
+        }
+
+        static PixelSprite House(Color32 roof)
+        {
+            var cv = new Canvas(24, 27);
+            var plaster = C(226, 206, 164);
+            var plasterDark = C(190, 170, 130);
+            var beam = C(150, 104, 66);
+            var door = C(100, 62, 38);
+            var glass = C(156, 206, 236);
+
+            cv.Rect(3, 2, 20, 10, plaster);
+            cv.Rect(3, 2, 20, 2, plasterDark);
+            cv.Rect(3, 2, 3, 10, beam);
+            cv.Rect(20, 2, 20, 10, beam);
+            cv.Rect(10, 2, 13, 7, door);
+            cv.Rect(10, 7, 13, 7, beam);
+            cv.Rect(5, 5, 7, 7, glass);
+            cv.Rect(16, 5, 18, 7, glass);
+            cv.Set(5, 7, C(236, 246, 252));
+            cv.Set(16, 7, C(236, 246, 252));
+
+            for (int y = 11; y <= 24; y++)
+            {
+                float hw = 11f - (y - 11) * 0.72f;
+                for (int x = 0; x < 24; x++)
+                {
+                    if (Mathf.Abs(x + 0.5f - 12f) > hw) continue;
+                    var c = x < 12 ? roof : Shade(roof, 0.85f);
+                    if (y == 11) c = Shade(roof, 0.62f);
+                    else if ((y - 11) % 3 == 2) c = Shade(c, 0.82f);
+                    cv.Set(x, y, c);
+                }
+            }
+            cv.Rect(16, 17, 17, 22, C(160, 86, 64));
+            cv.Rect(16, 22, 17, 22, C(120, 64, 48));
+
+            cv.Outline(0.45f);
+            cv.Shadow(12f, 1.2f, 11.5f, 1.8f);
+            return cv.ToSprite(0, 0, roof);
+        }
+
+        static PixelSprite SectHall(Color32 roof)
+        {
+            var cv = new Canvas(40, 46);
+            var stone = C(178, 172, 162);
+            var stoneLight = C(206, 200, 190);
+            var wall = C(178, 54, 42);
+            var pillar = C(132, 36, 30);
+            var door = C(74, 42, 30);
+            var gold = C(214, 170, 70);
+            var goldLight = C(240, 210, 110);
+
+            cv.Rect(2, 1, 37, 5, stone);
+            cv.Rect(2, 5, 37, 5, stoneLight);
+            cv.Rect(2, 1, 37, 1, Shade(stone, 0.8f));
+            for (int y = 1; y <= 4; y++) cv.Rect(15, y, 24, y, y % 2 == 0 ? stoneLight : stone);
+
+            cv.Rect(6, 6, 33, 15, wall);
+            foreach (int px in new[] { 6, 14, 24, 32 }) cv.Rect(px, 6, px + 1, 15, pillar);
+            cv.Rect(17, 6, 22, 12, door);
+            cv.Rect(16, 6, 16, 13, gold);
+            cv.Rect(23, 6, 23, 13, gold);
+            cv.Rect(16, 13, 23, 13, gold);
+
+            for (int y = 15; y <= 21; y++)
+            {
+                float hw = 18.5f - (y - 15) * 1.7f;
+                for (int x = 0; x < 40; x++)
+                {
+                    if (Mathf.Abs(x + 0.5f - 20f) > hw) continue;
+                    var c = x < 20 ? roof : Shade(roof, 0.86f);
+                    if (y == 15) c = gold;
+                    else if (y == 21) c = goldLight;
+                    else if ((y - 15) % 2 == 1) c = Shade(c, 0.85f);
+                    cv.Set(x, y, c);
+                }
+            }
+            cv.Rect(1, 16, 2, 16, roof);
+            cv.Rect(37, 16, 38, 16, Shade(roof, 0.86f));
+            cv.Set(1, 17, roof);
+            cv.Set(38, 17, Shade(roof, 0.86f));
+
+            cv.Rect(12, 22, 27, 27, wall);
+            foreach (int px in new[] { 12, 19, 26 }) cv.Rect(px, 22, px + 1, 27, pillar);
+            cv.Rect(16, 24, 17, 25, goldLight);
+            cv.Rect(22, 24, 23, 25, goldLight);
+
+            for (int y = 27; y <= 33; y++)
+            {
+                float hw = 13f - (y - 27) * 1.6f;
+                for (int x = 0; x < 40; x++)
+                {
+                    if (Mathf.Abs(x + 0.5f - 20f) > hw) continue;
+                    var c = x < 20 ? roof : Shade(roof, 0.86f);
+                    if (y == 27) c = gold;
+                    else if ((y - 27) % 2 == 1) c = Shade(c, 0.85f);
+                    cv.Set(x, y, c);
+                }
+            }
+            cv.Rect(6, 28, 8, 28, roof);
+            cv.Rect(31, 28, 33, 28, Shade(roof, 0.86f));
+            cv.Set(6, 29, roof);
+            cv.Set(33, 29, Shade(roof, 0.86f));
+
+            cv.Rect(19, 34, 19, 39, gold);
+            cv.Rect(20, 34, 20, 39, Shade(gold, 0.8f));
+            cv.Rect(19, 40, 20, 41, goldLight);
+
+            cv.Outline(0.45f);
+            cv.Shadow(20f, 1f, 19.5f, 1.6f);
+            return cv.ToSprite(0, 0, roof);
+        }
+    }
+}
