@@ -105,6 +105,12 @@ Tất cả là **mảng phẳng** index `y*W + x`. Target **PC**: map mặc đ�
 - **Động thiên / phúc địa:** vùng `qiCap` cao bất thường, hiếm.
 - **Tử địa / cấm địa:** sinh ra *từ sự kiện* (đại chiến chết nhiều cường giả → ma khí; thiên kiếp lớn → vùng sét; tử thi cường giả → oán khí). Có thời gian hồi phục rất dài.
 
+**Đã cài (M1):**
+- `QiCap` từng ô = `QiBase` (noise + phúc địa) + ảnh hưởng linh mạch `(1 − d/60)² × 0.8`; nước nhân 0.4. Vẽ/phá linh mạch hoặc đổi địa hình chỉ tính lại vùng bị ảnh hưởng.
+- Linh khí hiện tại sống trên lưới thô 128×128 (khối 8×8 ô). Mỗi tháng: khuếch tán 18% về trung bình 4 hàng xóm, rồi hồi 6% khoảng cách tới trần (thừa thì tản bớt). Hệ số hồi theo mùa: Xuân ×1.25, Hạ ×1, Thu ×0.85, Đông ×0.6.
+- Linh khí một ô = trần của ô + phần thừa/thiếu nội suy từ các khối xung quanh, nên linh mạch vẫn sắc nét khi một vùng bị hút cạn.
+- Hiện vùng bị hút cạn hồi về mức cũ sau khoảng 3 năm. Khi có tu sĩ (M3) sẽ chỉnh lại `RegenPerMonth` cho phù hợp.
+
 ### 2.3 Khí hậu, ngày/đêm, mùa
 
 - Nhiệt độ = base theo vĩ độ + độ cao + offset mùa. Độ ẩm theo khoảng cách tới biển/sông + gió đơn giản.
@@ -449,8 +455,8 @@ Tham khảo 3 ảnh: địa hình là khối ô vuông (viền bờ biển bậc
 
 | Mốc | Nội dung | Kết quả kiểm chứng |
 |---|---|---|
-| **M0 — Thế giới tĩnh** | MapGen từ seed, terrain texture, camera pan/zoom, brush địa hình, overlay linh khí | vẽ & sửa map 1024² mượt, đặt thử vài nhà/cây nhiều cell |
-| **M1 — Thời gian & linh khí** | Clock, tick, mùa, linh mạch, khuếch tán linh khí, Command queue | linh khí lan, cạn, hồi |
+| **M0 — Thế giới tĩnh** ✅ | MapGen từ seed, terrain texture, camera pan/zoom, brush địa hình, overlay linh khí | vẽ & sửa map 1024² mượt, đặt thử vài nhà/cây nhiều cell |
+| **M1 — Thời gian & linh khí** ✅ | Clock, tick, mùa, linh mạch, khuếch tán linh khí, Command queue | linh khí lan, cạn, hồi |
 | **M2 — Sinh mệnh cơ bản** | EntityStore, phàm nhân + động vật, ăn/di chuyển/sinh/chết, làng dạng quần thể, sprite instancing | dân số tự tăng/giảm theo tài nguyên |
 | **M3 — Tu tiên lõi** | linh căn, Luyện Khí → Nguyên Anh, tu luyện hút linh khí, đột phá, tẩu hỏa, thọ nguyên | tu sĩ tự tìm phúc địa, có người đột phá/chết già |
 | **M4 — Thế lực** | Faction chung, làng → thành, tông môn lập/tuyển đệ tử, ngoại giao opinion | tông môn tự sinh & tranh linh mạch |

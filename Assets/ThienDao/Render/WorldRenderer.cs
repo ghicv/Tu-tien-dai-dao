@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using ThienDao.Core;
+using ThienDao.Sim;
 using ThienDao.World;
 using UnityEngine;
 using Terrain = ThienDao.World.Terrain;
@@ -33,6 +35,8 @@ namespace ThienDao.Render
         }
 
         WorldData _world;
+        QiSystem _qi;
+        Color _tint = Color.white;
         int _chunksX, _chunksY;
         Chunk[] _chunks;
         Color32[] _cellColor;
@@ -62,12 +66,16 @@ namespace ThienDao.Render
         public int ResidentChunks { get; private set; }
         public int ChunkCount => _chunks?.Length ?? 0;
 
-        public void Init(WorldData world)
+        public void Init(WorldData world, QiSystem qi)
         {
             Clear();
             _world = world;
+            _qi = qi;
             _world.Objects.Added += OnObjectAdded;
             _world.Objects.Removed += OnObjectRemoved;
+            _world.TerrainChanged += HandleTerrainChanged;
+            _world.QiCapChanged += HandleQiCapChanged;
+            _qi.Changed += HandleQiChanged;
 
             if (_material == null)
             {
@@ -110,7 +118,10 @@ namespace ThienDao.Render
             {
                 _world.Objects.Added -= OnObjectAdded;
                 _world.Objects.Removed -= OnObjectRemoved;
+                _world.TerrainChanged -= HandleTerrainChanged;
+                _world.QiCapChanged -= HandleQiCapChanged;
             }
+            if (_qi != null) _qi.Changed -= HandleQiChanged;
             if (_chunks != null)
                 foreach (var ch in _chunks) ReleaseTexture(ch);
             if (_chunkRoot != null) Destroy(_chunkRoot.gameObject);
@@ -228,6 +239,7 @@ namespace ThienDao.Render
                 ch.Renderer.sortingOrder = 0;
             }
             ch.Renderer.sprite = ch.Sprite;
+            ch.Renderer.color = _tint;
             ch.Renderer.enabled = false; // stays hidden until first compose; overview shows through meanwhile
             ch.Dirty = true;
             ResidentChunks++;
@@ -363,7 +375,8 @@ namespace ThienDao.Render
 
         // ---------------------------------------------------------------- change notification
 
-        public void TerrainChanged(int x0, int y0, int x1, int y1)
+        // Named Handle*, not On*: Unity reserves OnTerrainChanged as a MonoBehaviour message.
+        void HandleTerrainChanged(int x0, int y0, int x1, int y1)
         {
             // Neighbours change too: their edge shading and foam depend on this cell.
             x0 = Mathf.Max(0, x0 - 1);
@@ -382,9 +395,25 @@ namespace ThienDao.Render
             if (Overlay != OverlayMode.None) _overlayDirty = true;
         }
 
-        public void QiChanged()
+        void HandleQiCapChanged(int x0, int y0, int x1, int y1)
         {
             if (Overlay == OverlayMode.Qi) _overlayDirty = true;
+        }
+
+        void HandleQiChanged()
+        {
+            if (Overlay == OverlayMode.Qi) _overlayDirty = true;
+        }
+
+        // Seasonal colour grade, multiplied onto every terrain renderer.
+        public void SetTint(Color tint)
+        {
+            if (Mathf.Abs(tint.r - _tint.r) + Mathf.Abs(tint.g - _tint.g) + Mathf.Abs(tint.b - _tint.b) < 0.003f) return;
+            _tint = tint;
+            if (_chunks != null)
+                foreach (var ch in _chunks)
+                    if (ch.Renderer != null) ch.Renderer.color = tint;
+            if (_overviewRenderer != null) _overviewRenderer.color = tint;
         }
 
         void MarkChunks(int cx0, int cy0, int cx1, int cy1)
@@ -522,24 +551,32 @@ namespace ThienDao.Render
                 _overlaySprite = Sprite.Create(_overlayTex, new Rect(0, 0, _world.W, _world.H), Vector2.zero, 1f, 0, SpriteMeshType.FullRect);
                 _overlayRenderer.sprite = _overlaySprite;
             }
-            var px = new Color32[n];
-            for (int i = 0; i < n; i++) px[i] = OverlayColor(i);
+            if (_overlayPx == null || _overlayPx.Length != n) _overlayPx = new Color32[n];
+            var px = _overlayPx;
+            int w = _world.W;
+            Parallel.For(0, _world.H, y =>
+            {
+                for (int x = 0; x < w; x++) px[y * w + x] = OverlayColor(x, y, y * w + x);
+            });
             _overlayTex.SetPixelData(px, 0);
             _overlayTex.Apply(false);
         }
 
-        Color32 OverlayColor(int i)
+        Color32[] _overlayPx;
+
+        Color32 OverlayColor(int x, int y, int i)
         {
             switch (Overlay)
             {
                 case OverlayMode.Qi:
                 {
                     if (_world.LeyLine[i]) return new Color32(210, 255, 255, 230);
-                    float v = _world.Qi[i] / (float)WorldData.MaxQi;
-                    Color32 c = v < 0.5f
-                        ? Color32.Lerp(new Color32(40, 10, 90, 255), new Color32(120, 70, 240, 255), v * 2f)
-                        : Color32.Lerp(new Color32(120, 70, 240, 255), new Color32(130, 255, 255, 255), (v - 0.5f) * 2f);
-                    c.a = (byte)(60 + v * 160f);
+                    float v = _qi.SampleQi(x, y) / WorldData.MaxQi;
+                    Color32 c;
+                    if (v < 0.5f) c = Color32.Lerp(new Color32(40, 10, 90, 255), new Color32(120, 70, 240, 255), v * 2f);
+                    else if (v < 1f) c = Color32.Lerp(new Color32(120, 70, 240, 255), new Color32(130, 255, 255, 255), (v - 0.5f) * 2f);
+                    else c = Color32.Lerp(new Color32(130, 255, 255, 255), new Color32(255, 255, 255, 255), v - 1f); // over-saturated after infusion
+                    c.a = (byte)Mathf.Clamp(60 + v * 160f, 0, 235);
                     return c;
                 }
                 case OverlayMode.Height:

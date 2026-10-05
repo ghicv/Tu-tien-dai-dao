@@ -325,12 +325,8 @@ namespace ThienDao.World
             {
                 for (int x = 0; x < n; x++)
                 {
-                    int i = y * n + x;
                     float noise = Noise.Fbm(s + 8u, x / 160f, y / 160f, 3) * 0.5f + 0.5f;
-                    float near = 1f - Mathf.Min(dist[i], maxDist) / (float)maxDist;
-                    float v = 0.06f + noise * 0.12f + near * near * 0.8f;
-                    if (TerrainInfo.IsWater(w.Terrain[i])) v *= 0.4f;
-                    qi[i] = v;
+                    qi[y * n + x] = 0.06f + noise * 0.12f;
                 }
             });
 
@@ -352,11 +348,8 @@ namespace ThienDao.World
             }
 
             for (int i = 0; i < qi.Length; i++)
-            {
-                ushort v = (ushort)(Mathf.Clamp01(qi[i]) * WorldData.MaxQi);
-                w.QiCap[i] = v;
-                w.Qi[i] = v;
-            }
+                w.QiBase[i] = (ushort)(Mathf.Clamp01(qi[i]) * WorldData.MaxQi);
+            QiCap.Recompute(w, 0, 0, n - 1, n - 1);
         }
 
         static void DrawLeyLine(WorldData w, Vector2Int a, Vector2Int b, ref DetRandom rng)

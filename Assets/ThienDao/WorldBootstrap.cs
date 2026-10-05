@@ -1,5 +1,6 @@
 using ThienDao.Player;
 using ThienDao.Render;
+using ThienDao.Sim;
 using ThienDao.World;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -15,7 +16,21 @@ namespace ThienDao
 
         static readonly string[] OverlayNames = { "Không", "Linh khí", "Độ cao", "Nhiệt độ", "Độ ẩm" };
 
+        // Colour grade at the middle of each season; lerped through the year.
+        static readonly Color[] SeasonTints =
+        {
+            new Color(1f, 1f, 1f),
+            new Color(1f, 0.985f, 0.93f),
+            new Color(1f, 0.92f, 0.8f),
+            new Color(0.86f, 0.9f, 1f),
+        };
+
+        const double SimBudgetMs = 8.0;
+
         WorldData _world;
+        Simulation _sim;
+        int _speedBeforePause = 1;
+        Rect _timeRect;
         WorldRenderer _renderer;
         CameraController _cam;
         WorldBrush _brush;
@@ -61,11 +76,13 @@ namespace ThienDao
             if (string.IsNullOrWhiteSpace(seedText)) seedText = "0";
             var sw = System.Diagnostics.Stopwatch.StartNew();
             _world = MapGenerator.Generate(seedText.Trim());
+            int speed = _sim?.SpeedIndex ?? 1;
+            _sim = new Simulation(_world) { SpeedIndex = speed };
             _genMs = (float)sw.Elapsed.TotalMilliseconds;
-            _renderer.Init(_world);
+            _renderer.Init(_world, _sim.Qi);
 
             var prev = _brush;
-            _brush = new WorldBrush(_world, _renderer);
+            _brush = new WorldBrush(_sim);
             if (prev != null)
             {
                 _brush.Tool = prev.Tool;
@@ -88,7 +105,7 @@ namespace ThienDao
             if (mouse == null) return;
             Vector2 mp = mouse.position.ReadValue();
             var gui = new Vector2(mp.x / _uiScale, (Screen.height - mp.y) / _uiScale);
-            _pointerOverUI = _showUI && _panelRect.Contains(gui);
+            _pointerOverUI = _showUI && (_panelRect.Contains(gui) || _timeRect.Contains(gui));
 
             Vector3 wp = _cam.Cam.ScreenToWorldPoint(mp);
             _hoverX = Mathf.FloorToInt(wp.x);
@@ -99,12 +116,28 @@ namespace ThienDao
             if (!_pointerOverUI && mouse.leftButton.isPressed)
                 _brush.Apply(_hoverX, _hoverY, mouse.leftButton.wasPressedThisFrame, Time.unscaledDeltaTime);
 
+            _sim.RunFrame(Time.unscaledDeltaTime, SimBudgetMs);
             UpdateCursor();
         }
 
         void LateUpdate()
         {
-            if (_world != null) _renderer.Tick(_cam.Cam);
+            if (_world == null) return;
+            _renderer.SetTint(SeasonTint(_sim.Clock.YearFraction));
+            _renderer.Tick(_cam.Cam);
+        }
+
+        static Color SeasonTint(float yearFraction)
+        {
+            float f = Mathf.Repeat(yearFraction - 0.125f, 1f) * 4f; // 0 = mid-Xuân
+            int a = Mathf.FloorToInt(f) % 4;
+            return Color.Lerp(SeasonTints[a], SeasonTints[(a + 1) % 4], f - Mathf.Floor(f));
+        }
+
+        void SetSpeed(int index)
+        {
+            if (index > 0) _speedBeforePause = index;
+            _sim.SpeedIndex = index;
         }
 
         void HandleKeys()
@@ -118,6 +151,11 @@ namespace ThienDao
             if (kb.escapeKey.wasPressedThisFrame) _brush.Tool = BrushTool.Inspect;
             if (kb.tabKey.wasPressedThisFrame)
                 _renderer.SetOverlay((OverlayMode)(((int)_renderer.Overlay + 1) % OverlayNames.Length));
+            if (kb.spaceKey.wasPressedThisFrame) SetSpeed(_sim.Paused ? _speedBeforePause : 0);
+            if (kb.digit1Key.wasPressedThisFrame) SetSpeed(1);
+            if (kb.digit2Key.wasPressedThisFrame) SetSpeed(2);
+            if (kb.digit3Key.wasPressedThisFrame) SetSpeed(3);
+            if (kb.digit4Key.wasPressedThisFrame) SetSpeed(4);
         }
 
         SpriteRenderer CreateCursor()
@@ -175,9 +213,12 @@ namespace ThienDao
             if (!_showUI)
             {
                 _panelRect = Rect.zero;
+                _timeRect = Rect.zero;
                 GUI.Label(new Rect(10, 10, 300, 24), "F1: hiện giao diện");
                 return;
             }
+
+            DrawTimeBar();
 
             var e = Event.current;
             if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) &&
@@ -190,7 +231,7 @@ namespace ThienDao
 
             _panelRect = new Rect(10, 10, 300, Screen.height / _uiScale - 20);
             GUILayout.BeginArea(_panelRect, GUI.skin.box);
-            GUILayout.Label("THIÊN ĐẠO  ·  M0 Bản đồ", _title);
+            GUILayout.Label("THIÊN ĐẠO  ·  M1 Thời gian & Linh khí", _title);
 
             GUILayout.Label("Seed (chữ hoặc số):");
             GUI.SetNextControlName("seed");
@@ -222,8 +263,23 @@ namespace ThienDao
             GUILayout.FlexibleSpace();
             GUILayout.Label($"FPS {_fps:0}   ·   {_cam.PixelsPerCell:0.0} px/ô   ·   {(_renderer.OverviewMode ? "tổng quan" : "chi tiết")}");
             GUILayout.Label($"Chunk: {_renderer.ResidentChunks}/{_renderer.ChunkCount} đang giữ   ·   vẽ lại {_renderer.RedrawsLastFrame}/frame");
-            GUILayout.Label($"Vật thể: {_world.Objects.AliveCount:N0}");
-            GUILayout.Label("Chuột phải/giữa: kéo   ·   Lăn: zoom\nWASD: di chuyển (Shift nhanh)   ·   Esc: Xem   ·   F1: ẩn UI");
+            GUILayout.Label($"Vật thể: {_world.Objects.AliveCount:N0}   ·   Lệnh đã ghi: {_sim.Log.Count}");
+            GUILayout.Label("Chuột phải/giữa: kéo   ·   Lăn: zoom\nWASD: di chuyển (Shift nhanh)   ·   Esc: Xem\nSpace: dừng/chạy   ·   1–4: tốc độ   ·   F1: ẩn UI");
+            GUILayout.EndArea();
+        }
+
+        void DrawTimeBar()
+        {
+            const float w = 560f, h = 62f;
+            float x = Mathf.Max(320f, (Screen.width / _uiScale - w) * 0.5f);
+            _timeRect = new Rect(x, 10, w, h);
+            GUILayout.BeginArea(_timeRect, GUI.skin.box);
+            GUILayout.Label(_sim.Clock.DateText, _title);
+            GUILayout.BeginHorizontal();
+            int speed = GUILayout.Toolbar(_sim.SpeedIndex, Simulation.SpeedNames, GUILayout.Width(330));
+            if (speed != _sim.SpeedIndex) SetSpeed(speed);
+            GUILayout.Label($"  {Simulation.SpeedDaysPerSecond[_sim.SpeedIndex]:0} ngày/giây · {_sim.TicksLastFrame} tick/frame");
+            GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
 
@@ -235,14 +291,15 @@ namespace ThienDao
                 return;
             }
             int i = _world.Idx(_hoverX, _hoverY);
-            float tempC = -20f + _world.Temperature[i] / 255f * 60f;
+            float temp01 = _world.Temperature[i] / 255f + _sim.Clock.SeasonalTemperatureOffset;
+            float tempC = -20f + temp01 * 60f;
             string obj = "—";
             int id = _world.Objects.CellObject[i];
             if (id >= 0) obj = ObjectInfo.Names[(int)_world.Objects.Get(id).Type];
             GUILayout.Label(
                 $"Ô ({_hoverX}, {_hoverY}):  {TerrainInfo.Names[(int)_world.Terrain[i]]}\n" +
                 $"Độ cao {_world.Height[i]:0.00}   ·   Nhiệt {tempC:0}°C   ·   Ẩm {_world.Moisture[i] * 100 / 255}%\n" +
-                $"Linh khí {_world.Qi[i]}/{_world.QiCap[i]}{(_world.LeyLine[i] ? "   ·   LINH MẠCH" : "")}\n" +
+                $"Linh khí {_sim.Qi.SampleQi(_hoverX, _hoverY):0} / trần {_world.QiCap[i]}{(_world.LeyLine[i] ? "   ·   LINH MẠCH" : "")}\n" +
                 $"Vật thể: {obj}");
         }
     }
