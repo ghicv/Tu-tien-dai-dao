@@ -176,6 +176,47 @@ namespace ThienDao.Sim
         }
     }
 
+    public sealed class SpawnCreaturesCommand : IWorldCommand
+    {
+        public readonly Species Species;
+        public readonly int X, Y, Size, Count;
+        public readonly uint Seed;
+
+        public SpawnCreaturesCommand(Species species, int x, int y, int size, int count, uint seed)
+        {
+            Species = species;
+            X = x;
+            Y = y;
+            Size = size;
+            Count = count;
+            Seed = seed;
+        }
+
+        public void Apply(Simulation sim)
+        {
+            var rng = new DetRandom(Seed);
+            float r = Mathf.Max(1f, Size * 0.5f);
+            for (int k = 0; k < Count; k++)
+                sim.Creatures.SpawnAnimal(Species, X + 0.5f + rng.Range(-r, r), Y + 0.5f + rng.Range(-r, r), sim.Clock.Tick, ref rng);
+        }
+    }
+
+    public sealed class FoundVillageCommand : IWorldCommand
+    {
+        public readonly int X, Y, People;
+        public readonly byte Roof;
+
+        public FoundVillageCommand(int x, int y, int people, byte roof)
+        {
+            X = x;
+            Y = y;
+            People = people;
+            Roof = roof;
+        }
+
+        public void Apply(Simulation sim) => sim.Settlements.FoundVillage(X, Y, Roof, People, sim.Clock.Tick);
+    }
+
     // Positive amount pours qi in, negative drains it; amount is a fraction of MaxQi at the centre.
     public sealed class InfuseQiCommand : IWorldCommand
     {

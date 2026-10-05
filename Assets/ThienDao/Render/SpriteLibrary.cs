@@ -89,6 +89,192 @@ namespace ThienDao.Render
             _sprites = s;
         }
 
+        // ---------------------------------------------------------------- units (moving things)
+
+        public enum Unit { Deer, Rabbit, Wolf, Villager0, Villager1, Villager2, Villager3, Migrants, Count }
+
+        public const int UnitFrames = 2;
+        const int UnitSlot = 16;
+        static PixelSprite[] _units;     // index = unit * UnitFrames + frame
+        static Texture2D _unitAtlas;
+        static Rect[] _unitUv;
+
+        public static PixelSprite UnitSprite(Unit u, int frame) { EnsureUnits(); return _units[(int)u * UnitFrames + frame]; }
+        public static Rect UnitUv(Unit u, int frame) { EnsureUnits(); return _unitUv[(int)u * UnitFrames + frame]; }
+
+        public static Texture2D UnitAtlas
+        {
+            get
+            {
+                EnsureUnits();
+                if (_unitAtlas != null) return _unitAtlas;
+                int cols = 4, rows = (_units.Length + cols - 1) / cols;
+                int tw = cols * UnitSlot, th = rows * UnitSlot;
+                var px = new Color32[tw * th];
+                _unitUv = new Rect[_units.Length];
+                for (int k = 0; k < _units.Length; k++)
+                {
+                    var sp = _units[k];
+                    int ox = k % cols * UnitSlot, oy = k / cols * UnitSlot;
+                    for (int y = 0; y < sp.H; y++)
+                    for (int x = 0; x < sp.W; x++)
+                        px[(oy + y) * tw + ox + x] = sp.Px[y * sp.W + x];
+                    _unitUv[k] = new Rect(ox / (float)tw, oy / (float)th, sp.W / (float)tw, sp.H / (float)th);
+                }
+                _unitAtlas = new Texture2D(tw, th, TextureFormat.RGBA32, false)
+                {
+                    name = "UnitAtlas",
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+                _unitAtlas.SetPixelData(px, 0);
+                _unitAtlas.Apply(false);
+                return _unitAtlas;
+            }
+        }
+
+        static void EnsureUnits()
+        {
+            if (_units != null) return;
+            var list = new PixelSprite[(int)Unit.Count * UnitFrames];
+            for (int f = 0; f < UnitFrames; f++)
+            {
+                list[(int)Unit.Deer * UnitFrames + f] = Deer(f);
+                list[(int)Unit.Rabbit * UnitFrames + f] = Rabbit(f);
+                list[(int)Unit.Wolf * UnitFrames + f] = Wolf(f);
+                list[(int)Unit.Villager0 * UnitFrames + f] = Villager(f, C(64, 112, 204));
+                list[(int)Unit.Villager1 * UnitFrames + f] = Villager(f, C(196, 72, 52));
+                list[(int)Unit.Villager2 * UnitFrames + f] = Villager(f, C(70, 150, 70));
+                list[(int)Unit.Villager3 * UnitFrames + f] = Villager(f, C(170, 120, 60));
+                list[(int)Unit.Migrants * UnitFrames + f] = MigrantCart(f);
+            }
+            _units = list;
+            if (_unitUv == null) _ = UnitAtlas;
+        }
+
+        static PixelSprite Deer(int frame)
+        {
+            var cv = new Canvas(12, 12);
+            var coat = C(156, 102, 54);
+            var belly = C(200, 150, 96);
+            var leg = C(110, 70, 40);
+            int la = frame == 0 ? 2 : 3, lb = frame == 0 ? 7 : 6;
+            cv.Rect(la, 1, la, 3, leg);
+            cv.Rect(lb, 1, lb, 3, leg);
+            cv.Rect(2, 4, 7, 6, coat);
+            cv.Rect(3, 4, 6, 4, belly);
+            cv.Rect(7, 6, 8, 7, coat);
+            cv.Rect(8, 7, 9, 8, coat);
+            cv.Set(9, 8, C(40, 30, 20));
+            cv.Set(1, 6, C(240, 236, 226));
+            var antler = C(214, 196, 160);
+            cv.Set(8, 9, antler);
+            cv.Set(7, 10, antler);
+            cv.Set(9, 10, antler);
+            cv.Outline(0.45f);
+            cv.Shadow(5f, 0.8f, 4f, 1f);
+            return cv.ToSprite(0, 0, coat);
+        }
+
+        static PixelSprite Rabbit(int frame)
+        {
+            var cv = new Canvas(8, 9);
+            var fur = C(196, 178, 156);
+            var furDark = C(160, 140, 120);
+            int lift = frame;
+            for (int y = 0; y < 9; y++)
+            for (int x = 0; x < 8; x++)
+            {
+                float dx = (x + 0.5f - 3.4f) / 2.4f, dy = (y + 0.5f - (2.8f + lift)) / 1.6f;
+                if (dx * dx + dy * dy <= 1f) cv.Set(x, y, y < 2 + lift ? furDark : fur);
+            }
+            cv.Rect(5, 3 + lift, 6, 4 + lift, fur);
+            cv.Rect(5, 5 + lift, 5, 6 + lift, furDark);
+            cv.Set(6, 4 + lift, C(40, 30, 30));
+            cv.Set(1, 3 + lift, C(244, 244, 240));
+            cv.Outline(0.45f);
+            cv.Shadow(3.5f, 0.7f, 2.6f, 0.9f);
+            return cv.ToSprite(0, 0, fur);
+        }
+
+        static PixelSprite Wolf(int frame)
+        {
+            var cv = new Canvas(13, 10);
+            var fur = C(122, 124, 134);
+            var furLight = C(170, 172, 180);
+            var leg = C(90, 92, 100);
+            int la = frame == 0 ? 2 : 3, lb = frame == 0 ? 8 : 7;
+            cv.Rect(la, 1, la, 2, leg);
+            cv.Rect(lb, 1, lb, 2, leg);
+            cv.Rect(2, 3, 8, 5, fur);
+            cv.Rect(3, 3, 7, 3, furLight);
+            cv.Rect(8, 4, 10, 6, fur);
+            cv.Set(11, 4, furLight);
+            cv.Set(9, 7, fur);
+            cv.Set(10, 7, fur);
+            cv.Set(10, 5, C(230, 200, 60));
+            cv.Rect(0, 5, 1, 6, fur);
+            cv.Outline(0.45f);
+            cv.Shadow(5.5f, 0.8f, 4.5f, 1f);
+            return cv.ToSprite(0, 0, fur);
+        }
+
+        static PixelSprite Villager(int frame, Color32 shirt)
+        {
+            var cv = new Canvas(7, 11);
+            var skin = C(240, 196, 150);
+            var hair = C(70, 46, 30);
+            var pants = C(70, 58, 46);
+            if (frame == 0)
+            {
+                cv.Rect(2, 1, 2, 2, pants);
+                cv.Rect(4, 1, 4, 2, pants);
+            }
+            else
+            {
+                cv.Rect(1, 1, 1, 2, pants);
+                cv.Rect(5, 1, 5, 2, pants);
+            }
+            cv.Rect(1, 3, 5, 5, shirt);
+            cv.Set(0, 4, skin);
+            cv.Set(6, 4, skin);
+            cv.Rect(2, 6, 4, 8, skin);
+            cv.Rect(2, 8, 4, 8, hair);
+            cv.Set(4, 7, C(40, 30, 20));
+            cv.Outline(0.45f);
+            cv.Shadow(3.5f, 0.7f, 2.6f, 0.9f);
+            return cv.ToSprite(0, 0, shirt);
+        }
+
+        static PixelSprite MigrantCart(int frame)
+        {
+            var cv = new Canvas(16, 12);
+            var wood = C(150, 100, 60);
+            var cloth = C(232, 222, 190);
+            var clothDark = C(200, 188, 156);
+            var wheel = C(80, 54, 34);
+            cv.Rect(1, 3, 11, 4, wood);
+            for (int y = 5; y <= 8; y++)
+            for (int x = 2; x <= 10; x++)
+            {
+                float dx = (x + 0.5f - 6.5f) / 5f, dy = (y - 4.5f) / 4.4f;
+                if (dx * dx + dy * dy <= 1f) cv.Set(x, y, x < 7 ? cloth : clothDark);
+            }
+            foreach (int wx in new[] { 3, 9 })
+            {
+                cv.Rect(wx - 1, 1, wx + 1, 2, wheel);
+                cv.Set(frame == 0 ? wx : wx - 1, 2, C(190, 150, 100));
+            }
+            var skin = C(240, 196, 150);
+            cv.Rect(13, frame == 0 ? 1 : 2, 13, 3, C(70, 58, 46));
+            cv.Rect(13, 4, 14, 5, C(64, 112, 204));
+            cv.Set(13, 6, skin);
+            cv.Set(14, 6, skin);
+            cv.Outline(0.45f);
+            cv.Shadow(7.5f, 0.8f, 7f, 1f);
+            return cv.ToSprite(0, 0, cloth);
+        }
+
         static Color32 C(int r, int g, int b) => new Color32((byte)r, (byte)g, (byte)b, 255);
 
         public static Color32 Shade(Color32 c, float k) =>

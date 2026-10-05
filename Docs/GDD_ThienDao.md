@@ -11,6 +11,7 @@
 1. **Simulation LOD (mức chi tiết theo tầm quan trọng).** Không mô phỏng mọi phàm nhân như một cá thể đầy đủ. Phàm nhân trong làng/thành là *dân số dạng số liệu*; chỉ cá thể "đáng chú ý" (tu sĩ, có linh căn, lãnh đạo, yêu thú mạnh, người vừa gặp kỳ ngộ) mới được "nâng cấp" thành entity đầy đủ. Đây là chìa khóa để chạy hàng triệu năm mà vẫn nhẹ.
 2. **Mọi thứ là dữ liệu + quy luật, không phải script.** Câu chuyện sinh ra từ: nhu cầu khan hiếm + tính cách + quan hệ + xác suất. Không viết sự kiện cốt truyện.
 3. **Simulation tách khỏi rendering.** Simulation chạy trên mảng dữ liệu thuần C#, deterministic theo seed. Rendering chỉ đọc state và vẽ.
+4. **Toàn bộ tên gọi và lore dựa trên Phàm Nhân Tu Tiên:** tông môn, địa danh (Thôn / Trấn / Thành), đan dược, linh thạch, yêu thú, cảnh giới. Danh mục tên nằm ở `Assets/ThienDao/Sim/Lore.cs`; nội dung mới phải lấy tên từ đây hoặc bổ sung vào đây.
 
 ---
 
@@ -174,6 +175,19 @@ Mỗi lần "suy nghĩ" (không mỗi tick, chỉ khi xong mục tiêu hoặc m�
 | Linh thú | yêu thú hiền/được thuần hóa, có thể khế ước với tu sĩ |
 | Ma vật | sinh ra trong vùng ma khí/tử địa, ăn sinh khí, lan rộng nếu không bị diệt |
 | Đặc biệt | thiên địa linh vật, quỷ hồn cường giả, khôi lỗi cổ… sinh từ sự kiện |
+
+### 3.5 Đã cài (M2)
+
+**Làng (quần thể):** 17 nhóm tuổi (5 năm một nhóm), kho lương, nhà (mỗi nhà 6 người), ruộng (loại địa hình `Farmland`, có chủ sở hữu theo ô).
+- Mỗi tháng: thu hoạch = tổng độ màu mỡ của số ruộng người làm việc chăm được (mỗi lao động 2,5 ô) × 1,4 × hệ số mùa (Xuân 0,6 · Hạ 1 · Thu 1,5 · Đông 0,2), cộng thịt săn được quanh làng, trừ mỗi người 1 phần. Thiếu ăn thì người già và trẻ nhỏ chết trước. Thiếu ruộng thì mở thêm (chặt cây), thừa ruộng thì bỏ hoang.
+- Mỗi năm: già đi, chết theo tỉ lệ từng nhóm tuổi, sinh con (phụ thuộc lương thực và độ chật chội), xây nhà khi đông, bỏ nhà khi vắng. Làng đủ 70 người mà chật hoặc thiếu ăn thì tách một đoàn di dân (18–30% dân số) đi lập làng mới cách 30–110 ô; đến nơi không còn chỗ thì nhập vào làng gần nhất.
+- Tên gọi: tông môn dùng tên trong truyện; địa danh có hậu tố Thôn (dưới 150 người) / Trấn (150–400) / Thành (trên 400).
+
+**Động vật (cá thể):** hươu, thỏ, sói. Cỏ hoang nằm trên lưới thô 8×8 ô, mọc lại theo mùa; 1 đơn vị cỏ giải 1 điểm đói. Sinh sản khi no và khi mật độ cùng loài trong ô lưới 16×16 chưa vượt ngưỡng (hươu 2, thỏ 3, sói 1). Sói vồ trúng theo tỉ lệ cơ bản (hươu 40%, thỏ 70%) nhân với mật độ con mồi cùng loài: con mồi càng thưa càng khó bắt. Đây là vòng phản hồi giữ cho hệ sinh thái không sụp.
+
+**Hiển thị:** toàn bộ sinh vật vẽ bằng 1 mesh động (1 draw call), có nội suy giữa các tick. Dân làng đi lại quanh nhà và ruộng là lớp trang trí, không thuộc simulation.
+
+**Hiệu năng hiện tại:** khoảng 2–3 ms/tick với khoảng 12.000 sinh vật trong Editor ở chế độ Debug. Tối ưu (Burst, hoặc chia nhóm cập nhật luân phiên) để dành cho lúc cần.
 
 ---
 
@@ -457,7 +471,7 @@ Tham khảo 3 ảnh: địa hình là khối ô vuông (viền bờ biển bậc
 |---|---|---|
 | **M0 — Thế giới tĩnh** ✅ | MapGen từ seed, terrain texture, camera pan/zoom, brush địa hình, overlay linh khí | vẽ & sửa map 1024² mượt, đặt thử vài nhà/cây nhiều cell |
 | **M1 — Thời gian & linh khí** ✅ | Clock, tick, mùa, linh mạch, khuếch tán linh khí, Command queue | linh khí lan, cạn, hồi |
-| **M2 — Sinh mệnh cơ bản** | EntityStore, phàm nhân + động vật, ăn/di chuyển/sinh/chết, làng dạng quần thể, sprite instancing | dân số tự tăng/giảm theo tài nguyên |
+| **M2 — Sinh mệnh cơ bản** ✅ | EntityStore, phàm nhân + động vật, ăn/di chuyển/sinh/chết, làng dạng quần thể, sprite instancing | dân số tự tăng/giảm theo tài nguyên |
 | **M3 — Tu tiên lõi** | linh căn, Luyện Khí → Nguyên Anh, tu luyện hút linh khí, đột phá, tẩu hỏa, thọ nguyên | tu sĩ tự tìm phúc địa, có người đột phá/chết già |
 | **M4 — Thế lực** | Faction chung, làng → thành, tông môn lập/tuyển đệ tử, ngoại giao opinion | tông môn tự sinh & tranh linh mạch |
 | **M5 — Xung đột & lịch sử** | chiến đấu cá nhân, trận trừu tượng, HistoryLog, biên niên sử UI, StoryDetector v1 | đọc được "câu chuyện" sau 1.000 năm |

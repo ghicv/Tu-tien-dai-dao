@@ -18,6 +18,7 @@ namespace ThienDao.World
             GenerateHeight(w);
             bool[] river = CarveRivers(w);
             int[] waterDist = WaterDistance(w);
+            for (int i = 0; i < waterDist.Length; i++) w.WaterDist[i] = (byte)Mathf.Min(waterDist[i], 255);
             GenerateClimate(w, waterDist);
             ClassifyTerrain(w, river, waterDist);
             GenerateQi(w);
@@ -384,16 +385,24 @@ namespace ThienDao.World
                 if (waterDist[i] < 3 || waterDist[i] > 14) continue;
                 if (TooClose(villages, x, y, 70)) continue;
 
-                byte roof = (byte)rng.Range(0, 4);
+                var site = new VillageSite { X = x, Y = y, Roof = (byte)rng.Range(0, 4) };
                 int houses = rng.Range(5, 12);
-                int placed = 0;
-                for (int k = 0; k < houses * 6 && placed < houses; k++)
+                for (int k = 0; k < houses * 6 && site.Houses.Count < houses; k++)
                 {
                     int ox = rng.Range(-3, 4) * 4 + rng.Range(0, 2);
                     int oy = rng.Range(-3, 4) * 4 + rng.Range(0, 2);
-                    if (TryPlaceBuilding(w, ObjectType.House, x + ox, y + oy, roof, noTree)) placed++;
+                    int id = TryPlaceBuilding(w, ObjectType.House, x + ox, y + oy, site.Roof, noTree);
+                    if (id >= 0) site.Houses.Add(id);
                 }
-                if (placed >= 3) villages.Add(new Vector2Int(x, y));
+                if (site.Houses.Count >= 3)
+                {
+                    villages.Add(new Vector2Int(x, y));
+                    w.VillageSites.Add(site);
+                }
+                else
+                {
+                    foreach (int id in site.Houses) w.Objects.Remove(id);
+                }
             }
 
             var sects = new List<Vector2Int>();
@@ -406,13 +415,16 @@ namespace ThienDao.World
                 if (TooClose(sects, x, y, 150) || TooClose(villages, x, y, 30)) continue;
 
                 byte roof = (byte)rng.Range(0, 3);
-                if (!TryPlaceBuilding(w, ObjectType.SectHall, x - 2, y - 2, roof, noTree)) continue;
+                if (TryPlaceBuilding(w, ObjectType.SectHall, x - 2, y - 2, roof, noTree) < 0) continue;
+                var site = new VillageSite { X = x, Y = y, Roof = roof, Sect = true };
                 for (int k = 0; k < 12; k++)
                 {
                     int ox = rng.Range(-2, 3) * 4, oy = rng.Range(-2, 3) * 4;
-                    TryPlaceBuilding(w, ObjectType.House, x + ox, y + oy, roof, noTree);
+                    int id = TryPlaceBuilding(w, ObjectType.House, x + ox, y + oy, roof, noTree);
+                    if (id >= 0) site.Houses.Add(id);
                 }
                 sects.Add(new Vector2Int(x, y));
+                if (site.Houses.Count > 0) w.VillageSites.Add(site);
             }
         }
 
@@ -423,14 +435,15 @@ namespace ThienDao.World
             return false;
         }
 
-        static bool TryPlaceBuilding(WorldData w, ObjectType type, int x, int y, byte variant, bool[] noTree)
+        static int TryPlaceBuilding(WorldData w, ObjectType type, int x, int y, byte variant, bool[] noTree)
         {
-            if (w.Objects.Place(type, x, y, variant) < 0) return false;
+            int id = w.Objects.Place(type, x, y, variant);
+            if (id < 0) return -1;
             int fw = ObjectInfo.FootprintW[(int)type], fh = ObjectInfo.FootprintH[(int)type];
             for (int yy = y - 1; yy <= y + fh; yy++)
             for (int xx = x - 1; xx <= x + fw; xx++)
                 if (w.InBounds(xx, yy)) noTree[w.Idx(xx, yy)] = true;
-            return true;
+            return id;
         }
 
         static void PlaceVegetation(WorldData w, bool[] noTree)

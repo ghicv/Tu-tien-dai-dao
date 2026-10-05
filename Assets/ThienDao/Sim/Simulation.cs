@@ -27,6 +27,10 @@ namespace ThienDao.Sim
         public readonly WorldData World;
         public readonly SimClock Clock = new SimClock();
         public readonly QiSystem Qi;
+        public readonly ForageSystem Forage;
+        public readonly EntityStore Entities = new EntityStore();
+        public readonly CreatureSystem Creatures;
+        public readonly SettlementSystem Settlements;
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
         readonly Queue<IWorldCommand> _pending = new Queue<IWorldCommand>();
@@ -36,10 +40,18 @@ namespace ThienDao.Sim
         public int TicksLastFrame { get; private set; }
         public bool Paused => SpeedIndex == 0;
 
+        // Progress (0..1) toward the next tick; rendering uses it to interpolate movement.
+        public float TickFraction => (float)System.Math.Min(1.0, _dayAccumulator);
+
         public Simulation(WorldData world)
         {
             World = world;
             Qi = new QiSystem(world);
+            Forage = new ForageSystem(world);
+            world.TerrainChanged += Forage.RebuildCapBlocks; // must exist before settlements start clearing fields
+            Creatures = new CreatureSystem(this);
+            Settlements = new SettlementSystem(this);
+            Creatures.SpawnInitial();
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -57,7 +69,15 @@ namespace ThienDao.Sim
         public void Step()
         {
             Clock.Advance();
-            if (Clock.IsMonthStart) Qi.MonthlyStep(RegenMultiplier(Clock.Season));
+            long tick = Clock.Tick;
+            Creatures.Tick(tick);
+            if (Clock.IsMonthStart)
+            {
+                Qi.MonthlyStep(RegenMultiplier(Clock.Season));
+                Forage.MonthlyStep(Clock.Season);
+                Settlements.MonthlyStep(tick);
+            }
+            if (Clock.IsYearStart) Settlements.YearlyStep(tick);
         }
 
         public void RunFrame(float realDeltaSeconds, double budgetMs)
@@ -99,7 +119,7 @@ namespace ThienDao.Sim
             var w = World;
             for (int i = 0; i < w.Terrain.Length; i++)
             {
-                StateHash.Add(ref h, (int)w.Terrain[i] | (w.LeyLine[i] ? 256 : 0) | (w.QiCap[i] << 9));
+                StateHash.Add(ref h, (int)w.Terrain[i] | (w.LeyLine[i] ? 256 : 0) | (w.QiCap[i] << 9) | ((long)w.Owner[i] << 32));
             }
             var objs = w.Objects;
             for (int id = 0; id < objs.Capacity; id++)
@@ -111,6 +131,9 @@ namespace ThienDao.Sim
                 StateHash.Add(ref h, o.X | (o.Y << 16));
             }
             Qi.HashInto(ref h);
+            Forage.HashInto(ref h);
+            Creatures.HashInto(ref h);
+            Settlements.HashInto(ref h);
             return h;
         }
     }

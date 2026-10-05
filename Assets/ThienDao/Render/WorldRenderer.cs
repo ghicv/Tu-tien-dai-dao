@@ -10,7 +10,7 @@ using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao.Render
 {
-    public enum OverlayMode { None, Qi, Height, Temperature, Moisture }
+    public enum OverlayMode { None, Qi, Height, Temperature, Moisture, Forage, Territory }
 
     public sealed class WorldRenderer : MonoBehaviour
     {
@@ -36,6 +36,7 @@ namespace ThienDao.Render
 
         WorldData _world;
         QiSystem _qi;
+        ForageSystem _forage;
         Color _tint = Color.white;
         int _chunksX, _chunksY;
         Chunk[] _chunks;
@@ -66,11 +67,12 @@ namespace ThienDao.Render
         public int ResidentChunks { get; private set; }
         public int ChunkCount => _chunks?.Length ?? 0;
 
-        public void Init(WorldData world, QiSystem qi)
+        public void Init(WorldData world, Simulation sim)
         {
             Clear();
             _world = world;
-            _qi = qi;
+            _qi = sim.Qi;
+            _forage = sim.Forage;
             _world.Objects.Added += OnObjectAdded;
             _world.Objects.Removed += OnObjectRemoved;
             _world.TerrainChanged += HandleTerrainChanged;
@@ -167,6 +169,7 @@ namespace ThienDao.Render
             }
 
             _overlayTimer -= Time.unscaledDeltaTime;
+            if (Overlay == OverlayMode.Forage) _overlayDirty = true; // grazing has no change event; refresh on the timer
             if (_overlayDirty && _overlayTimer <= 0f)
             {
                 RebuildOverlay();
@@ -282,6 +285,7 @@ namespace ThienDao.Render
             uint seed = _world.Seed ^ 0x5EEDu;
             int x0 = cx * ChunkCells, y0 = cy * ChunkCells;
             var foam = new Color32(236, 246, 255, 255);
+            var soil = new Color32(128, 92, 56, 255);
 
             for (int ly = 0; ly < ChunkCells; ly++)
             {
@@ -303,6 +307,7 @@ namespace ThienDao.Render
                     bool foamL = water && TerrainInfo.IsLand(tl);
                     bool foamR = water && TerrainInfo.IsLand(trr);
                     bool veg = TerrainInfo.IsVegetated(t);
+                    bool farm = t == Terrain.Farmland;
                     float amp = TerrainInfo.PixelNoiseAmp(t) * 2f;
                     Color32 baseC = _cellColor[i];
                     int rowBase = ly * CellPx * ChunkPx + lx * CellPx;
@@ -329,7 +334,8 @@ namespace ThienDao.Render
                             if (tierA < tr && py == CellPx - 1) f *= 1.12f;
                             if (tierL < tr && px == 0) f *= 1.06f;
                             if (tierR < tr && px == CellPx - 1) f *= 0.86f;
-                            c = SpriteLibrary.Shade(baseC, f);
+                            // Crop rows run across cells so neighbouring fields read as one field.
+                            c = farm && (wy & 3) == 0 ? SpriteLibrary.Shade(soil, f) : SpriteLibrary.Shade(baseC, f);
                         }
                         _buffer[rowBase + py * ChunkPx + px] = c;
                     }
@@ -477,7 +483,7 @@ namespace ThienDao.Render
             float hv = _world.Height[i];
             float f;
             if (TerrainInfo.IsWater(t)) f = 0.85f + hv * 0.35f;
-            else if (t >= Terrain.Hills) f = 0.92f + (hv - 0.7f) * 0.5f;
+            else if (TerrainInfo.IsHighland(t)) f = 0.92f + (hv - 0.7f) * 0.5f;
             else f = 1.03f - (hv - 0.5f) * 0.35f;
             f *= 0.97f + (Hash.U32(_world.Seed ^ 0x99u, x, y) & 255) / 255f * 0.06f;
             return SpriteLibrary.Shade(TerrainInfo.Colors[(int)t], f);
@@ -597,6 +603,22 @@ namespace ThienDao.Render
                     var c = Color32.Lerp(new Color32(170, 110, 50, 255), new Color32(30, 120, 255, 255), v);
                     c.a = 170;
                     return c;
+                }
+                case OverlayMode.Forage:
+                {
+                    float cap = _forage.CapAt(x, y);
+                    if (cap <= 0f) return default;
+                    float v = _forage.At(x, y) / cap;
+                    var c = Color32.Lerp(new Color32(200, 60, 40, 255), new Color32(60, 230, 70, 255), v);
+                    c.a = 150;
+                    return c;
+                }
+                case OverlayMode.Territory:
+                {
+                    int owner = _world.Owner[i];
+                    if (owner == 0) return default;
+                    uint hsh = Hash.U32((uint)owner * 0x9E3779B1u);
+                    return new Color32((byte)(80 + (hsh & 0x7F)), (byte)(80 + ((hsh >> 8) & 0x7F)), (byte)(80 + ((hsh >> 16) & 0x7F)), 150);
                 }
                 default: return default;
             }

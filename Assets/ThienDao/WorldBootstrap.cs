@@ -14,7 +14,7 @@ namespace ThienDao
         [Tooltip("Initial zoom, in screen pixels per cell.")]
         public float StartPixelsPerCell = 4f;
 
-        static readonly string[] OverlayNames = { "Không", "Linh khí", "Độ cao", "Nhiệt độ", "Độ ẩm" };
+        static readonly string[] OverlayNames = { "Không", "Linh khí", "Độ cao", "Nhiệt độ", "Độ ẩm", "Thức ăn", "Lãnh thổ" };
 
         // Colour grade at the middle of each season; lerped through the year.
         static readonly Color[] SeasonTints =
@@ -32,7 +32,9 @@ namespace ThienDao
         int _speedBeforePause = 1;
         Rect _timeRect;
         WorldRenderer _renderer;
+        UnitRenderer _units;
         CameraController _cam;
+        GUIStyle _label;
         WorldBrush _brush;
         SpriteRenderer _cursor;
 
@@ -65,6 +67,8 @@ namespace ThienDao
 
             _renderer = GetComponent<WorldRenderer>();
             if (_renderer == null) _renderer = gameObject.AddComponent<WorldRenderer>();
+            _units = GetComponent<UnitRenderer>();
+            if (_units == null) _units = gameObject.AddComponent<UnitRenderer>();
             _cursor = CreateCursor();
             _seedInput = Seed;
         }
@@ -79,7 +83,8 @@ namespace ThienDao
             int speed = _sim?.SpeedIndex ?? 1;
             _sim = new Simulation(_world) { SpeedIndex = speed };
             _genMs = (float)sw.Elapsed.TotalMilliseconds;
-            _renderer.Init(_world, _sim.Qi);
+            _renderer.Init(_world, _sim);
+            _units.Init(_sim);
 
             var prev = _brush;
             _brush = new WorldBrush(_sim);
@@ -90,8 +95,11 @@ namespace ThienDao
             }
 
             _cam.WorldSize = new Vector2(_world.W, _world.H);
-            _cam.Focus(new Vector2(_world.W * 0.5f, _world.H * 0.5f), Screen.height / (2f * StartPixelsPerCell));
-            Debug.Log($"[ThienDao] World '{seedText}' (seed {_world.Seed}) generated in {_genMs:0} ms, {_world.Objects.AliveCount} objects.");
+            var focus = new Vector2(_world.W * 0.5f, _world.H * 0.5f);
+            if (_sim.Settlements.All.Count > 0) focus = new Vector2(_sim.Settlements.All[0].X, _sim.Settlements.All[0].Y);
+            _cam.Focus(focus, Screen.height / (2f * StartPixelsPerCell));
+            Debug.Log($"[ThienDao] World '{seedText}' (seed {_world.Seed}) generated in {_genMs:0} ms: {_world.Objects.AliveCount} objects, " +
+                      $"{_sim.Settlements.AliveCount} villages ({_sim.Settlements.TotalPopulation} people), {_sim.Entities.Alive} creatures.");
         }
 
         static string RandomSeed() => Random.Range(0, int.MaxValue).ToString();
@@ -125,6 +133,7 @@ namespace ThienDao
             if (_world == null) return;
             _renderer.SetTint(SeasonTint(_sim.Clock.YearFraction));
             _renderer.Tick(_cam.Cam);
+            _units.Tick(_cam.Cam, _cam.PixelsPerCell);
         }
 
         static Color SeasonTint(float yearFraction)
@@ -218,6 +227,7 @@ namespace ThienDao
                 return;
             }
 
+            DrawVillageLabels();
             DrawTimeBar();
 
             var e = Event.current;
@@ -231,7 +241,7 @@ namespace ThienDao
 
             _panelRect = new Rect(10, 10, 300, Screen.height / _uiScale - 20);
             GUILayout.BeginArea(_panelRect, GUI.skin.box);
-            GUILayout.Label("THIÊN ĐẠO  ·  M1 Thời gian & Linh khí", _title);
+            GUILayout.Label("THIÊN ĐẠO  ·  M2 Sinh mệnh", _title);
 
             GUILayout.Label("Seed (chữ hoặc số):");
             GUI.SetNextControlName("seed");
@@ -270,7 +280,7 @@ namespace ThienDao
 
         void DrawTimeBar()
         {
-            const float w = 560f, h = 62f;
+            const float w = 560f, h = 84f;
             float x = Mathf.Max(320f, (Screen.width / _uiScale - w) * 0.5f);
             _timeRect = new Rect(x, 10, w, h);
             GUILayout.BeginArea(_timeRect, GUI.skin.box);
@@ -280,7 +290,33 @@ namespace ThienDao
             if (speed != _sim.SpeedIndex) SetSpeed(speed);
             GUILayout.Label($"  {Simulation.SpeedDaysPerSecond[_sim.SpeedIndex]:0} ngày/giây · {_sim.TicksLastFrame} tick/frame");
             GUILayout.EndHorizontal();
+            var e = _sim.Entities;
+            var st = _sim.Settlements;
+            GUILayout.Label($"Dân: {st.TotalPopulation:N0} · {st.AliveCount} làng · {st.MigrantGroups} đoàn di dân   |   " +
+                            $"Hươu {e.AliveBySpecies[(int)Species.Deer]:N0} · Thỏ {e.AliveBySpecies[(int)Species.Rabbit]:N0} · Sói {e.AliveBySpecies[(int)Species.Wolf]:N0}");
             GUILayout.EndArea();
+        }
+
+        void DrawVillageLabels()
+        {
+            if (_cam.PixelsPerCell < 3f) return;
+            if (_label == null)
+                _label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = 13 };
+            var cam = _cam.Cam;
+            foreach (var s in _sim.Settlements.All)
+            {
+                if (!s.Alive) continue;
+                Vector3 sp = cam.WorldToScreenPoint(new Vector3(s.X + 0.5f, s.Y + 5f, 0f));
+                if (sp.x < 0 || sp.y < 0 || sp.x > Screen.width || sp.y > Screen.height) continue;
+                var r = new Rect(sp.x / _uiScale - 90f, (Screen.height - sp.y) / _uiScale - 12f, 180f, 24f);
+                string text = $"{s.Name} ({s.Population})";
+                var shadow = new Rect(r.x + 1f, r.y + 1f, r.width, r.height);
+                var prev = GUI.color;
+                GUI.color = Color.black;
+                GUI.Label(shadow, text, _label);
+                GUI.color = prev;
+                GUI.Label(r, text, _label);
+            }
         }
 
         void DrawHoverInfo()
@@ -300,7 +336,25 @@ namespace ThienDao
                 $"Ô ({_hoverX}, {_hoverY}):  {TerrainInfo.Names[(int)_world.Terrain[i]]}\n" +
                 $"Độ cao {_world.Height[i]:0.00}   ·   Nhiệt {tempC:0}°C   ·   Ẩm {_world.Moisture[i] * 100 / 255}%\n" +
                 $"Linh khí {_sim.Qi.SampleQi(_hoverX, _hoverY):0} / trần {_world.QiCap[i]}{(_world.LeyLine[i] ? "   ·   LINH MẠCH" : "")}\n" +
-                $"Vật thể: {obj}");
+                $"Vật thể: {obj}   ·   Cỏ {_sim.Forage.At(_hoverX, _hoverY):0}/{_sim.Forage.CapAt(_hoverX, _hoverY):0}");
+
+            var s = _sim.Settlements.Owning(i);
+            if (s != null)
+            {
+                int pop = Mathf.Max(1, s.Population);
+                GUILayout.Label(
+                    $"{s.Name}{(s.Alive ? "" : " (đã bỏ hoang)")}: {s.Population} người · {s.Houses.Count} nhà · {s.Farms.Count} ô ruộng\n" +
+                    $"Lương thực {s.Food / pop:0.0} tháng · thu hoạch {s.LastHarvest:0} · săn {s.LastHunt:0}\n" +
+                    $"Năm qua: sinh {s.BirthsLastYear} · mất {s.DeathsLastYear} · lập năm {s.FoundedTick / Core.SimClock.DaysPerYear + 1}");
+            }
+
+            int c = _sim.Creatures.FindNearest(_hoverX + 0.5f, _hoverY + 0.5f, 1.5f, CreatureSystem.AnyMask);
+            if (c >= 0)
+            {
+                var e = _sim.Entities;
+                float age = (_sim.Clock.Tick - e.BirthTick[c]) / (float)Core.SimClock.DaysPerYear;
+                GUILayout.Label($"{SpeciesInfo.Names[(int)e.Species[c]]} #{c}: {age:0.0} tuổi · đói {e.Hunger[c]:0}%");
+            }
         }
     }
 }

@@ -24,7 +24,11 @@ namespace ThienDao.Player
         LeyAdd,
         LeyErase,
         QiInfuse,
-        QiDrain
+        QiDrain,
+        SpawnDeer,
+        SpawnRabbit,
+        SpawnWolf,
+        FoundVillage
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -34,7 +38,7 @@ namespace ThienDao.Player
         {
             "Xem", "Cỏ", "Cát", "Sa mạc", "Nước nông", "Biển sâu", "Đồi", "Núi", "Tuyết",
             "Trồng cây", "Nhà dân", "Tông môn", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
-            "Rót linh khí", "Hút linh khí"
+            "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng"
         };
 
         readonly Simulation _sim;
@@ -63,6 +67,20 @@ namespace ThienDao.Player
                 if (!pressedThisFrame) return;
                 var type = BuildingFor(Tool);
                 _sim.Enqueue(new PlaceBuildingCommand(type, cx, cy, (byte)_rng.Range(0, SpriteLibrary.VariantCount(type))));
+                return;
+            }
+            if (Tool == BrushTool.FoundVillage)
+            {
+                if (pressedThisFrame) _sim.Enqueue(new FoundVillageCommand(cx, cy, 24, (byte)_rng.Range(0, 4)));
+                return;
+            }
+            if (Tool == BrushTool.SpawnDeer || Tool == BrushTool.SpawnRabbit || Tool == BrushTool.SpawnWolf)
+            {
+                _cooldown -= dt;
+                if (!pressedThisFrame && _cooldown > 0f) return;
+                _cooldown = 0.15f;
+                var species = Tool == BrushTool.SpawnDeer ? Species.Deer : Tool == BrushTool.SpawnRabbit ? Species.Rabbit : Species.Wolf;
+                _sim.Enqueue(new SpawnCreaturesCommand(species, cx, cy, Size, System.Math.Max(1, Size / 2), _rng.NextUInt()));
                 return;
             }
 
