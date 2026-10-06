@@ -176,29 +176,21 @@ namespace ThienDao.Sim
         }
     }
 
+    // Adds animals to the population of the region under (X, Y).
     public sealed class SpawnCreaturesCommand : IWorldCommand
     {
         public readonly Species Species;
-        public readonly int X, Y, Size, Count;
-        public readonly uint Seed;
+        public readonly int X, Y, Count;
 
-        public SpawnCreaturesCommand(Species species, int x, int y, int size, int count, uint seed)
+        public SpawnCreaturesCommand(Species species, int x, int y, int count)
         {
             Species = species;
             X = x;
             Y = y;
-            Size = size;
             Count = count;
-            Seed = seed;
         }
 
-        public void Apply(Simulation sim)
-        {
-            var rng = new DetRandom(Seed);
-            float r = Mathf.Max(1f, Size * 0.5f);
-            for (int k = 0; k < Count; k++)
-                sim.Creatures.SpawnAnimal(Species, X + 0.5f + rng.Range(-r, r), Y + 0.5f + rng.Range(-r, r), sim.Clock.Tick, ref rng);
-        }
+        public void Apply(Simulation sim) => sim.Wildlife.Add(Species, X + 0.5f, Y + 0.5f, Count);
     }
 
     public sealed class FoundVillageCommand : IWorldCommand

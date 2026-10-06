@@ -30,6 +30,7 @@ namespace ThienDao.Sim
         public readonly ForageSystem Forage;
         public readonly EntityStore Entities = new EntityStore();
         public readonly CreatureSystem Creatures;
+        public readonly WildlifeSystem Wildlife;
         public readonly SettlementSystem Settlements;
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
@@ -51,7 +52,7 @@ namespace ThienDao.Sim
             world.TerrainChanged += Forage.RebuildCapBlocks; // must exist before settlements start clearing fields
             Creatures = new CreatureSystem(this);
             Settlements = new SettlementSystem(this);
-            Creatures.SpawnInitial();
+            Wildlife = new WildlifeSystem(world, Forage); // after villages have cleared their first fields
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -75,6 +76,7 @@ namespace ThienDao.Sim
             {
                 Qi.MonthlyStep(RegenMultiplier(Clock.Season));
                 Forage.MonthlyStep(Clock.Season);
+                Wildlife.MonthlyStep(Clock.Season);
                 Settlements.MonthlyStep(tick);
             }
             if (Clock.IsYearStart) Settlements.YearlyStep(tick);
@@ -133,6 +135,7 @@ namespace ThienDao.Sim
             Qi.HashInto(ref h);
             Forage.HashInto(ref h);
             Creatures.HashInto(ref h);
+            Wildlife.HashInto(ref h);
             Settlements.HashInto(ref h);
             return h;
         }

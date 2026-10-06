@@ -80,7 +80,7 @@ namespace ThienDao.Player
                 if (!pressedThisFrame && _cooldown > 0f) return;
                 _cooldown = 0.15f;
                 var species = Tool == BrushTool.SpawnDeer ? Species.Deer : Tool == BrushTool.SpawnRabbit ? Species.Rabbit : Species.Wolf;
-                _sim.Enqueue(new SpawnCreaturesCommand(species, cx, cy, Size, System.Math.Max(1, Size / 2), _rng.NextUInt()));
+                _sim.Enqueue(new SpawnCreaturesCommand(species, cx, cy, species == Species.Wolf ? 2 : 10));
                 return;
             }
 

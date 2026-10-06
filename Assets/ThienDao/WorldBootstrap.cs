@@ -290,10 +290,10 @@ namespace ThienDao
             if (speed != _sim.SpeedIndex) SetSpeed(speed);
             GUILayout.Label($"  {Simulation.SpeedDaysPerSecond[_sim.SpeedIndex]:0} ngày/giây · {_sim.TicksLastFrame} tick/frame");
             GUILayout.EndHorizontal();
-            var e = _sim.Entities;
+            var wild = _sim.Wildlife;
             var st = _sim.Settlements;
             GUILayout.Label($"Dân: {st.TotalPopulation:N0} · {st.AliveCount} làng · {st.MigrantGroups} đoàn di dân   |   " +
-                            $"Hươu {e.AliveBySpecies[(int)Species.Deer]:N0} · Thỏ {e.AliveBySpecies[(int)Species.Rabbit]:N0} · Sói {e.AliveBySpecies[(int)Species.Wolf]:N0}");
+                            $"Hươu {wild.Total(Species.Deer):N0} · Thỏ {wild.Total(Species.Rabbit):N0} · Sói {wild.Total(Species.Wolf):N0}");
             GUILayout.EndArea();
         }
 
@@ -348,12 +348,16 @@ namespace ThienDao
                     $"Năm qua: sinh {s.BirthsLastYear} · mất {s.DeathsLastYear} · lập năm {s.FoundedTick / Core.SimClock.DaysPerYear + 1}");
             }
 
+            var wild = _sim.Wildlife;
+            int region = wild.RegionOf(_hoverX, _hoverY);
+            GUILayout.Label($"Thú hoang trong vùng: Hươu {wild.At(Species.Deer, region):0} · Thỏ {wild.At(Species.Rabbit, region):0} · Sói {wild.At(Species.Wolf, region):0}");
+
             int c = _sim.Creatures.FindNearest(_hoverX + 0.5f, _hoverY + 0.5f, 1.5f, CreatureSystem.AnyMask);
             if (c >= 0)
             {
                 var e = _sim.Entities;
-                float age = (_sim.Clock.Tick - e.BirthTick[c]) / (float)Core.SimClock.DaysPerYear;
-                GUILayout.Label($"{SpeciesInfo.Names[(int)e.Species[c]]} #{c}: {age:0.0} tuổi · đói {e.Hunger[c]:0}%");
+                float days = _sim.Clock.Tick - e.BirthTick[c];
+                GUILayout.Label($"{SpeciesInfo.Names[(int)e.Species[c]]}: đã đi {days:0} ngày");
             }
         }
     }

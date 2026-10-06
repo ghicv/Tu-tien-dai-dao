@@ -183,11 +183,18 @@ Mỗi lần "suy nghĩ" (không mỗi tick, chỉ khi xong mục tiêu hoặc m�
 - Mỗi năm: già đi, chết theo tỉ lệ từng nhóm tuổi, sinh con (phụ thuộc lương thực và độ chật chội), xây nhà khi đông, bỏ nhà khi vắng. Làng đủ 70 người mà chật hoặc thiếu ăn thì tách một đoàn di dân (18–30% dân số) đi lập làng mới cách 30–110 ô; đến nơi không còn chỗ thì nhập vào làng gần nhất.
 - Tên gọi: tông môn dùng tên trong truyện; địa danh có hậu tố Thôn (dưới 150 người) / Trấn (150–400) / Thành (trên 400).
 
-**Động vật (cá thể):** hươu, thỏ, sói. Cỏ hoang nằm trên lưới thô 8×8 ô, mọc lại theo mùa; 1 đơn vị cỏ giải 1 điểm đói. Sinh sản khi no và khi mật độ cùng loài trong ô lưới 16×16 chưa vượt ngưỡng (hươu 2, thỏ 3, sói 1). Sói vồ trúng theo tỉ lệ cơ bản (hươu 40%, thỏ 70%) nhân với mật độ con mồi cùng loài: con mồi càng thưa càng khó bắt. Đây là vòng phản hồi giữ cho hệ sinh thái không sụp.
+**Động vật thường (quần thể theo vùng):** hươu, thỏ, sói là con số trên từng vùng 64×64 ô (16×16 vùng), không phải cá thể. Mỗi tháng:
+- Thú ăn cỏ trên lưới cỏ 8×8 ô. Hươu ăn lá rừng, thỏ gặm cỏ đồng; phần thức ăn của mỗi loài chia theo độ phù hợp môi trường của vùng, nên hai loài chỉ cạnh tranh một phần.
+- Thiếu cỏ thì chết đói. Sinh sản vào Xuân và Hạ.
+- Sói săn theo mô hình bão hòa: mồi càng nhiều thì mỗi con sói săn được càng nhiều, nhưng có giới hạn trên.
+- 4% mỗi quần thể lan sang vùng bên cạnh. Làng săn một ít.
+- Kết quả: cả 3 loài cùng tồn tại; thỏ và sói dao động theo chu kỳ săn mồi.
 
-**Hiển thị:** toàn bộ sinh vật vẽ bằng 1 mesh động (1 draw call), có nội suy giữa các tick. Dân làng đi lại quanh nhà và ruộng là lớp trang trí, không thuộc simulation.
+**Nguyên tắc hiển thị:** số lượng mô phỏng có thể lớn (hàng chục nghìn con), nhưng map chỉ vẽ vài con tượng trưng. Mỗi vùng trong khung nhìn có tối đa 3 hươu, 3 thỏ, 2 sói, mỗi làng tối đa 20 dân. Các con này chỉ để trang trí và đi lang thang. Chỉ những thứ đặc biệt (đoàn di dân; sau này là tu sĩ, yêu thú khai linh trí) mới là cá thể thật trong simulation.
 
-**Hiệu năng hiện tại:** khoảng 2–3 ms/tick với khoảng 12.000 sinh vật trong Editor ở chế độ Debug. Tối ưu (Burst, hoặc chia nhóm cập nhật luân phiên) để dành cho lúc cần.
+**Hiển thị:** cá thể thật và con đại diện vẽ chung bằng 1 mesh động (1 draw call), có nội suy giữa các tick.
+
+**Hiệu năng hiện tại:** khoảng 0,05 ms/tick trong Editor.
 
 ---
 

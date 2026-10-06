@@ -65,12 +65,24 @@ namespace ThienDao.Sim
         public float At(float x, float y) => _forage[BlockAt(x, y)];
         public float CapAt(float x, float y) => _cap[BlockAt(x, y)];
 
-        public float Eat(float x, float y, float amount)
+        // Square of n×n blocks starting at (bx0, by0).
+        public float Sum(int bx0, int by0, int n) => SumOf(_forage, bx0, by0, n);
+        public float CapSum(int bx0, int by0, int n) => SumOf(_cap, bx0, by0, n);
+
+        float SumOf(float[] a, int bx0, int by0, int n)
         {
-            int i = BlockAt(x, y);
-            float eaten = Mathf.Min(amount, _forage[i]);
-            _forage[i] -= eaten;
-            return eaten;
+            float s = 0f;
+            for (int by = by0; by < by0 + n; by++)
+            for (int bx = bx0; bx < bx0 + n; bx++)
+                s += a[by * BW + bx];
+            return s;
+        }
+
+        public void Scale(int bx0, int by0, int n, float factor)
+        {
+            for (int by = by0; by < by0 + n; by++)
+            for (int bx = bx0; bx < bx0 + n; bx++)
+                _forage[by * BW + bx] *= factor;
         }
 
         public void HashInto(ref ulong h)

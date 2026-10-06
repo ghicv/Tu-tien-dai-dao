@@ -224,7 +224,7 @@ namespace ThienDao.Sim
                 float harvest = 0f;
                 for (int f = 0; f < tended; f++) harvest += _w.Fertility(s.Farms[f]);
                 harvest *= YieldPerFertility * season;
-                float meat = _sim.Creatures.Hunt(s.X, s.Y, 22, Mathf.Max(1, workers / 20));
+                float meat = _sim.Wildlife.Hunt(s.X, s.Y);
                 s.LastHarvest = harvest;
                 s.LastHunt = meat;
 
@@ -464,7 +464,7 @@ namespace ThienDao.Sim
             g.Food = s.Food * share;
             s.Food -= g.Food;
             var e = _sim.Entities;
-            g.Entity = e.Spawn(Species.Migrants, s.X + 0.5f, s.Y + 0.5f, tick, 0);
+            g.Entity = e.Spawn(Species.Migrants, s.X + 0.5f, s.Y + 0.5f, tick);
             e.TX[g.Entity] = tx + 0.5f;
             e.TY[g.Entity] = ty + 0.5f;
             _groups.Add(g);

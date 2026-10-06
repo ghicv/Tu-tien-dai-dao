@@ -21,7 +21,7 @@ namespace ThienDao.Tests
             sim.Enqueue(new LeyLineCommand(300, 300, 3, true));
             sim.Enqueue(new PaintTerrainCommand(600, 400, 10, Terrain.Mountain));
             sim.Enqueue(new PlantTreesCommand(420, 420, 20, 1234u));
-            sim.Enqueue(new SpawnCreaturesCommand(Species.Wolf, 450, 450, 10, 6, 99u));
+            sim.Enqueue(new SpawnCreaturesCommand(Species.Wolf, 450, 450, 6));
             var v = sim.Settlements.All[0];
             sim.Enqueue(new FoundVillageCommand(v.X + 40, v.Y, 24, 1));
             Run(sim, 400);
@@ -106,8 +106,9 @@ namespace ThienDao.Tests
             var sim = new Simulation(MapGenerator.Generate("life"));
             Assert.Greater(sim.Settlements.AliveCount, 10);
             Assert.Greater(sim.Settlements.TotalPopulation, 500);
-            Assert.Greater(sim.Entities.AliveBySpecies[(int)Species.Deer], 1000);
-            Assert.Greater(sim.Entities.AliveBySpecies[(int)Species.Wolf], 100);
+            Assert.Greater(sim.Wildlife.Total(Species.Deer), 1000f);
+            Assert.Greater(sim.Wildlife.Total(Species.Rabbit), 1000f);
+            Assert.Greater(sim.Wildlife.Total(Species.Wolf), 20f);
             // A sect town perched on bare mountain may have no fields; ordinary villages must.
             int withFarms = 0;
             foreach (var s in sim.Settlements.All)
@@ -121,9 +122,11 @@ namespace ThienDao.Tests
             var sim = new Simulation(MapGenerator.Generate("life"));
             Run(sim, SimClock.DaysPerYear * 30);
             Assert.Greater(sim.Settlements.TotalPopulation, 500, "humans should not die out");
-            int herbivores = sim.Entities.AliveBySpecies[(int)Species.Deer] + sim.Entities.AliveBySpecies[(int)Species.Rabbit];
-            Assert.Greater(herbivores, 200, "herbivores should not die out");
-            Assert.LessOrEqual(sim.Creatures.AnimalCount, CreatureSystem.MaxAnimals);
+            var wild = sim.Wildlife;
+            Assert.Greater(wild.Total(Species.Deer), 100f, "deer should not die out");
+            Assert.Greater(wild.Total(Species.Rabbit), 200f, "rabbits should not die out");
+            Assert.Greater(wild.Total(Species.Wolf), 5f, "wolves should not die out");
+            Assert.Less(wild.Total(Species.Rabbit), 200000f, "populations should stay bounded");
         }
 
         [Test]

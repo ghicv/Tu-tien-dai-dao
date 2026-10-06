@@ -3,6 +3,7 @@ using ThienDao.Sim;
 using ThienDao.World;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Terrain = ThienDao.World.Terrain;
 using Unit = ThienDao.Render.SpriteLibrary.Unit;
 
 namespace ThienDao.Render
@@ -20,6 +21,20 @@ namespace ThienDao.Render
             public float X, Y, TX, TY, Wait;
             public Unit Look;
         }
+
+        struct Token
+        {
+            public float X, Y, TX, TY, Wait;
+            public int Kind;
+        }
+
+        // Decorative wildlife: one token stands for this many animals, capped per region and kind.
+        static readonly float[] AnimalsPerToken = { 20f, 30f, 3f };
+        static readonly int[] MaxTokensPerRegion = { 3, 3, 2 };
+        static readonly Unit[] TokenLook = { Unit.Deer, Unit.Rabbit, Unit.Wolf };
+        static readonly float[] TokenSpeed = { 1.2f, 1f, 1.5f }; // cells per real second
+        readonly Dictionary<int, List<Token>> _tokens = new Dictionary<int, List<Token>>();
+        readonly List<int> _staleRegions = new List<int>();
 
         Simulation _sim;
         Mesh _mesh;
@@ -39,6 +54,7 @@ namespace ThienDao.Render
         {
             _sim = sim;
             _villagers.Clear();
+            _tokens.Clear();
             _rand = new System.Random((int)sim.World.Seed);
             if (_mesh != null) return;
 
@@ -83,6 +99,7 @@ namespace ThienDao.Render
                 Vector3 bl = cam.ViewportToWorldPoint(Vector3.zero), tr = cam.ViewportToWorldPoint(Vector3.one);
                 var view = Rect.MinMaxRect(bl.x - 2f, bl.y - 2f, tr.x + 2f, tr.y + 2f);
                 DrawCreatures(view);
+                DrawWildlife(view);
                 if (pixelsPerCell >= VillagersFromPixelsPerCell) DrawVillagers(view);
                 else _villagers.Clear();
             }
@@ -181,6 +198,96 @@ namespace ThienDao.Render
                 }
             }
             foreach (int id in _staleVillages) _villagers.Remove(id);
+        }
+
+        void DrawWildlife(Rect view)
+        {
+            var wild = _sim.Wildlife;
+            const int size = WildlifeSystem.Region;
+            float dt = _sim.Paused ? 0f : Time.deltaTime;
+            float time = Time.time;
+
+            _staleRegions.Clear();
+            foreach (var key in _tokens.Keys) _staleRegions.Add(key);
+
+            int rx0 = Mathf.Clamp((int)view.xMin / size, 0, wild.RW - 1), rx1 = Mathf.Clamp((int)view.xMax / size, 0, wild.RW - 1);
+            int ry0 = Mathf.Clamp((int)view.yMin / size, 0, wild.RH - 1), ry1 = Mathf.Clamp((int)view.yMax / size, 0, wild.RH - 1);
+            for (int ry = ry0; ry <= ry1; ry++)
+            for (int rx = rx0; rx <= rx1; rx++)
+            {
+                int region = ry * wild.RW + rx;
+                _staleRegions.Remove(region);
+                if (!_tokens.TryGetValue(region, out var list))
+                {
+                    list = new List<Token>();
+                    _tokens[region] = list;
+                }
+
+                for (int kind = 0; kind < WildlifeSystem.Kinds.Length; kind++)
+                {
+                    float pop = wild.At(WildlifeSystem.Kinds[kind], region);
+                    int want = pop < 1f ? 0 : Mathf.Min(MaxTokensPerRegion[kind], Mathf.CeilToInt(pop / AnimalsPerToken[kind]));
+                    int have = 0;
+                    for (int k = list.Count - 1; k >= 0; k--)
+                    {
+                        if (list[k].Kind != kind) continue;
+                        if (have >= want) list.RemoveAt(k);
+                        else have++;
+                    }
+                    for (; have < want; have++)
+                    {
+                        if (!RandomWildSpot(rx * size, ry * size, size, out var p)) break;
+                        list.Add(new Token { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 3f, Kind = kind });
+                    }
+                }
+
+                for (int k = 0; k < list.Count; k++)
+                {
+                    var t = list[k];
+                    float dx = t.TX - t.X, dy = t.TY - t.Y, d = Mathf.Sqrt(dx * dx + dy * dy);
+                    bool moving = false;
+                    if (t.Wait > 0f) t.Wait -= dt;
+                    else if (d < 0.05f)
+                    {
+                        float nx = t.X + (float)(_rand.NextDouble() - 0.5) * 10f, ny = t.Y + (float)(_rand.NextDouble() - 0.5) * 10f;
+                        bool inRegion = nx >= rx * size && nx < (rx + 1) * size && ny >= ry * size && ny < (ry + 1) * size;
+                        if (inRegion && _sim.World.IsWalkable(nx, ny))
+                        {
+                            t.TX = nx;
+                            t.TY = ny;
+                        }
+                        t.Wait = 1f + (float)_rand.NextDouble() * 4f;
+                    }
+                    else
+                    {
+                        float step = Mathf.Min(d, TokenSpeed[t.Kind] * dt);
+                        t.X += dx / d * step;
+                        t.Y += dy / d * step;
+                        moving = dt > 0f;
+                    }
+                    list[k] = t;
+                    if (!view.Contains(new Vector2(t.X, t.Y))) continue;
+                    int frame = moving ? ((int)(time * 6f) + k) & 1 : 0;
+                    AddQuad(TokenLook[t.Kind], frame, t.X, t.Y, dx < 0f);
+                }
+            }
+            foreach (int region in _staleRegions) _tokens.Remove(region);
+        }
+
+        bool RandomWildSpot(int x0, int y0, int size, out Vector2 p)
+        {
+            for (int attempt = 0; attempt < 12; attempt++)
+            {
+                float x = x0 + (float)_rand.NextDouble() * size, y = y0 + (float)_rand.NextDouble() * size;
+                int i = _sim.World.Idx((int)x, (int)y);
+                if (_sim.World.IsWalkable(x, y) && _sim.World.Terrain[i] != Terrain.Farmland && _sim.World.Owner[i] == 0)
+                {
+                    p = new Vector2(x, y);
+                    return true;
+                }
+            }
+            p = default;
+            return false;
         }
 
         // A house doorstep or a field cell of the settlement.
