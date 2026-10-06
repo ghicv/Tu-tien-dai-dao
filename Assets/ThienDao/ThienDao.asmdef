@@ -2,7 +2,8 @@
     "name": "ThienDao",
     "rootNamespace": "ThienDao",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
