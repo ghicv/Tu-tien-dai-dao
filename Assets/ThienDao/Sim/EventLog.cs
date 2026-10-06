@@ -26,10 +26,11 @@ namespace ThienDao.Sim
         Duel,           // đấu pháp between two cultivators
         Vendetta,       // setting out to avenge a master or disciple
         Legend,         // StoryDetector: a story worth telling
+        Calamity,       // thiên tai (M6): earthquake, eruption, flood, drought, epidemic, beast tide
     }
 
     // Visual effect the renderer should play at the event's position.
-    public enum Fx : byte { None, Lightning, Tribulation, Explosion, DemonBlast, Splash, LightPillar, Blessing }
+    public enum Fx : byte { None, Lightning, Tribulation, Explosion, DemonBlast, Splash, LightPillar, Blessing, Quake, Eruption, Miasma, Stampede }
 
     public readonly struct WorldEvent
     {

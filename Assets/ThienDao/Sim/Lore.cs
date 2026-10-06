@@ -78,6 +78,19 @@ namespace ThienDao.Sim
 
         public static readonly string[] Beasts = { "Huyết Ngọc Tri Chu", "Phệ Kim Trùng", "Thiết Giáp Ngô Công", "Hỏa Lân Thú", "Băng Phượng", "Giao Long" };
 
+        // Places born of calamity (M6): where tribulation lightning fell, where the earth spewed fire.
+        public static readonly string[] ThunderPlaces =
+        {
+            "Lôi Cốc", "Kinh Lôi Nguyên", "Thiên Lôi Pha", "Tử Điện Lĩnh", "Lôi Minh Cương", "Vạn Lôi Hạp",
+            "Cửu Tiêu Lôi Đài", "Ngũ Lôi Nhai", "Hắc Lôi Trạch", "Thanh Lôi Phong"
+        };
+
+        public static readonly string[] Volcanoes =
+        {
+            "Hỏa Diễm Sơn", "Xích Viêm Sơn", "Địa Hỏa Phong", "Liệt Dương Sơn", "Hỏa Long Lĩnh", "Chu Tước Phong",
+            "Viêm Ma Sơn", "Huyết Hỏa Nhai"
+        };
+
         // Cultivator names in the novel's style (surname + given name).
         public static readonly string[] Surnames =
         {

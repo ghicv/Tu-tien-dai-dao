@@ -495,7 +495,11 @@ namespace ThienDao.Render
             else if (TerrainInfo.IsHighland(t)) f = 0.92f + (hv - 0.7f) * 0.5f;
             else f = 1.03f - (hv - 0.5f) * 0.35f;
             f *= 0.97f + (Hash.U32(_world.Seed ^ 0x99u, x, y) & 255) / 255f * 0.06f;
-            return SpriteLibrary.Shade(TerrainInfo.Colors[(int)t], f);
+            if (t == Terrain.Lava) f = 0.85f + (Hash.U32(_world.Seed ^ 0x1A7Au, x, y) & 255) / 255f * 0.35f; // glowing, crusted in patches
+            var c = SpriteLibrary.Shade(TerrainInfo.Colors[(int)t], f);
+            // Lôi địa: the ground keeps a violet sheen while lôi khí lingers.
+            if ((_world.Zone[i] & ZoneFlags.Thunder) != 0) c = Color32.Lerp(c, new Color32(150, 112, 230, 255), 0.3f);
+            return c;
         }
 
         Color32 OverviewColor(int i)

@@ -232,7 +232,7 @@ namespace ThienDao.Sim
         }
     }
 
-    public enum DivineAct : byte { GrantRoot, Bless, Smite }
+    public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation }
 
     // Thiên Đạo acting on one being: the chosen cultivator (Target, an index into Cultivation.All) or a mortal of
     // the chosen village (Village, a settlement id). Without a target, Bless / Smite fall back to whoever is nearby.
@@ -263,6 +263,11 @@ namespace ThienDao.Sim
                 if (chosen != null) sim.Cultivation.GrantRootTo(chosen, tick);
                 else if (village != null) sim.Cultivation.AwakenMortal(village, tick);
                 return; // a spirit root is given to someone, never to empty ground
+            }
+            if (Act == DivineAct.Tribulation)
+            {
+                sim.Cultivation.CallTribulation(chosen, tick); // only ever on the chosen cultivator
+                return;
             }
             if (Act == DivineAct.Bless && chosen == null && village != null)
             {
@@ -296,6 +301,23 @@ namespace ThienDao.Sim
             sim.Settlements.Strike(X, Y, tick);
             sim.Events.Add(tick, EventKind.Divine, 0, "Thiên lôi giáng xuống.", X + 0.5f, Y + 0.5f, Fx.Lightning);
         }
+    }
+
+    // Thiên tai sent by Thiên Đạo at (X, Y); Size is the brush size (the reach follows DisasterSystem.Radius).
+    public sealed class CalamityCommand : IWorldCommand
+    {
+        public readonly Calamity Kind;
+        public readonly int X, Y, Size;
+
+        public CalamityCommand(Calamity kind, int x, int y, int size)
+        {
+            Kind = kind;
+            X = x;
+            Y = y;
+            Size = size;
+        }
+
+        public void Apply(Simulation sim) => sim.Disasters.Unleash(Kind, X, Y, Size, sim.Clock.Tick, true);
     }
 
     // Positive amount pours qi in, negative drains it; amount is a fraction of MaxQi at the centre.

@@ -401,6 +401,120 @@ namespace ThienDao.UI
             ".....kk.....",
         }, P);
 
+        // ---------------------------------------------------------------- M6: thiên kiếp, thiên tai
+
+        public static Sprite Tribulation => Glyph("tribulation", new[]
+        {
+            "...kkkk.....",
+            "..kssssk.kk.",
+            ".kssssssksk.",
+            "kssssssssssk",
+            "kssssssssssk",
+            ".kkkkpkkpkk.",
+            "....kpk.kpk.",
+            "...kppk.kpk.",
+            "...kpk..kk..",
+            "..kpk.......",
+            "..kpk.......",
+            "..kk........",
+        }, P);
+
+        public static Sprite Quake => Glyph("quake", new[]
+        {
+            "............",
+            ".s........s.",
+            "..s..ss..s..",
+            "............",
+            "nnnnnknnnnnn",
+            "nnnnkknnnnnn",
+            "nnnnnkknnnnn",
+            "nnnnnnkknnnn",
+            "nnnnnkknnnnn",
+            "nnnnkknnnnnn",
+            "nnnnnknnnnnn",
+            "kkkkkkkkkkkk",
+        }, P);
+
+        public static Sprite Volcano => Glyph("volcano", new[]
+        {
+            "....o..y....",
+            "...y.oo.o...",
+            ".....rr.....",
+            "....kook....",
+            "....krrk....",
+            "...knrrnk...",
+            "...knnrnk...",
+            "..knnnrnnk..",
+            "..knnnnrnk..",
+            ".knnnnnnnnk.",
+            ".knnnnnnnnk.",
+            "kkkkkkkkkkkk",
+        }, P);
+
+        public static Sprite Wave => Glyph("wave", new[]
+        {
+            "............",
+            "..bb....bb..",
+            ".bwwb..bwwb.",
+            "bb..bbbb..bb",
+            "............",
+            "..bb....bb..",
+            ".bccb..bccb.",
+            "bb..bbbb..bb",
+            "............",
+            "..bb....bb..",
+            ".bccb..bccb.",
+            "bb..bbbb..bb",
+        }, P);
+
+        public static Sprite Sun => Glyph("sun", new[]
+        {
+            "y....y....y.",
+            ".y..yyy..y..",
+            "...yyyyy....",
+            "..yyyoyyy...",
+            "...yyyyy....",
+            ".y..yyy..y..",
+            "y....y....y.",
+            "............",
+            "oooookoooooo",
+            "ooookkoooooo",
+            "oooooookoooo",
+            "kkkkkkkkkkkk",
+        }, P);
+
+        public static Sprite Skull => Glyph("skull", new[]
+        {
+            "...kkkkkk...",
+            "..kwwwwwwk..",
+            ".kwwwwwwwwk.",
+            ".kwkkwwkkwk.",
+            ".kwkkwwkkwk.",
+            ".kwwwkkwwwk.",
+            "..kwwwwwwk..",
+            "...kwkwkk...",
+            "...kkkkkk...",
+            "..g..g...g..",
+            ".g..g...g...",
+            "g..g...g....",
+        }, P);
+
+        public static Sprite Paw => Glyph("paw", new[]
+        {
+            "............",
+            "...kk..kk...",
+            "..krrkkrrk..",
+            "..krrkkrrk..",
+            "kk.kk..kk.kk",
+            "krrk....krrk",
+            "krrk.kk.krrk",
+            ".kk.krrk.kk.",
+            "...krrrrk...",
+            "..krrrrrrk..",
+            "..krrrrrrk..",
+            "...kkkkkk...",
+        }, P);
+
         public static Sprite Pause => Glyph("pause", new[] { "............", "..kkk..kkk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kkk..kkk..", "............" }, P);
         public static Sprite Play1 => Glyph("play1", new[] { "............", "...kk.......", "...kwk......", "...kwwk.....", "...kwwwk....", "...kwwwk....", "...kwwk.....", "...kwk......", "...kk.......", "............" }, P);
         public static Sprite Play2 => Glyph("play2", new[] { "............", ".kk...kk....", ".kwk..kwk...", ".kwwk.kwwk..", ".kwwwkkwwwk.", ".kwwwkkwwwk.", ".kwwk.kwwk..", ".kwk..kwk...", ".kk...kk....", "............" }, P);

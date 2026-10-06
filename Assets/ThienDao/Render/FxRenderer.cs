@@ -146,6 +146,25 @@ namespace ThienDao.Render
                         _particles.Add(new Particle { Sprite = Sprite.Spark, X = x + Rand(-1.2f, 1.2f), Y = y + Rand(0f, 1.5f), VX = Rand(-0.3f, 0.3f), VY = Rand(1.5f, 3f),
                             Life = Rand(0.8f, 1.5f), Size = Rand(0.8f, 1.4f), Color = new Color32(255, 230, 120, 255) });
                     break;
+                case Fx.Quake:
+                    e.Duration = 2.4f;
+                    for (int k = 0; k < 22; k++) // dust thrown up across the shaken ground
+                        _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-7f, 7f), Y = y + Rand(-5f, 5f), VX = Rand(-0.4f, 0.4f), VY = Rand(0.3f, 1f),
+                            Life = Rand(1.2f, 2.2f), Size = Rand(1f, 1.8f), Grow = 0.6f, Color = new Color32(160, 130, 96, 170) });
+                    break;
+                case Fx.Eruption:
+                    e.Duration = 6f;
+                    Burst(x, y + 1f, new Color32(255, 120, 40, 255), 30, 9f);
+                    break;
+                case Fx.Miasma:
+                    e.Duration = 3f;
+                    break;
+                case Fx.Stampede:
+                    e.Duration = 2.2f;
+                    for (int k = 0; k < 16; k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-5f, 5f), Y = y + Rand(-3f, 3f), VX = Rand(-2f, 2f), VY = Rand(0.2f, 0.8f),
+                            Life = Rand(0.8f, 1.6f), Size = Rand(0.8f, 1.4f), Grow = 0.7f, Color = new Color32(140, 120, 100, 160) });
+                    break;
             }
             _effects.Add(e);
         }
@@ -266,6 +285,42 @@ namespace ThienDao.Render
                     Quad(Sprite.Ring, e.X, e.Y + 0.1f, 0.6f + k * 4f, 0.3f + k * 1.6f, new Color32(220, 245, 255, (byte)(220 * (1f - k))));
                     break;
                 }
+
+                case Fx.Quake:
+                    // Shock waves rolling out from the epicentre.
+                    for (int k = 0; k < 3; k++)
+                    {
+                        float st = t - k * 0.35f;
+                        if (st < 0f || st > 1.4f) continue;
+                        Quad(Sprite.Ring, e.X, e.Y, 1f + st * 9f, 0.6f + st * 5f, new Color32(190, 150, 100, (byte)(200 * (1f - st / 1.4f))));
+                    }
+                    break;
+
+                case Fx.Eruption:
+                {
+                    // A column of fire and ash out of the crater, flecks of lava raining back down.
+                    float fade = Mathf.Clamp01((e.Duration - t) / 1.5f);
+                    Quad(Sprite.Flash, e.X, e.Y + 1f, 3f, 3f, new Color32(255, 140, 50, (byte)(200 * fade)));
+                    if (_rand.NextDouble() < 0.8 * fade)
+                        _particles.Add(new Particle { Sprite = (Sprite)((int)Sprite.Fire0 + _rand.Next(3)), X = e.X + Rand(-0.6f, 0.6f), Y = e.Y + 1f,
+                            VX = Rand(-2.5f, 2.5f), VY = Rand(6f, 11f), Gravity = 9f, Life = Rand(0.9f, 1.6f), Size = Rand(0.8f, 1.3f), Color = new Color32(255, 255, 255, 255) });
+                    if (_rand.NextDouble() < 0.5 * fade)
+                        _particles.Add(new Particle { Sprite = Sprite.Smoke, X = e.X + Rand(-0.8f, 0.8f), Y = e.Y + Rand(2f, 4f), VX = Rand(-0.3f, 0.6f), VY = Rand(1.5f, 3f),
+                            Life = Rand(2f, 3.5f), Size = Rand(1.2f, 2f), Grow = 1.2f, Color = new Color32(60, 54, 52, 200) });
+                    break;
+                }
+
+                case Fx.Miasma:
+                    // Sickly green vapour rising over the stricken village.
+                    if (_rand.NextDouble() < 0.5 * Mathf.Clamp01((e.Duration - t) / 1f))
+                        _particles.Add(new Particle { Sprite = Sprite.Smoke, X = e.X + Rand(-4f, 4f), Y = e.Y + Rand(-2f, 3f), VX = Rand(-0.2f, 0.2f), VY = Rand(0.3f, 0.8f),
+                            Life = Rand(1.5f, 2.5f), Size = Rand(1f, 1.6f), Grow = 0.5f, Color = new Color32(120, 200, 90, 140) });
+                    break;
+
+                case Fx.Stampede:
+                    if (_rand.NextDouble() < 0.4)
+                        Burst(e.X + Rand(-5f, 5f), e.Y + Rand(-3f, 3f), new Color32(230, 60, 50, 255), 4, 3f);
+                    break;
 
                 case Fx.LightPillar:
                 {

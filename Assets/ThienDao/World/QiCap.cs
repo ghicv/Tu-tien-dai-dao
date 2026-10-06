@@ -5,8 +5,9 @@ namespace ThienDao.World
     public static class QiCap
     {
         public const int LeyReach = 60; // cells a ley line's influence extends
+        public const float ThunderBonus = 0.25f; // lôi khí lingering where a tribulation fell, as a share of MaxQi
 
-        // Recomputes per-cell QiCap inside the rect from QiBase + distance to ley lines (+ water damping).
+        // Recomputes per-cell QiCap inside the rect from QiBase + distance to ley lines (+ lôi địa, water damping).
         public static void Recompute(WorldData w, int x0, int y0, int x1, int y1)
         {
             x0 = Mathf.Clamp(x0, 0, w.W - 1);
@@ -43,6 +44,7 @@ namespace ThienDao.World
                 int i = y * w.W + x;
                 float near = 1f - Mathf.Min(dist[(y - wy0) * ww + (x - wx0)], LeyReach) / (float)LeyReach;
                 float v = w.QiBase[i] / (float)WorldData.MaxQi + near * near * 0.8f;
+                if ((w.Zone[i] & ZoneFlags.Thunder) != 0) v += ThunderBonus;
                 if (TerrainInfo.IsWater(w.Terrain[i])) v *= 0.4f;
                 w.QiCap[i] = (ushort)(Mathf.Clamp01(v) * WorldData.MaxQi);
             }

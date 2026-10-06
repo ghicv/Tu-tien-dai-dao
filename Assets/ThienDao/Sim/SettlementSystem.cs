@@ -59,7 +59,7 @@ namespace ThienDao.Sim
         public const int PeoplePerHouse = 6;
         public const int MaxSettlements = 150;
         const int CrowdedPopulation = 800;     // births fade out as a village approaches this size
-        const float PlagueChancePerYear = 0.015f;
+        const float PlagueChancePerYear = 0.01f; // an outbreak now lingers and spreads, so it starts less often
         const float CellsPerWorker = 2.5f;
         const float YieldPerFertility = 1.4f;
 
@@ -348,7 +348,7 @@ namespace ThienDao.Sim
                 int tended = Mathf.Min(s.Farms.Count, (int)(workers * CellsPerWorker));
                 float harvest = 0f;
                 for (int f = 0; f < tended; f++) harvest += _w.Fertility(s.Farms[f]);
-                harvest *= YieldPerFertility * season;
+                harvest *= YieldPerFertility * season * _sim.Disasters.HarvestFactor(s.X, s.Y); // đại hạn
                 float meat = _sim.Wildlife.Hunt(s.X, s.Y);
                 s.LastHarvest = harvest;
                 s.LastHunt = meat;
@@ -402,19 +402,8 @@ namespace ThienDao.Sim
                     continue;
                 }
 
-                if (rng.NextFloat() < PlagueChancePerYear && pop >= 20)
-                {
-                    int dead = Stoch(pop * rng.Range(0.1f, 0.25f), ref rng);
-                    RemovePeople(s, dead);
-                    s.DeathsLastYear += dead;
-                    pop = s.Population;
-                    _sim.Events.Add(tick, EventKind.Disaster, dead >= 50 ? 2 : 1, $"Ôn dịch hoành hành ở {s.Name}, {dead} người chết.");
-                    if (pop == 0)
-                    {
-                        Abandon(s);
-                        continue;
-                    }
-                }
+                // Ôn dịch lingers for months and can spread along the roads (DisasterSystem).
+                if (rng.NextFloat() < PlagueChancePerYear && pop >= 20) _sim.Disasters.StartEpidemic(s, tick, false);
 
                 float foodFactor = Mathf.Clamp(s.Food / pop / 4f, 0.25f, 1.2f);
                 float crowding = pop > s.HousingCapacity ? 0.4f : 1f;
@@ -439,17 +428,20 @@ namespace ThienDao.Sim
             }
         }
 
-        // ---------------------------------------------------------------- flood: villages and migrant groups drown
+        // ---------------------------------------------------------------- flood / lava: villages and migrant groups engulfed
 
         public void Flood(int x0, int y0, int x1, int y1, long tick)
         {
             foreach (var s in All)
             {
                 if (!s.Alive || s.X < x0 || s.X > x1 || s.Y < y0 || s.Y > y1) continue;
-                if (!TerrainInfo.IsWater(_w.Terrain[_w.Idx(s.X, s.Y)])) continue;
+                var t = _w.Terrain[_w.Idx(s.X, s.Y)];
+                if (!TerrainInfo.IsWater(t) && t != Terrain.Lava) continue;
                 int dead = s.Population;
                 for (int b = 0; b < Settlement.AgeGroups; b++) s.Cohorts[b] = 0;
-                _sim.Events.Add(tick, EventKind.Disaster, 2, $"{s.Name} bị nước nhấn chìm, {dead} người chết đuối.", s.X + 0.5f, s.Y + 0.5f, Fx.Splash);
+                _sim.Events.Add(tick, EventKind.Disaster, 2,
+                    t == Terrain.Lava ? $"{s.Name} bị dung nham nuốt chửng, {dead} người chết cháy." : $"{s.Name} bị nước nhấn chìm, {dead} người chết đuối.",
+                    s.X + 0.5f, s.Y + 0.5f, t == Terrain.Lava ? Fx.Explosion : Fx.Splash);
                 Abandon(s);
             }
 
@@ -462,10 +454,32 @@ namespace ThienDao.Sim
                 int people = 0;
                 foreach (int c in _groups[g].Cohorts) people += c;
                 string from = All[_groups[g].From].Name;
+                bool lava = _w.Terrain[_w.Idx((int)x, (int)y)] == Terrain.Lava;
                 _groups.RemoveAt(g);
                 e.Kill(id, DeathCause.Natural);
-                _sim.Events.Add(tick, EventKind.Disaster, 1, $"Đoàn di dân từ {from} bị nước cuốn, {people} người chết đuối.", x, y, Fx.Splash);
+                _sim.Events.Add(tick, EventKind.Disaster, 1,
+                    lava ? $"Đoàn di dân từ {from} bị dung nham vùi lấp, {people} người chết." : $"Đoàn di dân từ {from} bị nước cuốn, {people} người chết đuối.",
+                    x, y, lava ? Fx.Explosion : Fx.Splash);
             }
+        }
+
+        // A calamity takes up to n people (the frail first); returns how many died.
+        public int Kill(Settlement s, int n)
+        {
+            if (!s.Alive || n <= 0) return 0;
+            int before = s.Population;
+            RemovePeople(s, n);
+            int dead = before - s.Population;
+            s.DeathsLastYear += dead;
+            return dead;
+        }
+
+        // The field at this cell is ruined (flooded, buried in lava): its village no longer owns or tends it.
+        public void LoseField(int cell)
+        {
+            var s = Owning(cell);
+            if (s != null) s.Farms.Remove(cell);
+            _w.Owner[cell] = 0;
         }
 
         // A bolt of Thiên phạt landing near a village kills some of its people.
@@ -675,6 +689,7 @@ namespace ThienDao.Sim
                 if (!_w.InBounds(x, y)) continue;
                 int i = _w.Idx(x, y);
                 if (_w.Owner[i] != 0 || !TerrainInfo.IsFarmable(_w.Terrain[i])) continue;
+                if ((_w.Zone[i] & ZoneFlags.Thunder) != 0) continue; // nobody tills ground where lightning still crawls
                 int obj = _w.Objects.CellObject[i];
                 if (obj >= 0)
                 {
@@ -820,6 +835,7 @@ namespace ThienDao.Sim
             int i = _w.Idx(x, y);
             var t = _w.Terrain[i];
             if (t != Terrain.Grass && t != Terrain.Savanna && t != Terrain.Forest) return false;
+            if ((_w.Zone[i] & ZoneFlags.Thunder) != 0) return false; // mortals give lôi địa a wide berth
             if (needWater && (_w.WaterDist[i] < 2 || _w.WaterDist[i] > 14)) return false;
             for (int yy = y - 6; yy <= y + 6; yy++)
             for (int xx = x - 6; xx <= x + 6; xx++)

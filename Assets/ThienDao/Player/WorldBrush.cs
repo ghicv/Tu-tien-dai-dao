@@ -31,7 +31,14 @@ namespace ThienDao.Player
         FoundVillage,
         GrantRoot,
         Bless,
-        Smite
+        Smite,
+        Tribulation,
+        Earthquake,
+        Eruption,
+        Flood,
+        Drought,
+        Plague,
+        BeastTide
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -42,7 +49,8 @@ namespace ThienDao.Player
             "Xem", "Cỏ", "Cát", "Sa mạc", "Nước nông", "Biển sâu", "Đồi", "Núi", "Tuyết",
             "Trồng cây", "Nhà dân", "Tông môn", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
             "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
-            "Ban linh căn", "Ban cơ duyên", "Thiên phạt"
+            "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
+            "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều"
         };
 
         readonly Simulation _sim;
@@ -63,9 +71,19 @@ namespace ThienDao.Player
 
         public static bool IsBuildingTool(BrushTool t) => t == BrushTool.House || t == BrushTool.SectHall;
 
-        public static bool IsDivineTool(BrushTool t) => t == BrushTool.GrantRoot || t == BrushTool.Bless || t == BrushTool.Smite;
+        public static bool IsDivineTool(BrushTool t) =>
+            t == BrushTool.GrantRoot || t == BrushTool.Bless || t == BrushTool.Smite || t == BrushTool.Tribulation;
 
-        public static DivineAct ActFor(BrushTool t) => t == BrushTool.GrantRoot ? DivineAct.GrantRoot : t == BrushTool.Bless ? DivineAct.Bless : DivineAct.Smite;
+        public static DivineAct ActFor(BrushTool t) =>
+            t == BrushTool.GrantRoot ? DivineAct.GrantRoot : t == BrushTool.Bless ? DivineAct.Bless : t == BrushTool.Tribulation ? DivineAct.Tribulation : DivineAct.Smite;
+
+        public static bool IsCalamityTool(BrushTool t) => t >= BrushTool.Earthquake && t <= BrushTool.BeastTide;
+
+        public static Calamity CalamityFor(BrushTool t) => (Calamity)(t - BrushTool.Earthquake);
+
+        // Tools that act on one spot rather than painting an area.
+        public static bool IsPointTool(BrushTool t) =>
+            t == BrushTool.Inspect || t == BrushTool.FoundVillage || t == BrushTool.SpawnDeer || t == BrushTool.SpawnRabbit || t == BrushTool.SpawnWolf;
 
         public static ObjectType BuildingFor(BrushTool t) => t == BrushTool.SectHall ? ObjectType.SectHall : ObjectType.House;
 
@@ -86,6 +104,11 @@ namespace ThienDao.Player
                 return;
             }
             if (IsDivineTool(Tool)) return; // aimed at whoever is under the pointer: see WorldBootstrap.ActOn
+            if (IsCalamityTool(Tool))
+            {
+                if (pressedThisFrame) _sim.Enqueue(new CalamityCommand(CalamityFor(Tool), cx, cy, Size)); // one calamity per click
+                return;
+            }
             if (Tool == BrushTool.SpawnDeer || Tool == BrushTool.SpawnRabbit || Tool == BrushTool.SpawnWolf)
             {
                 _cooldown -= dt;

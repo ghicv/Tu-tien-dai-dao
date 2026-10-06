@@ -26,8 +26,39 @@ namespace ThienDao.Tests
             sim.Enqueue(new FoundVillageCommand(v.X + 40, v.Y, 24, 1));
             Run(sim, 400);
             sim.Enqueue(new InfuseQiCommand(200, 700, 20, 0.8f));
+            // M6: Thiên Đạo's calamities and a tribulation must replay exactly too.
+            sim.Enqueue(new CalamityCommand(Calamity.Earthquake, v.X, v.Y, 10));
+            sim.Enqueue(new CalamityCommand(Calamity.Flood, v.X + 10, v.Y, 8));
+            sim.Enqueue(new CalamityCommand(Calamity.Drought, 500, 500, 10));
+            sim.Enqueue(new CalamityCommand(Calamity.Plague, v.X, v.Y, 1));
+            sim.Enqueue(new CalamityCommand(Calamity.BeastTide, 600, 600, 1));
+            var hero = sim.Cultivation.All.Find(c => c.Alive && c.Realm == Realm.TrucCo);
+            if (hero != null) sim.Enqueue(new DivineActCommand(DivineAct.Tribulation, (int)hero.HomeX, (int)hero.HomeY, hero.Index));
+            Run(sim, 100);
+            var land = FindOpenLand(sim, 400, 400);
+            sim.Enqueue(new CalamityCommand(Calamity.Eruption, land.x, land.y, 6));
             Run(sim, 200);
             return sim;
+        }
+
+        // Walkable grass or forest near (x, y), well away from any settlement.
+        static (int x, int y) FindOpenLand(Simulation sim, int x, int y)
+        {
+            var w = sim.World;
+            for (int r = 0; r < 400; r += 3)
+            for (int dy = -r; dy <= r; dy += 3)
+            for (int dx = -r; dx <= r; dx += 3)
+            {
+                int px = x + dx, py = y + dy;
+                if (px < 40 || py < 40 || px >= w.W - 40 || py >= w.H - 40) continue;
+                var t = w.Terrain[w.Idx(px, py)];
+                if (t != Terrain.Grass && t != Terrain.Forest) continue;
+                bool clear = true;
+                foreach (var s in sim.Settlements.All)
+                    if (s.Alive && (s.X - px) * (s.X - px) + (s.Y - py) * (s.Y - py) < 40 * 40) { clear = false; break; }
+                if (clear) return (px, py);
+            }
+            return (x, y);
         }
 
         [Test]
@@ -201,8 +232,20 @@ namespace ThienDao.Tests
                     if (s.Alive) alive.Add(s);
                 var target = alive.Count > 0 ? alive[rng.Range(0, alive.Count)] : null;
                 int tx = target?.X ?? rng.Range(50, 970), ty = target?.Y ?? rng.Range(50, 970);
-                switch (rng.Range(0, 9))
+                switch (rng.Range(0, 15))
                 {
+                    case 9: sim.Enqueue(new CalamityCommand(Calamity.Earthquake, tx, ty, rng.Range(5, 30))); break;
+                    case 10: sim.Enqueue(new CalamityCommand(Calamity.Eruption, tx + rng.Range(-6, 7), ty + rng.Range(-6, 7), 6)); break;
+                    case 11: sim.Enqueue(new CalamityCommand(Calamity.Flood, tx, ty, rng.Range(4, 20))); break;
+                    case 12: sim.Enqueue(new CalamityCommand(rng.NextFloat() < 0.5f ? Calamity.Drought : Calamity.Plague, tx, ty, 10)); break;
+                    case 13: sim.Enqueue(new CalamityCommand(Calamity.BeastTide, tx, ty, 1)); break;
+                    case 14:
+                    {
+                        var all = sim.Cultivation.All;
+                        var c = all[rng.Range(0, all.Count)];
+                        sim.Enqueue(new DivineActCommand(DivineAct.Tribulation, (int)c.HomeX, (int)c.HomeY, c.Index));
+                        break;
+                    }
                     case 0: sim.Enqueue(new PaintTerrainCommand(tx, ty, rng.Range(10, 40), Terrain.Shallow)); break;
                     case 1: sim.Enqueue(new PaintTerrainCommand(tx, ty, rng.Range(10, 40), Terrain.DeepOcean)); break;
                     case 2: sim.Enqueue(new PaintTerrainCommand(tx, ty, rng.Range(6, 30), Terrain.Mountain)); break;
@@ -416,6 +459,163 @@ namespace ThienDao.Tests
                 if (a >= b) wins++;
             }
             Assert.AreEqual(50, wins);
+        }
+
+        // ---------------------------------------------------------------- M6: thiên kiếp & thiên tai
+
+        [Test]
+        public void DivineTribulationOpensTheGateOrKillsAndLeavesThunderLand()
+        {
+            var control = new Simulation(MapGenerator.Generate("ThienDao"));
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var c = sim.Cultivation.All.Find(x => x.Alive && x.Realm == Realm.TrucCo);
+            c.Stage = Realms.Stages[(int)Realm.TrucCo] - 1; // stuck at the bottleneck
+            int x0 = (int)sim.Entities.X[c.Entity], y0 = (int)sim.Entities.Y[c.Entity];
+            int cell = sim.World.Idx(x0, y0);
+
+            // Thiên kiếp falls on a chosen cultivator only, never on empty ground.
+            sim.Enqueue(new DivineActCommand(DivineAct.Tribulation, x0, y0));
+            sim.ApplyPending();
+            Assert.AreEqual(0, sim.Events.CountByKind[(int)EventKind.Tribulation]);
+
+            sim.Enqueue(new DivineActCommand(DivineAct.Tribulation, x0, y0, c.Index));
+            sim.ApplyPending();
+            Assert.AreEqual(1, sim.Events.CountByKind[(int)EventKind.Tribulation], "one tribulation, on the chosen");
+            Assert.IsTrue(!c.Alive || c.Realm == Realm.KetDan, "survive and break through, or perish");
+            Assert.AreNotEqual(0, sim.World.Zone[cell] & ZoneFlags.Thunder, "the ground becomes lôi địa");
+            Assert.GreaterOrEqual(sim.World.QiCap[cell], control.World.QiCap[cell]);
+            var mark = sim.Disasters.LandmarkAt(x0 + 0.5f, y0 + 0.5f);
+            Assert.IsNotNull(mark);
+            Assert.AreEqual(Landmark.Thunder, mark.Kind);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+
+            // Centuries later the lôi khí has gone.
+            sim.Disasters.YearlyStep(mark.Until + 1);
+            Assert.IsFalse(mark.Alive);
+            Assert.AreEqual(0, sim.World.Zone[cell] & ZoneFlags.Thunder);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void WorldBringsCalamitiesOnItself()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 150);
+            Assert.Greater(sim.Events.CountByKind[(int)EventKind.Calamity], 3, "droughts, floods, quakes and epidemics happen without Thiên Đạo");
+            // Natural tribulations go through the same code as divine ones, so each leaves lôi địa.
+            if (sim.Events.CountByKind[(int)EventKind.Tribulation] > 0)
+                Assert.IsTrue(sim.Disasters.Landmarks.Exists(l => l.Kind == Landmark.Thunder));
+            Assert.Greater(sim.Settlements.TotalPopulation, 500, "calamities thin the people out, not wipe them out");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void EruptionRaisesAVolcanoWhoseLavaCools()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var (x, y) = FindOpenLand(sim, 512, 512);
+            sim.Enqueue(new CalamityCommand(Calamity.Eruption, x, y, 6));
+            sim.ApplyPending();
+            Assert.AreEqual(Terrain.Lava, sim.World.Terrain[sim.World.Idx(x, y)], "the crater is lava");
+            int lava = sim.Disasters.LavaCells;
+            Assert.Greater(lava, 20, "lava runs down the flanks");
+            Assert.IsTrue(sim.Disasters.Landmarks.Exists(l => l.Kind == Landmark.Volcano), "the volcano gets a name");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+
+            Run(sim, SimClock.DaysPerYear * 14);
+            Assert.Less(sim.Disasters.LavaCells, lava, "the lava streams have cooled to rock");
+            Assert.Greater(sim.Disasters.LavaCells, 0, "the crater still burns");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void FloodDrownsFieldsThenRecedes()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var village = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Farms.Count >= 20 && sim.World.Height[sim.World.Idx(s.X, s.Y)] < 0.58f);
+            Assert.IsNotNull(village);
+            int farms = village.Farms.Count;
+            sim.Enqueue(new CalamityCommand(Calamity.Flood, village.X, village.Y, 10));
+            sim.ApplyPending();
+            Assert.Greater(sim.Disasters.FloodedCells, 0);
+            Assert.Less(village.Farms.Count, farms, "fields under water are lost");
+            Assert.IsTrue(village.Alive, "the village itself stands on the high ground");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+
+            Run(sim, SimClock.DaysPerMonth * 5);
+            Assert.AreEqual(0, sim.Disasters.FloodedCells, "the water has gone back");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void DroughtStarvesTheVillage()
+        {
+            var control = new Simulation(MapGenerator.Generate("famine"));
+            var cursed = new Simulation(MapGenerator.Generate("famine"));
+            var a = control.Settlements.All.Find(s => s.Alive && !s.Sect && s.Farms.Count > 0);
+            var b = cursed.Settlements.All[a.Id];
+            cursed.Enqueue(new CalamityCommand(Calamity.Drought, b.X, b.Y, 10));
+            Run(control, SimClock.DaysPerYear * 2);
+            Run(cursed, SimClock.DaysPerYear * 2);
+            Assert.Less(b.Population + b.Food, a.Population + a.Food, "a drought should cost food and lives");
+        }
+
+        [Test]
+        public void PlagueRunsItsCourse()
+        {
+            var control = new Simulation(MapGenerator.Generate("ThienDao"));
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var village = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population >= 40);
+            sim.Enqueue(new CalamityCommand(Calamity.Plague, village.X, village.Y, 1));
+            sim.ApplyPending();
+            Assert.IsTrue(sim.Disasters.IsInfected(village.Id));
+            Run(control, SimClock.DaysPerMonth * 10);
+            Run(sim, SimClock.DaysPerMonth * 10);
+            Assert.IsFalse(sim.Disasters.IsInfected(village.Id), "an epidemic lasts months, not forever");
+            Assert.Less(village.Population, control.Settlements.All[village.Id].Population);
+            bool told = false;
+            foreach (var ev in sim.Events.Recent)
+                if (ev.Kind == EventKind.Calamity && ev.Text.Contains(village.BaseName) && ev.Text.Contains("chấm dứt")) told = true;
+            Assert.IsTrue(told, "the end of the epidemic is told");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void EarthquakeBreaksLeyLinesAndHouses()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var w = sim.World;
+            int lx = -1, ly = -1;
+            for (int i = 0; i < w.LeyLine.Length && lx < 0; i++)
+                if (w.LeyLine[i] && i % w.W > 80 && i % w.W < w.W - 80 && i / w.W > 80 && i / w.W < w.H - 80) { lx = i % w.W; ly = i / w.W; }
+            Assert.GreaterOrEqual(lx, 0);
+            int Ley()
+            {
+                int n = 0;
+                for (int y = ly - 20; y <= ly + 20; y++)
+                for (int x = lx - 20; x <= lx + 20; x++)
+                    if (w.LeyLine[w.Idx(x, y)]) n++;
+                return n;
+            }
+            int before = Ley();
+            sim.Enqueue(new CalamityCommand(Calamity.Earthquake, lx, ly, 20));
+            sim.ApplyPending();
+            Assert.Less(Ley(), before, "the quake should sever ley lines");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void BeastTideFallsOnTheVillages()
+        {
+            var control = new Simulation(MapGenerator.Generate("ThienDao"));
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var village = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population >= 40);
+            float wolves = sim.Wildlife.Total(Species.Wolf);
+            sim.Enqueue(new CalamityCommand(Calamity.BeastTide, village.X, village.Y, 1));
+            sim.ApplyPending();
+            Assert.Greater(sim.Wildlife.Total(Species.Wolf), wolves + 100f);
+            Assert.Less(village.Population, control.Settlements.All[village.Id].Population);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
         // ---------------------------------------------------------------- M4: thế lực

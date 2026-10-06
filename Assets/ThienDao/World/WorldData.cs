@@ -32,6 +32,7 @@ namespace ThienDao.World
         public readonly bool[] LeyLine;
         public readonly byte[] WaterDist;     // cells to sea/lake at generation time; not refreshed by later edits
         public readonly ushort[] Owner;       // settlement id + 1, 0 = unclaimed
+        public readonly byte[] Zone;          // ZoneFlags left by events (lôi địa, …)
         public readonly WorldObjects Objects;
         public readonly List<VillageSite> VillageSites = new List<VillageSite>();
 
@@ -53,6 +54,7 @@ namespace ThienDao.World
             LeyLine = new bool[n];
             WaterDist = new byte[n];
             Owner = new ushort[n];
+            Zone = new byte[n];
             Objects = new WorldObjects(this);
         }
 

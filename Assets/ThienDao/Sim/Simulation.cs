@@ -38,6 +38,7 @@ namespace ThienDao.Sim
         public readonly HistoryLog History = new HistoryLog();
         public readonly StoryDetector Stories;
         public readonly ProtagonistAI Protagonists;
+        public readonly DisasterSystem Disasters;
         public readonly EventLog Events = new EventLog();
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
@@ -66,6 +67,7 @@ namespace ThienDao.Sim
             Combat = new CombatSystem(this);
             Stories = new StoryDetector(this);
             Protagonists = new ProtagonistAI(this);
+            Disasters = new DisasterSystem(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -89,6 +91,7 @@ namespace ThienDao.Sim
             {
                 Qi.MonthlyStep(RegenMultiplier(Clock.Season));
                 Forage.MonthlyStep(Clock.Season);
+                Disasters.MonthlyStep(tick); // floods recede, droughts wither the grass, epidemics run their course
                 Wildlife.MonthlyStep(Clock.Season);
                 Settlements.MonthlyStep(tick);
                 Cultivation.MonthlyStep(tick);
@@ -102,6 +105,7 @@ namespace ThienDao.Sim
                 Cultivation.YearlyStep(tick);
                 Factions.YearlyStep(tick);
                 Combat.YearlyStep(tick);
+                Disasters.YearlyStep(tick);
                 Stories.YearlyStep(tick);
             }
         }
@@ -127,7 +131,7 @@ namespace ThienDao.Sim
             }
         }
 
-        // Land in the rect just became water: whoever stood there falls in, right now.
+        // Land in the rect just became water or lava: whoever stood there falls in, right now.
         public void ResolveFlood(int x0, int y0, int x1, int y1)
         {
             long tick = Clock.Tick;
@@ -153,7 +157,7 @@ namespace ThienDao.Sim
             var w = World;
             for (int i = 0; i < w.Terrain.Length; i++)
             {
-                StateHash.Add(ref h, (int)w.Terrain[i] | (w.LeyLine[i] ? 256 : 0) | (w.QiCap[i] << 9) | ((long)w.Owner[i] << 32));
+                StateHash.Add(ref h, (int)w.Terrain[i] | (w.LeyLine[i] ? 256 : 0) | (w.QiCap[i] << 9) | ((long)w.Zone[i] << 24) | ((long)w.Owner[i] << 32));
             }
             var objs = w.Objects;
             for (int id = 0; id < objs.Capacity; id++)
@@ -174,6 +178,7 @@ namespace ThienDao.Sim
             Combat.HashInto(ref h);
             History.HashInto(ref h);
             Stories.HashInto(ref h);
+            Disasters.HashInto(ref h);
             return h;
         }
     }

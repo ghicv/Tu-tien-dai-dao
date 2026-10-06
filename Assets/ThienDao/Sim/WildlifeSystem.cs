@@ -135,6 +135,13 @@ namespace ThienDao.Sim
             _pop[k][RegionOf(x, y)] += amount;
         }
 
+        // Keeps only a share of one kind in a region (a beast tide beaten back, …).
+        public void Cull(Species s, int region, float keep)
+        {
+            int k = KindIndex(s);
+            if (k >= 0) _pop[k][region] *= Mathf.Clamp01(keep);
+        }
+
         // Call after any terrain edit: animals on land that became water drown (regions lose the flooded share).
         public void LandChanged(int x0, int y0, int x1, int y1)
         {

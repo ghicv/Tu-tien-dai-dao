@@ -255,6 +255,7 @@ namespace ThienDao
             int target = t.Kind == InspectKind.Cultivator && t.Cultivator != null ? t.Cultivator.Index : -1;
             int village = t.Kind == InspectKind.Settlement && t.Settlement != null ? t.Settlement.Id : -1;
             if (act == DivineAct.GrantRoot && target < 0 && village < 0) return; // nobody chosen
+            if (act == DivineAct.Tribulation && target < 0) return;           // thiên kiếp falls on a cultivator only
             int x = t.CellX, y = t.CellY;
             if (t.Cultivator != null && Sim.Cultivation.IsShownOnMap(t.Cultivator))
             {
@@ -440,11 +441,12 @@ namespace ThienDao
             }
             else
             {
-                bool point = Brush.Tool == BrushTool.Inspect || Brush.Tool == BrushTool.FoundVillage || Brush.Tool >= BrushTool.SpawnDeer;
-                float s = point ? 1f : Brush.Size;
+                bool calamity = WorldBrush.IsCalamityTool(Brush.Tool);
+                float s = calamity ? DisasterSystem.Radius(WorldBrush.CalamityFor(Brush.Tool), Brush.Size) * 2f + 1f :
+                          WorldBrush.IsPointTool(Brush.Tool) ? 1f : Brush.Size;
                 _cursor.size = new Vector2(s, s);
                 _cursor.transform.position = new Vector3(HoverX + 0.5f, HoverY + 0.5f, 0f);
-                _cursor.color = Brush.Tool == BrushTool.Smite ? new Color(1f, 0.6f, 0.4f) : Color.white;
+                _cursor.color = calamity ? new Color(1f, 0.45f, 0.35f) : Color.white;
             }
         }
     }

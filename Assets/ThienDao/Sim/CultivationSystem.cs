@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using ThienDao.Core;
 using ThienDao.World;
 using UnityEngine;
+using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao.Sim
 {
@@ -370,18 +371,7 @@ namespace ThienDao.Sim
             if (rng.NextFloat() < chance)
             {
                 // Breaking open the gate to Nguyên Anh and beyond calls down heaven's tribulation; survive it or perish.
-                if (next >= Realm.NguyenAnh)
-                {
-                    bool great = next == Realm.HoaThan;
-                    float survive = (great ? 0.3f : 0.5f) + 0.3f * c.DaoHeart + 0.2f * c.Luck;
-                    _sim.Events.Add(tick, EventKind.Tribulation, 3,
-                        $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!", px, py, Fx.Tribulation, c.Index, -1, c.SectId);
-                    if (rng.NextFloat() >= survive)
-                    {
-                        Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3, Fx.Lightning);
-                        return;
-                    }
-                }
+                if (next >= Realm.NguyenAnh && !Tribulation(c, next, tick, false, ref rng)) return;
                 SetRealm(c, next, 0);
                 c.Progress = 0f;
                 c.FailedAttempts = 0;
@@ -421,6 +411,58 @@ namespace ThienDao.Sim
             }
         }
 
+        // Thiên kiếp on c as they break into `next` (natural), or because Thiên Đạo willed it (divine). The bolts fall
+        // on all around (DisasterSystem.TribulationStrikes) and leave lôi địa behind; returns whether c lives through it.
+        bool Tribulation(Cultivator c, Realm next, long tick, bool divine, ref DetRandom rng)
+        {
+            float px = _e.X[c.Entity], py = _e.Y[c.Entity];
+            string who = $"{c.Title} ({SectName(c)})";
+            bool great = next >= Realm.HoaThan;
+            float survive = (great ? 0.3f : 0.5f) + 0.3f * c.DaoHeart + 0.2f * c.Luck + 0.04f * Mathf.Min(3, c.Treasures);
+            // Called down out of season, it is judged against the body that has to bear it: Luyện Khí rarely live.
+            if (divine) survive += 0.06f * ((int)c.Realm - (int)Realm.KetDan);
+            bool shielded = c.SectId >= 0 && IsAtHome(c); // hộ sơn đại trận
+            if (shielded) survive += 0.05f;
+            _sim.Events.Add(tick, EventKind.Tribulation, 3,
+                divine ? $"Thiên Đạo giáng {(great ? "đại thiên kiếp" : "thiên kiếp")} xuống {who}!"
+                       : $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!",
+                px, py, Fx.Tribulation, c.Index, -1, c.SectId);
+            int radius = Mathf.Clamp(4 + 2 * (int)next, 6, 16);
+            _sim.Disasters.TribulationStrikes(c, px, py, radius, divine, shielded, tick, ref rng);
+            if (rng.NextFloat() < survive) return true;
+            Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3, Fx.Lightning);
+            return false;
+        }
+
+        // Thiên Đạo calls down a tribulation on the chosen one. Stuck at a bottleneck, heaven opens the gate for whoever
+        // survives; otherwise the lightning tempers body and heart. Either way it may simply kill them.
+        public void CallTribulation(Cultivator c, long tick)
+        {
+            if (c == null || !c.Alive) return;
+            var rng = RngFor(tick, 720000 + c.Index);
+            bool atGate = c.Realm < Realm.HoaThan && Realms.IsPeak(c.Realm, c.Stage);
+            var next = atGate ? c.Realm + 1 : c.Realm;
+            if (!Tribulation(c, next, tick, true, ref rng)) return;
+            float px = _e.X[c.Entity], py = _e.Y[c.Entity];
+            if (atGate)
+            {
+                SetRealm(c, next, 0);
+                c.Progress = 0f;
+                c.FailedAttempts = 0;
+                c.LastAttemptTick = tick;
+                _sim.Events.Add(tick, EventKind.Breakthrough, next >= Realm.KetDan ? 3 : 2,
+                    $"{c.Name} ({SectName(c)}) vượt qua thiên kiếp, mượn lôi kiếp phá tan bình cảnh, đột phá {Realms.Names[(int)next]}.",
+                    px, py, Fx.LightPillar, c.Index, -1, c.SectId);
+                _sim.Stories?.OnBreakthrough(c, tick);
+                return;
+            }
+            c.Progress += Realms.Need(c.Realm, c.Stage) * 0.5f;
+            c.DaoHeart = Mathf.Min(1f, c.DaoHeart + 0.15f);
+            _sim.Events.Add(tick, EventKind.Tribulation, 2,
+                $"{c.Title} ({SectName(c)}) chống đỡ được thiên kiếp, lôi kiếp tôi luyện thân thể, tâm cảnh càng thêm vững vàng.",
+                px, py, Fx.LightPillar, c.Index, -1, c.SectId);
+        }
+
         void SetRealm(Cultivator c, Realm realm, int stage)
         {
             CountByRealm[(int)c.Realm]--;
@@ -448,6 +490,12 @@ namespace ThienDao.Sim
         // Killed by another cultivator (duel, battle, vendetta): the killer is remembered.
         public void Slay(Cultivator victim, Cultivator killer, long tick, string text, int importance) =>
             Die(victim, tick, text, importance, Fx.Explosion, killer);
+
+        // Killed by a calamity (beast tide, a stray bolt of someone else's tribulation).
+        public void Perish(Cultivator c, long tick, string text, int importance, Fx fx)
+        {
+            if (c.Alive) Die(c, tick, text, importance, fx);
+        }
 
         // ---------------------------------------------------------------- yearly
 
@@ -600,6 +648,12 @@ namespace ThienDao.Sim
                 case Trip.Relocate:
                     c.HomeX = _e.X[c.Entity];
                     c.HomeY = _e.Y[c.Entity];
+                    // Cause and effect across the ages: settling where an old calamity left its mark.
+                    var mark = _sim.Disasters.LandmarkAt(c.HomeX, c.HomeY);
+                    if (mark != null && c.Realm >= Realm.TrucCo)
+                        _sim.Events.Add(tick, EventKind.Relocation, 1,
+                            $"{c.Title} ({SectName(c)}) lập động phủ ở {mark.Name}, nơi {(mark.Kind == Landmark.Thunder ? "lôi khí còn sót lại từ " : "dưới chân ")}{mark.Origin}.",
+                            c.HomeX, c.HomeY, Fx.None, c.Index, -1, c.SectId);
                     break;
                 case Trip.Excursion:
                     c.Away = true;
@@ -637,7 +691,7 @@ namespace ThienDao.Sim
             Teleport(c, x, y);
         }
 
-        // Water just covered the rect: Luyện Khí standing there drown; Trúc Cơ and above fly to the nearest shore.
+        // Water (or lava) just covered the rect: Luyện Khí standing there die; Trúc Cơ and above fly to the nearest shore.
         public void Flood(int x0, int y0, int x1, int y1, long tick)
         {
             foreach (var c in All)
@@ -658,12 +712,15 @@ namespace ThienDao.Sim
                             Teleport(c, dx, dy);
                             if (atHome) { c.HomeX = dx; c.HomeY = dy; }
                         }
+                        bool fire = _w.Terrain[_w.Idx((int)x, (int)y)] == Terrain.Lava;
                         if (c.Realm >= Realm.KetDan)
-                            _sim.Events.Add(tick, EventKind.Fortune, 1, $"{c.Title} ngự kiếm thoát khỏi biển nước.", x, y, Fx.None, c.Index);
+                            _sim.Events.Add(tick, EventKind.Fortune, 1, $"{c.Title} ngự kiếm thoát khỏi {(fire ? "biển lửa" : "biển nước")}.", x, y, Fx.None, c.Index);
                     }
                     else
                     {
-                        Die(c, tick, $"{c.Name} ({SectName(c)}) rơi xuống nước chết đuối.", 0, Fx.Splash);
+                        bool fire = _w.Terrain[_w.Idx((int)x, (int)y)] == Terrain.Lava;
+                        Die(c, tick, fire ? $"{c.Name} ({SectName(c)}) bị dung nham thiêu chết." : $"{c.Name} ({SectName(c)}) rơi xuống nước chết đuối.",
+                            fire ? 1 : 0, fire ? Fx.Explosion : Fx.Splash);
                         continue;
                     }
                 }

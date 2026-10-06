@@ -74,7 +74,7 @@ Rendering (texture + sprite instancing)      Player Interaction (God Powers → 
 | `vegetation` | byte | mật độ cây/linh thảo |
 | `ore` | byte | loại khoáng + trữ lượng |
 | `ownerFaction` | ushort | thế lực sở hữu cell (0 = vô chủ) |
-| `zoneFlag` | byte | bit: phúc địa, tử địa, cấm địa, bí cảnh, ô nhiễm ma khí… |
+| `zoneFlag` | byte | bit: phúc địa, tử địa, cấm địa, bí cảnh, ô nhiễm ma khí… (đã có: lôi địa, `WorldData.Zone`) |
 | `building` | ushort | id công trình đang chiếm cell (một công trình chiếm nhiều cell theo footprint) |
 
 Tất cả là **mảng phẳng** index `y*W + x`. Target **PC**: map mặc định 1024², tùy chọn 2048². 1024² × ~20 byte ≈ 20MB.
@@ -252,6 +252,11 @@ localQi -= gain × absorbFactor         // hút linh khí tại chỗ
 - Thiên kiếp là **sự kiện thế giới**: sét đánh vùng bán kính R quanh người độ kiếp, phá công trình, giết sinh vật yếu, có thể để lại vùng "lôi địa" (zoneFlag).
 - Kết quả = sức mạnh + pháp bảo phòng ngự + trận pháp + vận khí. Người khác có thể **lợi dụng** (đánh lén lúc độ kiếp) → câu chuyện.
 - Phi thăng: entity rời thế giới → để lại **Truyền thừa** (động phủ chứa công pháp + pháp bảo) tại nơi bế quan → hậu nhân phát hiện hàng nghìn năm sau.
+- **Đã cài (M6):**
+  - Thiên kiếp tự nhiên và thiên kiếp do Thiên Đạo giáng dùng chung một cơ chế: pháp bảo, hộ sơn đại trận, tâm cảnh và khí vận đều giúp sống sót.
+  - Sét đánh cả vùng quanh người độ kiếp: cây cháy; nhà sập và phàm nhân chết nếu không có đại trận che chắn; tu sĩ yếu đứng gần có thể chết.
+  - Nơi độ kiếp thành **lôi địa** có tên riêng, tồn tại 200–600 năm: trần linh khí +25%, phàm nhân tránh xa. Tu sĩ đến lập động phủ thì tiểu sử ghi rõ lôi địa đó do ai để lại.
+  - Chi tiết: `Docs/Devlog/12-m6-thien-kiep-thien-tai.md`.
 
 ### 4.6 Công pháp, pháp thuật, thần thông, pháp bảo, đan dược
 
@@ -430,6 +435,13 @@ Tổ chức theo tab như WorldBox (thanh công cụ dưới màn hình):
 
 Mọi quyền năng → `Command` → áp dụng ở tick kế tiếp → ghi vào HistoryLog như "Thiên ý" (để người chơi thấy hậu quả: "Năm 1203, Thiên Đạo giáng sét… 300 năm sau, nơi đó thành Lôi Cốc cấm địa").
 
+**Đã cài (M6 phần 1):**
+- **Tab Thiên Đạo:** thêm Thiên kiếp lên một tu sĩ.
+- **Tab Thiên tai:** động đất (đứt linh mạch), núi lửa (dung nham nguội dần, mở mạch địa hỏa), lũ lụt (ngập ruộng rồi rút), hạn hán (mất mùa theo vùng), ôn dịch (lây sang làng lân cận), thú triều.
+- Thế giới cũng tự sinh các thiên tai này với tỉ lệ thấp.
+- Chưa làm: đại kiếp toàn cầu, thời tiết, tab Quy luật, hồi sinh / diệt thế lực.
+- Chi tiết: `Docs/Devlog/12-m6-thien-kiep-thien-tai.md`.
+
 ---
 
 ## 15. Rendering (theo phong cách WorldBox)
@@ -487,7 +499,7 @@ Tham khảo 3 ảnh: địa hình là khối ô vuông (viền bờ biển bậc
 | **M3 — Tu tiên lõi** ✅ | linh căn, Luyện Khí → Nguyên Anh, tu luyện hút linh khí, đột phá, tẩu hỏa, thọ nguyên | tu sĩ tự tìm phúc địa, có người đột phá/chết già |
 | **M4 — Thế lực** ✅ | Faction chung, làng → thành, tông môn lập/tuyển đệ tử, ngoại giao opinion | tông môn tự sinh & tranh linh mạch |
 | **M5 — Xung đột & lịch sử** ✅ | chiến đấu cá nhân, trận trừu tượng, HistoryLog, biên niên sử UI, StoryDetector v1 | đọc được "câu chuyện" sau 1.000 năm |
-| **M6 — Thiên Đạo** | đủ các tab quyền năng, thiên kiếp, thiên tai | vòng CREATE → INTERVENE → CONSEQUENCE hoàn chỉnh |
+| **M6 — Thiên Đạo** (đang làm: thiên kiếp, thiên tai ✅) | đủ các tab quyền năng, thiên kiếp, thiên tai | vòng CREATE → INTERVENE → CONSEQUENCE hoàn chỉnh |
 | **M7 — Chiều sâu** | kinh tế/chợ/thương lộ, yêu thú tiến hóa & yêu tộc, bí cảnh từ lịch sử, thời đại & mạt pháp | hai seed khác nhau → lịch sử khác hẳn |
 
 **M0–M3 là "vertical slice":** nếu xem tu sĩ tự tu luyện, tranh linh khí và chết già đã thấy thú vị, thiết kế đúng hướng.

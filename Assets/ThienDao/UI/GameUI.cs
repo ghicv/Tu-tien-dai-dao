@@ -63,7 +63,7 @@ namespace ThienDao.UI
         Text _hoverHint;
         readonly List<Text> _labels = new List<Text>();
 
-        static readonly string[] TabNames = { "Địa hình", "Sinh linh", "Linh khí", "Thiên Đạo", "Lớp phủ", "Thế giới" };
+        static readonly string[] TabNames = { "Địa hình", "Sinh linh", "Linh khí", "Thiên Đạo", "Thiên tai", "Lớp phủ", "Thế giới" };
         static readonly string[] OverlayNames = { "Không", "Linh khí", "Độ cao", "Nhiệt độ", "Độ ẩm", "Thức ăn", "Lãnh thổ" };
 
         static readonly Dictionary<BrushTool, string> ToolHelp = new Dictionary<BrushTool, string>
@@ -80,6 +80,14 @@ namespace ThienDao.UI
             { BrushTool.GrantRoot, "Ban linh căn — bấm vào một người: tu sĩ được tẩy luyện linh căn, phàm nhân trong làng thức tỉnh linh căn" },
             { BrushTool.Bless, "Ban cơ duyên — bấm vào tu sĩ: tu vi tăng mạnh, thêm thọ; bấm vào làng: mùa màng bội thu" },
             { BrushTool.Smite, "Thiên phạt — sét đánh xuống người được chọn (hồn phi phách tán) hoặc xuống chỗ bấm" },
+            { BrushTool.Tribulation, "Thiên kiếp — bấm vào một tu sĩ: sống sót thì phá bình cảnh hoặc được lôi kiếp tôi luyện, không thì vẫn lạc. " +
+                                     "Sét đánh cả vùng quanh đó và để lại lôi địa (linh khí dày, phàm nhân tránh xa) vài trăm năm" },
+            { BrushTool.Earthquake, "Động đất — nhà sập, người chết, linh mạch trong vùng có thể đứt gãy (cọ to thì vùng rộng)" },
+            { BrushTool.Eruption, "Núi lửa — một ngọn núi lửa mọc lên, dung nham chảy ra rồi nguội thành đá sau nhiều năm; tro bụi phủ các làng quanh đó" },
+            { BrushTool.Flood, "Lũ lụt — vùng trũng ngập nước vài tháng: ruộng mất, người và thú chết đuối, rồi nước rút" },
+            { BrushTool.Drought, "Hạn hán — một vùng rộng mất mùa 1–2 năm, cỏ khô héo; nạn đói kéo theo di dân" },
+            { BrushTool.Plague, "Ôn dịch — bấm vào một làng: dịch kéo dài vài tháng và có thể lan sang làng lân cận" },
+            { BrushTool.BeastTide, "Thú triều — hàng trăm yêu lang tràn vào các làng quanh đó; tông môn che chở thì đỡ thiệt hại" },
         };
 
         public bool PointerOverUI => _visible && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
@@ -237,7 +245,7 @@ namespace ThienDao.UI
             Column(middle, 8).childAlignment = TextAnchor.MiddleCenter;
             _tabsRow = Ui.Node("Tabs", middle);
             Row(_tabsRow, 6).childAlignment = TextAnchor.MiddleLeft;
-            Sprite[] tabIcons = { Icons.TerrainTile(Terrain.Mountain), Icons.Unit(Unit.Deer), Icons.Orb, Icons.Bolt, Icons.Layers, Icons.Globe };
+            Sprite[] tabIcons = { Icons.TerrainTile(Terrain.Mountain), Icons.Unit(Unit.Deer), Icons.Orb, Icons.Bolt, Icons.Volcano, Icons.Layers, Icons.Globe };
             for (int k = 0; k < TabNames.Length; k++)
             {
                 int tab = k;
@@ -301,8 +309,17 @@ namespace ThienDao.UI
                     AddTool(BrushTool.GrantRoot, Icons.Seed);
                     AddTool(BrushTool.Bless, Icons.Star);
                     AddTool(BrushTool.Smite, Icons.Bolt);
+                    AddTool(BrushTool.Tribulation, Icons.Tribulation);
                     break;
                 case 4:
+                    AddTool(BrushTool.Earthquake, Icons.Quake);
+                    AddTool(BrushTool.Eruption, Icons.Volcano);
+                    AddTool(BrushTool.Flood, Icons.Wave);
+                    AddTool(BrushTool.Drought, Icons.Sun);
+                    AddTool(BrushTool.Plague, Icons.Skull);
+                    AddTool(BrushTool.BeastTide, Icons.Paw);
+                    break;
+                case 5:
                     var grads = new[]
                     {
                         Icons.Gradient("none", new Color32(60, 66, 90, 255), new Color32(60, 66, 90, 255)),
@@ -470,7 +487,7 @@ namespace ThienDao.UI
             _watchButton = Ui.Button(buttons, null, "Thêm vào danh sách theo dõi: người này sẽ sống như nhân vật chính", ToggleWatchSelected, 46f, "☆ Theo dõi");
             Size(_watchButton.Frame, 150f, 44f);
             // Thiên Đạo acts on exactly the one shown on the card.
-            var acts = new[] { (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt) };
+            var acts = new[] { (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt), (DivineAct.Tribulation, Icons.Tribulation) };
             for (int k = 0; k < acts.Length; k++)
             {
                 var act = acts[k].Item1;
@@ -480,20 +497,22 @@ namespace ThienDao.UI
             _card.gameObject.SetActive(false);
         }
 
-        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[3];
+        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[4];
 
         static readonly string[] DivineTipPerson =
         {
             "Ban linh căn: tẩy luyện linh căn người này lên Thiên / Dị linh căn",
             "Ban cơ duyên: tu vi tăng mạnh, khí vận tràn đầy, thêm 20 năm thọ",
-            "Thiên phạt: sét đánh xuống, hồn phi phách tán"
+            "Thiên phạt: sét đánh xuống, hồn phi phách tán",
+            "Thiên kiếp: vượt qua thì phá bình cảnh (hoặc được tôi luyện), thất bại thì vẫn lạc; nơi đó hóa lôi địa"
         };
 
         static readonly string[] DivineTipVillage =
         {
             "Ban linh căn: điểm hóa một phàm nhân trưởng thành trong làng",
             "Ban cơ duyên: mùa màng bội thu",
-            "Thiên phạt: thiên lôi đánh xuống làng"
+            "Thiên phạt: thiên lôi đánh xuống làng",
+            ""
         };
 
         void ShowDivineButtons(bool show, bool village)
@@ -501,8 +520,9 @@ namespace ThienDao.UI
             for (int k = 0; k < _divineButtons.Length; k++)
             {
                 var b = _divineButtons[k];
-                if (b.Frame.gameObject.activeSelf != show) b.Frame.gameObject.SetActive(show);
-                if (!show) continue;
+                bool on = show && (!village || DivineTipVillage[k].Length > 0); // thiên kiếp is for cultivators only
+                if (b.Frame.gameObject.activeSelf != on) b.Frame.gameObject.SetActive(on);
+                if (!on) continue;
                 var tip = b.Frame.GetComponent<Tooltip>();
                 if (tip != null) tip.Text = village ? DivineTipVillage[k] : DivineTipPerson[k];
             }
@@ -867,6 +887,12 @@ namespace ThienDao.UI
             sb.Append($"Thế lực {sim.Factions.AliveCount} · {sim.Factions.WarCount} cuộc chiến · lập tông {sim.Events.CountByKind[(int)EventKind.Founding]} · " +
                       $"ly khai {sim.Events.CountByKind[(int)EventKind.Schism]} · diệt môn {sim.Events.CountByKind[(int)EventKind.Destruction]}\n");
             sb.Append($"Hoang dã: Hươu {wild.Total(Species.Deer):N0} · Thỏ {wild.Total(Species.Rabbit):N0} · Sói {wild.Total(Species.Wolf):N0}\n");
+            var dis = sim.Disasters;
+            int scars = 0, volcanoes = 0;
+            foreach (var l in dis.Landmarks)
+                if (l.Alive) { if (l.Kind == Landmark.Thunder) scars++; else volcanoes++; }
+            sb.Append($"Thiên tai: {dis.DroughtCount} vùng hạn · {dis.EpidemicCount} ổ dịch · {dis.FloodedCells:N0} ô ngập · {dis.LavaCells:N0} ô dung nham · " +
+                      $"{scars} lôi địa · {volcanoes} núi lửa · {sim.Events.CountByKind[(int)EventKind.Calamity]} sự kiện\n");
 
             int hx = _game.HoverX, hy = _game.HoverY;
             if (w.InBounds(hx, hy))
@@ -978,6 +1004,9 @@ namespace ThienDao.UI
             {
                 body.Append($"{s.Population} người · {s.Houses.Count} nhà · {s.Farms.Count} ô ruộng\n");
                 body.Append($"Lương thực {s.Food / pop:0.0} tháng · năm qua sinh {s.BirthsLastYear}, mất {s.DeathsLastYear}\n");
+                if (sim.Disasters.IsInfected(s.Id)) body.Append("<color=#9fe07a>Ôn dịch đang hoành hành</color>\n");
+                int drought = sim.Disasters.DroughtMonthsLeft(s.X, s.Y, sim.Clock.Tick);
+                if (drought >= 0) body.Append($"<color=#ffb060>Đại hạn, còn khoảng {drought} tháng</color>\n");
             }
             body.Append($"Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" + (s.ParentId >= 0 ? $" bởi di dân từ {sim.Settlements.All[s.ParentId].Name}" : ""));
             if (s.Sect)
@@ -1103,6 +1132,14 @@ namespace ThienDao.UI
                 sb.Append($"Cỏ khu {ForageSystem.Block}×{ForageSystem.Block} ô quanh đây {sim.Forage.At(x, y):0} / {sim.Forage.CapAt(x, y):0}{(w.IsWalkable(x, y) ? "" : " · không đi bộ qua được")}\n");
             else
                 sb.Append("Mặt nước: phàm nhân và Luyện Khí rơi xuống là chết đuối\n");
+            var mark = sim.Disasters.LandmarkAt(x + 0.5f, y + 0.5f);
+            if (mark != null)
+                sb.Append(mark.Kind == Landmark.Thunder
+                    ? $"<color=#c8a8ff>Lôi địa {mark.Name}</color>, {mark.Origin}; lôi khí còn khoảng {(mark.Until - sim.Clock.Tick) / SimClock.DaysPerYear} năm\n"
+                    : $"<color=#ff9a6a>{mark.Name}</color>, {mark.Origin}\n");
+            if (terrain == Terrain.Lava) sb.Append("Dung nham đang chảy: ai rơi vào là chết cháy, nguội dần thành đá\n");
+            int drought = sim.Disasters.DroughtMonthsLeft(x, y, sim.Clock.Tick);
+            if (drought >= 0) sb.Append($"<color=#ffb060>Đang hạn hán</color>, còn khoảng {drought} tháng · mùa màng chỉ được một phần tư\n");
             var owner = sim.Settlements.Owning(i);
             if (owner != null && owner.Alive)
                 sb.Append(terrain == Terrain.Farmland ? $"Ruộng của {owner.Name}\n" : $"Đất của {owner.Name}\n");
@@ -1149,6 +1186,10 @@ namespace ThienDao.UI
                     var color = f != null ? Color.Lerp(f.Color, Color.white, 0.45f) : Ui.Ink;
                     PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 5f, 0f), $"{s.Name} ({s.Population})", color, 20);
                 }
+                foreach (var l in sim.Disasters.Landmarks)
+                    if (l.Alive)
+                        PlaceLabel(ref used, cam, new Vector3(l.X + 0.5f, l.Y + l.R + 1.5f, 0f), l.Name,
+                            l.Kind == Landmark.Thunder ? new Color(0.8f, 0.68f, 1f) : new Color(1f, 0.6f, 0.4f), 18);
                 sim.Factions.ActiveBattles(_battleInfo);
                 foreach (var b in _battleInfo)
                     PlaceLabel(ref used, cam, new Vector3(b.X, b.Y + 3.5f, 0f),
@@ -1182,8 +1223,19 @@ namespace ThienDao.UI
                            who != null ? $"Ban linh căn → {who}" : "Chọn một người để ban linh căn";
                 else if (tool == BrushTool.Bless)
                     hint = h.Kind == InspectKind.Settlement ? $"Ban phúc → {h.Settlement.Name}" : who != null ? $"Ban cơ duyên → {who}" : "Ban cơ duyên → tu sĩ gần nhất";
+                else if (tool == BrushTool.Tribulation)
+                    hint = h.Kind == InspectKind.Cultivator
+                        ? $"Thiên kiếp → {who} ({h.Cultivator.RealmText}{(Realms.IsPeak(h.Cultivator.Realm, h.Cultivator.Stage) ? ", đang ở bình cảnh" : "")})"
+                        : "Chọn một tu sĩ để giáng thiên kiếp";
                 else
                     hint = h.Kind == InspectKind.Cultivator ? $"Thiên phạt → {who}" : h.Kind == InspectKind.Settlement ? $"Thiên lôi → {h.Settlement.Name}" : "Thiên lôi đánh xuống đây";
+            }
+            else if (!PointerOverUI && WorldBrush.IsCalamityTool(_game.Brush.Tool))
+            {
+                var tool = _game.Brush.Tool;
+                hint = tool == BrushTool.Plague
+                    ? h.Kind == InspectKind.Settlement ? $"Ôn dịch → {h.Settlement.Name}" : "Ôn dịch → làng gần nhất"
+                    : $"{WorldBrush.ToolNames[(int)tool]} · bán kính {DisasterSystem.Radius(WorldBrush.CalamityFor(tool), _game.Brush.Size)} ô";
             }
             else if (!PointerOverUI && _game.Brush.Tool == BrushTool.Inspect)
             {
