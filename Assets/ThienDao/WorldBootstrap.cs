@@ -46,7 +46,7 @@ namespace ThienDao
         };
 
         const double SimBudgetMs = 8.0;
-        const int OverlayCount = 7;
+        const int OverlayCount = 8;
 
         WorldRenderer _renderer;
         UnitRenderer _units;
@@ -256,6 +256,7 @@ namespace ThienDao
             int village = t.Kind == InspectKind.Settlement && t.Settlement != null ? t.Settlement.Id : -1;
             if (act == DivineAct.GrantRoot && target < 0 && village < 0) return; // nobody chosen
             if (act == DivineAct.Tribulation && target < 0) return;           // thiên kiếp falls on a cultivator only
+            if (act == DivineAct.Annihilate && (village < 0 || !t.Settlement.Sect)) return; // diệt môn needs a sect
             int x = t.CellX, y = t.CellY;
             if (t.Cultivator != null && Sim.Cultivation.IsShownOnMap(t.Cultivator))
             {
@@ -288,6 +289,24 @@ namespace ThienDao
         public void ActOnSelected(DivineAct act)
         {
             if (Selection.Kind != InspectKind.None) ActOn(act, Selection);
+        }
+
+        // Shows a cultivator's card without moving the camera (works for the fallen too, e.g. to revive them).
+        public void Inspect(Cultivator c)
+        {
+            if (c == null) return;
+            Select(new InspectTarget
+            {
+                Kind = InspectKind.Cultivator, Cultivator = c, Entity = -1, Region = -1, Animal = -1, ObjectId = -1,
+                CellX = (int)c.HomeX, CellY = (int)c.HomeY
+            });
+        }
+
+        // Hồi sinh: the selected cultivator, if they have fallen.
+        public void ReviveSelected()
+        {
+            var c = Selected;
+            if (c != null && !c.Alive) Sim.Enqueue(new DivineActCommand(DivineAct.Revive, (int)c.HomeX, (int)c.HomeY, c.Index));
         }
 
         void Select(InspectTarget target)

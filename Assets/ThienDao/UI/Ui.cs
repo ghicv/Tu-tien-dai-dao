@@ -152,6 +152,68 @@ namespace ThienDao.UI
             return result;
         }
 
+        // An icon with a short value beside it ("👤 1.380"); the tooltip says what it is.
+        public sealed class Chip
+        {
+            public RectTransform Root;
+            public Image Icon;
+            public Text Text;
+            public Tooltip Tip;
+
+            public void Set(Sprite icon, string text, string tip, Color? color = null)
+            {
+                if (Icon.sprite != icon) Icon.sprite = icon;
+                Text.text = text;
+                Text.color = color ?? Ink;
+                Tip.Text = tip;
+                if (!Root.gameObject.activeSelf) Root.gameObject.SetActive(true);
+            }
+
+            public void Hide()
+            {
+                if (Root.gameObject.activeSelf) Root.gameObject.SetActive(false);
+            }
+        }
+
+        public static Chip MakeChip(Transform parent, float width, float height = 30f, int fontSize = 19)
+        {
+            var rt = Node("Chip", parent);
+            rt.sizeDelta = new Vector2(width, height);
+            var le = rt.gameObject.AddComponent<LayoutElement>();
+            le.preferredWidth = le.minWidth = width;
+            le.preferredHeight = le.minHeight = height;
+            var hit = rt.gameObject.AddComponent<Image>(); // invisible, so the tooltip can be hovered
+            hit.color = new Color(0f, 0f, 0f, 0f);
+            var iconRt = Node("Icon", rt);
+            Place(iconRt, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(height - 4f, height - 4f));
+            var img = iconRt.gameObject.AddComponent<Image>();
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            var t = Label(rt, "", fontSize, TextAnchor.MiddleLeft);
+            Place(t.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(height + 2f, 0f), new Vector2(width - height - 2f, height));
+            // Long values shrink to fit their chip instead of spilling into the next one.
+            t.horizontalOverflow = HorizontalWrapMode.Wrap;
+            t.verticalOverflow = VerticalWrapMode.Truncate;
+            t.resizeTextForBestFit = true;
+            t.resizeTextMinSize = 11;
+            t.resizeTextMaxSize = fontSize;
+            return new Chip { Root = rt, Icon = img, Text = t, Tip = rt.gameObject.AddComponent<Tooltip>() };
+        }
+
+        // A plain image (an icon on its own) under a parent.
+        public static Image Icon(Transform parent, Sprite sprite, float size)
+        {
+            var rt = Node("Icon", parent);
+            rt.sizeDelta = new Vector2(size, size);
+            var le = rt.gameObject.AddComponent<LayoutElement>();
+            le.preferredWidth = le.minWidth = le.preferredHeight = le.minHeight = size;
+            var img = rt.gameObject.AddComponent<Image>();
+            img.sprite = sprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            return img;
+        }
+
         public static Image Bar(Transform parent, Color fill, out Image fillImage)
         {
             var bg = Panel(parent, "Bar", BarSprite);

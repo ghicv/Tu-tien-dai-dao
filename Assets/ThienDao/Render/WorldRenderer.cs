@@ -10,7 +10,7 @@ using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao.Render
 {
-    public enum OverlayMode { None, Qi, Height, Temperature, Moisture, Forage, Territory }
+    public enum OverlayMode { None, Qi, Height, Temperature, Moisture, Forage, Territory, Calamity }
 
     public sealed class WorldRenderer : MonoBehaviour
     {
@@ -38,6 +38,7 @@ namespace ThienDao.Render
         QiSystem _qi;
         FactionSystem _factions;
         ForageSystem _forage;
+        DisasterSystem _disasters;
         Color _tint = Color.white;
         int _chunksX, _chunksY;
         Chunk[] _chunks;
@@ -74,6 +75,7 @@ namespace ThienDao.Render
             _world = world;
             _qi = sim.Qi;
             _forage = sim.Forage;
+            _disasters = sim.Disasters;
             _factions = sim.Factions;
             _factions.TerritoryChanged += HandleTerritoryChanged;
             _world.Objects.Added += OnObjectAdded;
@@ -173,7 +175,8 @@ namespace ThienDao.Render
             }
 
             _overlayTimer -= Time.unscaledDeltaTime;
-            if (Overlay == OverlayMode.Forage) _overlayDirty = true; // grazing has no change event; refresh on the timer
+            // Grazing, droughts and epidemics have no change event; refresh on the timer.
+            if (Overlay == OverlayMode.Forage || Overlay == OverlayMode.Calamity) _overlayDirty = true;
             if (_overlayDirty && _overlayTimer <= 0f)
             {
                 RebuildOverlay();
@@ -646,6 +649,17 @@ namespace ThienDao.Render
                     if (edge) return new Color32((byte)(c.r * 0.7f), (byte)(c.g * 0.7f), (byte)(c.b * 0.7f), 255);
                     c.a = (byte)(village ? 190 : 140);
                     return c;
+                }
+                case OverlayMode.Calamity:
+                {
+                    // Lava, then epidemics, cold, drought and rain over the land; lôi địa shows through underneath.
+                    if (_world.Terrain[i] == Terrain.Lava) return new Color32(255, 110, 30, 220);
+                    int f = _disasters.ClimateAt(x, y);
+                    if ((f & 8) != 0) return new Color32(120, 220, 90, 160);
+                    if ((f & 4) != 0) return new Color32(235, 245, 255, 150);
+                    if ((f & 1) != 0) return new Color32(240, 160, 60, 130);
+                    if ((f & 2) != 0) return new Color32(80, 150, 255, 110);
+                    return (_world.Zone[i] & ZoneFlags.Thunder) != 0 ? new Color32(170, 120, 255, 150) : default;
                 }
                 default: return default;
             }

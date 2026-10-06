@@ -25,10 +25,11 @@ namespace ThienDao.UI
         bool _visible = true;
 
         // top-left clock
-        Text _date, _summary;
+        Text _date, _toolTitle;
+        CanvasGroup _sizeGroup;
         readonly List<Ui.IconButton> _speedButtons = new List<Ui.IconButton>();
         RectTransform _ticker;
-        readonly List<(Text text, float shownAt)> _tickerLines = new List<(Text, float)>();
+        readonly List<(Text text, Image icon, float shownAt)> _tickerLines = new List<(Text, Image, float)>();
         long _tickerSeen;
 
         // bottom toolbar
@@ -63,8 +64,8 @@ namespace ThienDao.UI
         Text _hoverHint;
         readonly List<Text> _labels = new List<Text>();
 
-        static readonly string[] TabNames = { "Địa hình", "Sinh linh", "Linh khí", "Thiên Đạo", "Thiên tai", "Lớp phủ", "Thế giới" };
-        static readonly string[] OverlayNames = { "Không", "Linh khí", "Độ cao", "Nhiệt độ", "Độ ẩm", "Thức ăn", "Lãnh thổ" };
+        static readonly string[] TabNames = { "Địa hình", "Sinh linh", "Linh khí", "Thiên Đạo", "Thiên tai", "Thời tiết", "Quy luật", "Lớp phủ", "Thế giới" };
+        static readonly string[] OverlayNames = { "Không", "Linh khí", "Độ cao", "Nhiệt độ", "Độ ẩm", "Thức ăn", "Lãnh thổ", "Thiên tai" };
 
         static readonly Dictionary<BrushTool, string> ToolHelp = new Dictionary<BrushTool, string>
         {
@@ -88,6 +89,11 @@ namespace ThienDao.UI
             { BrushTool.Drought, "Hạn hán — một vùng rộng mất mùa 1–2 năm, cỏ khô héo; nạn đói kéo theo di dân" },
             { BrushTool.Plague, "Ôn dịch — bấm vào một làng: dịch kéo dài vài tháng và có thể lan sang làng lân cận" },
             { BrushTool.BeastTide, "Thú triều — hàng trăm yêu lang tràn vào các làng quanh đó; tông môn che chở thì đỡ thiệt hại" },
+            { BrushTool.GreatCalamity, "Đại kiếp — cả thế giới: 8–15 năm linh khí chỉ còn một nửa, thiên tai liên miên; qua đi thì sang thời đại mới" },
+            { BrushTool.Rain, "Mưa — mùa màng tốt hơn vài tháng, cỏ xanh lại; mưa xuống vùng hạn thì hạn hán chấm dứt" },
+            { BrushTool.Storm, "Bão — cuồng phong quét theo một đường dài: cây đổ, nhà tốc mái, người chết (cọ to thì bão rộng)" },
+            { BrushTool.Cold, "Rét — vài tháng tuyết phủ: mùa màng mất trắng, người già trẻ nhỏ chết cóng, cỏ héo" },
+            { BrushTool.Annihilate, "Diệt môn — bấm vào một tông môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa" },
         };
 
         public bool PointerOverUI => _visible && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
@@ -201,15 +207,21 @@ namespace ThienDao.UI
             f.verticalFit = vertical ? ContentSizeFitter.FitMode.PreferredSize : ContentSizeFitter.FitMode.Unconstrained;
         }
 
+        // Top-left: the date with its season, the speed buttons, the world in a row of numbers, and below it
+        // warnings that only appear while something is going on (đại kiếp, droughts, epidemics, changed laws).
         void BuildClock()
         {
             var panel = Ui.Panel(_root, "Clock");
-            Ui.Place(panel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(12f, -12f), new Vector2(440f, 132f));
-            _date = Ui.Label(panel.rectTransform, "", 26, TextAnchor.UpperLeft, Ui.Gold);
-            Ui.Place(_date.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -10f), new Vector2(410f, 34f));
+            Ui.Place(panel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(12f, -12f), new Vector2(456f, 150f));
+            _seasonIcon = Ui.Icon(panel.rectTransform, Icons.Flower, 32f);
+            Ui.Place(_seasonIcon.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -10f), new Vector2(32f, 32f));
+            _seasonTip = _seasonIcon.gameObject.AddComponent<Tooltip>();
+            _seasonIcon.raycastTarget = true;
+            _date = Ui.Label(panel.rectTransform, "", 26, TextAnchor.MiddleLeft, Ui.Gold);
+            Ui.Place(_date.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(54f, -10f), new Vector2(390f, 32f));
 
             var speeds = Ui.Node("Speeds", panel.rectTransform);
-            Ui.Place(speeds, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -46f), new Vector2(300f, 48f));
+            Ui.Place(speeds, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -48f), new Vector2(300f, 48f));
             Row(speeds, 6).childAlignment = TextAnchor.MiddleLeft;
             Sprite[] icons = { Icons.Pause, Icons.Play1, Icons.Play2, Icons.Play3, Icons.Skip };
             string[] tips = { "Dừng (Space)", "x1 · 6 ngày/giây (1)", "x5 (2)", "x20 (3)", "Tua · 10 năm/giây (4)" };
@@ -221,13 +233,59 @@ namespace ThienDao.UI
                 _speedButtons.Add(b);
             }
 
-            _summary = Ui.Label(panel.rectTransform, "", 19, TextAnchor.UpperLeft, Ui.Dim);
-            Ui.Place(_summary.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -98f), new Vector2(420f, 28f));
+            var stats = Ui.Node("Stats", panel.rectTransform);
+            Ui.Place(stats, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -104f), new Vector2(430f, 34f));
+            Row(stats, 4).childAlignment = TextAnchor.MiddleLeft;
+            float[] widths = { 96f, 62f, 72f, 56f, 56f, 52f };
+            for (int k = 0; k < _hud.Length; k++) _hud[k] = Ui.MakeChip(stats, widths[k]);
+
+            // Warnings, each an icon and a number, only while they matter.
+            var alerts = Ui.Node("Alerts", _root);
+            Ui.Place(alerts, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -168f), new Vector2(440f, 32f));
+            Row(alerts, 8).childAlignment = TextAnchor.MiddleLeft;
+            for (int k = 0; k < _alerts.Length; k++) _alerts[k] = Ui.MakeChip(alerts, 72f);
 
             _ticker = Ui.Node("Ticker", _root);
-            Ui.Place(_ticker, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -152f), new Vector2(560f, 200f));
+            Ui.Place(_ticker, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -206f), new Vector2(560f, 200f));
             var tickerCol = Column(_ticker, 4);
             tickerCol.childForceExpandWidth = false;
+        }
+
+        Image _seasonIcon;
+        Tooltip _seasonTip;
+        readonly Ui.Chip[] _hud = new Ui.Chip[6];
+        readonly Ui.Chip[] _alerts = new Ui.Chip[5];
+        static readonly string[] SeasonNames = { "Xuân", "Hạ", "Thu", "Đông" };
+
+        void UpdateHud()
+        {
+            var sim = _game.Sim;
+            var clock = sim.Clock;
+            _date.text = $"Năm {clock.Year} · tháng {clock.Month}";
+            _seasonIcon.sprite = Icons.Season(clock.Season);
+            _seasonTip.Text = $"Mùa {SeasonNames[(int)clock.Season]} · {clock.DateText}";
+
+            var cr = sim.Cultivation.CountByRealm;
+            int top = cr[(int)Realm.NguyenAnh] + cr[(int)Realm.HoaThan];
+            _hud[0].Set(Icons.Person, $"{sim.Settlements.TotalPopulation:N0}", "Phàm nhân");
+            _hud[1].Set(Icons.Object(ObjectType.House), $"{sim.Settlements.AliveCount}", "Làng, trấn, thành");
+            _hud[2].Set(Icons.ForRealm(Realm.LuyenKhi), $"{sim.Cultivation.AliveCount}", "Tu sĩ");
+            _hud[3].Set(Icons.ForRealm(Realm.NguyenAnh), $"{top}", $"Nguyên Anh {cr[(int)Realm.NguyenAnh]} · Hóa Thần {cr[(int)Realm.HoaThan]}", top > 0 ? Ui.Gold : Ui.Dim);
+            _hud[4].Set(Icons.Banner, $"{sim.Factions.AliveCount}", "Thế lực (tông môn)");
+            _hud[5].Set(Icons.Sword, $"{sim.Factions.WarCount}", "Cuộc chiến đang diễn ra", sim.Factions.WarCount > 0 ? new Color(1f, 0.55f, 0.5f) : Ui.Dim);
+
+            var dis = sim.Disasters;
+            int n = 0;
+            if (dis.GreatCalamityActive)
+                _alerts[n++].Set(Icons.Eclipse, $"{dis.GreatCalamityYearsLeft(clock.Tick)} năm", "Đại kiếp: linh khí chỉ còn một nửa, thiên tai liên miên", new Color(1f, 0.5f, 0.4f));
+            if (dis.DroughtCount > 0) _alerts[n++].Set(Icons.Sun, $"{dis.DroughtCount}", "Vùng đang hạn hán (lớp phủ Thiên tai để xem)", new Color(1f, 0.75f, 0.4f));
+            if (dis.EpidemicCount > 0) _alerts[n++].Set(Icons.Skull, $"{dis.EpidemicCount}", "Làng đang có ôn dịch", new Color(0.6f, 0.9f, 0.5f));
+            if (dis.WeatherCount > 0) _alerts[n++].Set(Icons.RainCloud, $"{dis.WeatherCount}", "Vùng đang mưa hoặc rét");
+            int changed = 0;
+            for (int k = 0; k < (int)Rule.Count; k++)
+                if (!sim.Rules.IsDefault((Rule)k)) changed++;
+            if (changed > 0) _alerts[n++].Set(Icons.Scales, $"{changed}", "Quy luật đã bị Thiên Đạo sửa (tab Quy luật)", new Color(1f, 0.6f, 0.45f));
+            for (int k = n; k < _alerts.Length; k++) _alerts[k].Hide();
         }
 
         void BuildToolbar()
@@ -243,9 +301,11 @@ namespace ThienDao.UI
 
             var middle = Ui.Node("Middle", rt);
             Column(middle, 8).childAlignment = TextAnchor.MiddleCenter;
+            _toolTitle = Ui.Label(middle, "", 16, TextAnchor.MiddleLeft, Ui.Dim);
+            Height(_toolTitle, 20f);
             _tabsRow = Ui.Node("Tabs", middle);
             Row(_tabsRow, 6).childAlignment = TextAnchor.MiddleLeft;
-            Sprite[] tabIcons = { Icons.TerrainTile(Terrain.Mountain), Icons.Unit(Unit.Deer), Icons.Orb, Icons.Bolt, Icons.Volcano, Icons.Layers, Icons.Globe };
+            Sprite[] tabIcons = { Icons.TerrainTile(Terrain.Mountain), Icons.Unit(Unit.Deer), Icons.Orb, Icons.Bolt, Icons.Volcano, Icons.RainCloud, Icons.Scales, Icons.Layers, Icons.Globe };
             for (int k = 0; k < TabNames.Length; k++)
             {
                 int tab = k;
@@ -258,6 +318,7 @@ namespace ThienDao.UI
             Height(_toolsRow, 64f);
 
             var sizeBox = Ui.Node("BrushSize", rt);
+            _sizeGroup = sizeBox.gameObject.AddComponent<CanvasGroup>();
             Column(sizeBox, 2).childAlignment = TextAnchor.MiddleCenter;
             var plus = Ui.Button(sizeBox, Icons.Plus, "Cọ to hơn ( ] )", () => _game.Brush.Size = Mathf.Min(40, _game.Brush.Size + 1), 40f);
             Size(plus.Frame, 40f, 40f);
@@ -274,6 +335,7 @@ namespace ThienDao.UI
             for (int k = _toolsRow.childCount - 1; k >= 0; k--) Destroy(_toolsRow.GetChild(k).gameObject);
             _toolButtons.Clear();
             _overlayButtons.Clear();
+            _ruleValues.Clear();
             _seedField = null;
             _labelsToggle = null;
 
@@ -310,6 +372,7 @@ namespace ThienDao.UI
                     AddTool(BrushTool.Bless, Icons.Star);
                     AddTool(BrushTool.Smite, Icons.Bolt);
                     AddTool(BrushTool.Tribulation, Icons.Tribulation);
+                    AddTool(BrushTool.Annihilate, Icons.Wrath);
                     break;
                 case 4:
                     AddTool(BrushTool.Earthquake, Icons.Quake);
@@ -318,8 +381,17 @@ namespace ThienDao.UI
                     AddTool(BrushTool.Drought, Icons.Sun);
                     AddTool(BrushTool.Plague, Icons.Skull);
                     AddTool(BrushTool.BeastTide, Icons.Paw);
+                    AddTool(BrushTool.GreatCalamity, Icons.Eclipse);
                     break;
                 case 5:
+                    AddTool(BrushTool.Rain, Icons.RainCloud);
+                    AddTool(BrushTool.Storm, Icons.Storm);
+                    AddTool(BrushTool.Cold, Icons.Snowflake);
+                    break;
+                case 6:
+                    BuildRulesTab();
+                    break;
+                case 7:
                     var grads = new[]
                     {
                         Icons.Gradient("none", new Color32(60, 66, 90, 255), new Color32(60, 66, 90, 255)),
@@ -329,6 +401,7 @@ namespace ThienDao.UI
                         Icons.Gradient("moist", new Color32(170, 110, 50, 255), new Color32(30, 120, 255, 255)),
                         Icons.Gradient("forage", new Color32(200, 60, 40, 255), new Color32(60, 230, 70, 255)),
                         Icons.Gradient("owner", new Color32(200, 120, 90, 255), new Color32(90, 140, 220, 255)),
+                        Icons.Gradient("calamity", new Color32(240, 160, 60, 255), new Color32(170, 120, 255, 255)),
                     };
                     for (int k = 0; k < OverlayNames.Length; k++)
                     {
@@ -385,12 +458,74 @@ namespace ThienDao.UI
                 if (kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)) _game.Generate(v);
             });
 
-            var create = Ui.Button(_toolsRow, null, "Tạo lại thế giới từ seed này", () => _game.Generate(_seedField.text), 58f, "Tạo thế giới");
-            Size(create.Frame, 150f, 50f);
-            var random = Ui.Button(_toolsRow, null, "Tạo thế giới với seed ngẫu nhiên", () => _game.Generate(WorldBootstrap.RandomSeed()), 58f, "Ngẫu nhiên");
-            Size(random.Frame, 130f, 50f);
-            _labelsToggle = Ui.Button(_toolsRow, null, "Hiện/ẩn tên làng và cường giả trên bản đồ", () => ShowLabels = !ShowLabels, 58f, "Nhãn tên");
-            Size(_labelsToggle.Frame, 120f, 50f);
+            var create = Ui.Button(_toolsRow, Icons.Globe, "Tạo lại thế giới từ seed này", () => _game.Generate(_seedField.text), 58f);
+            Size(create.Frame, 58f, 58f);
+            var random = Ui.Button(_toolsRow, Icons.Dice, "Tạo thế giới với seed ngẫu nhiên", () => _game.Generate(WorldBootstrap.RandomSeed()), 58f);
+            Size(random.Frame, 58f, 58f);
+            _labelsToggle = Ui.Button(_toolsRow, Icons.Tag, "Hiện/ẩn tên làng và cường giả trên bản đồ", () => ShowLabels = !ShowLabels, 58f);
+            Size(_labelsToggle.Frame, 58f, 58f);
+        }
+
+        // Quy luật: one box per law of the world, − / + (or a switch); every change is a command, so it replays.
+        readonly List<(Rule rule, Text value)> _ruleValues = new List<(Rule, Text)>();
+
+        static Sprite[] RuleIcons => new[]
+        {
+            Icons.Orb, Icons.Seed, Icons.Star, Icons.Tribulation, Icons.Person, Icons.Volcano, Icons.ForRealm(Realm.LuyenKhi, true)
+        };
+
+        void BuildRulesTab()
+        {
+            for (int k = 0; k < (int)Rule.Count; k++)
+            {
+                var rule = (Rule)k;
+                // An icon says which law it is (the tooltip names it); − value + changes it.
+                var box = Ui.Panel(_toolsRow, "Rule", Ui.BarSprite);
+                Size(box, 112f, 60f);
+                box.gameObject.AddComponent<Tooltip>().Text = $"{WorldRules.Names[k]}: {WorldRules.Help[k]}";
+                var icon = Ui.Icon(box.rectTransform, RuleIcons[k], 26f);
+                Ui.Place(icon.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(10f, -6f), new Vector2(26f, 26f));
+                var value = Ui.Label(box.rectTransform, "", 18, TextAnchor.MiddleRight, Ui.Gold);
+                Ui.Place(value.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-10f, -6f), new Vector2(64f, 26f));
+                if (WorldRules.IsToggle(rule))
+                {
+                    var flip = Ui.Button(box.rectTransform, null, WorldRules.Help[k], () => SetRule(rule, _game.Sim.Rules[rule] > 0.5f ? 0f : 1f), 24f, "bật / tắt");
+                    flip.Caption.fontSize = 14;
+                    Ui.Place(flip.Frame.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(84f, 24f));
+                }
+                else
+                {
+                    float step = WorldRules.Step[k];
+                    var minus = Ui.Button(box.rectTransform, null, "Giảm", () => SetRule(rule, _game.Sim.Rules[rule] - step), 24f, "-");
+                    minus.Caption.fontSize = 24;
+                    Ui.Place(minus.Frame.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(10f, 6f), new Vector2(40f, 24f));
+                    var plus = Ui.Button(box.rectTransform, null, "Tăng", () => SetRule(rule, _game.Sim.Rules[rule] + step), 24f, "+");
+                    plus.Caption.fontSize = 24;
+                    Ui.Place(plus.Frame.rectTransform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-10f, 6f), new Vector2(40f, 24f));
+                }
+                _ruleValues.Add((rule, value));
+            }
+            var reset = Ui.Button(_toolsRow, Icons.Undo, "Trả mọi quy luật về như lúc khai thiên lập địa", ResetRules, 58f);
+            Size(reset.Frame, 58f, 58f);
+        }
+
+        void SetRule(Rule rule, float value) => _game.Sim.Enqueue(new SetRuleCommand(rule, value));
+
+        void ResetRules()
+        {
+            var rules = _game.Sim.Rules;
+            for (int k = 0; k < (int)Rule.Count; k++)
+                if (!rules.IsDefault((Rule)k)) SetRule((Rule)k, WorldRules.DefaultOf((Rule)k));
+        }
+
+        void UpdateRuleValues()
+        {
+            var rules = _game.Sim.Rules;
+            foreach (var (rule, text) in _ruleValues)
+            {
+                text.text = rules.Describe(rule);
+                text.color = rules.IsDefault(rule) ? Ui.Gold : new Color(1f, 0.55f, 0.45f);
+            }
         }
 
         // ---------------------------------------------------------------- windows
@@ -416,7 +551,9 @@ namespace ThienDao.UI
             _ranking = MakeWindow("Bảng cường giả");
             BuildRankingRows();
             _events = MakeWindow("Sự kiện");
+            BuildEventRows();
             _stats = MakeWindow("Thống kê");
+            BuildStatChips();
             _powers = MakeWindow("Thế lực");
             _chronicle = new ChronicleWindow(_root, _game);
             var book = Ui.Button(buttons, Icons.Book, "Biên niên sử: sử sách, truyền kỳ, danh nhân (H)", () => _chronicle.Toggle(), 56f);
@@ -464,47 +601,100 @@ namespace ThienDao.UI
             Column(_card, 6, 16);
             Fit(_card, false, true);
 
+            // Header: a picture of who (or what) it is, the name, and a close button.
             var header = Ui.Node("Header", _card);
-            Height(header, 34f);
-            _cardTitle = Ui.Label(header, "", 26, TextAnchor.MiddleLeft, Ui.Gold);
-            Ui.Stretch(_cardTitle.rectTransform, 0, 36, 0, 0);
+            Height(header, 44f);
+            _cardPortrait = Ui.Icon(header, null, 40f);
+            Ui.Place(_cardPortrait.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(40f, 40f));
+            _cardTitle = Ui.Label(header, "", 25, TextAnchor.MiddleLeft, Ui.Gold);
+            Ui.Stretch(_cardTitle.rectTransform, 48, 36, 0, 0);
             var close = Ui.Button(header, Icons.Close, "Đóng (Esc)", () => _game.ClearSelection(), 30f);
             Ui.Place(close.Frame.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), Vector2.zero, new Vector2(30f, 30f));
+            _cardSub = Ui.Label(_card, "", 16, TextAnchor.UpperLeft, Ui.Dim);
 
-            _cardBody = Ui.Label(_card, "", 19);
-            _cardBar1Root = Ui.Bar(_card, new Color(0.45f, 0.85f, 1f), out _cardBar1).rectTransform;
-            Height(_cardBar1Root, 18f);
-            _cardBar1Root.gameObject.AddComponent<Tooltip>().Text = "Tu vi trong tiểu cảnh giới hiện tại";
-            _cardBar2Root = Ui.Bar(_card, new Color(1f, 0.6f, 0.4f), out _cardBar2).rectTransform;
-            Height(_cardBar2Root, 18f);
-            _cardBar2Root.gameObject.AddComponent<Tooltip>().Text = "Tuổi so với thọ nguyên";
+            // The numbers that matter, as icon chips (hover for what each one is).
+            var chips = Ui.Node("Chips", _card);
+            var grid = chips.gameObject.AddComponent<GridLayoutGroup>();
+            grid.cellSize = new Vector2(138f, 30f);
+            grid.spacing = new Vector2(6f, 4f);
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 3;
+            for (int k = 0; k < _cardChips.Length; k++) _cardChips[k] = Ui.MakeChip(chips, 138f);
+
+            _cardBar1Root = BarRow(Icons.Orb, new Color(0.45f, 0.85f, 1f), "Tu vi trong tiểu cảnh giới hiện tại", out _cardBar1, out _cardBar1Text);
+            _cardBar2Root = BarRow(Icons.Hourglass, new Color(1f, 0.6f, 0.4f), "Tuổi so với thọ nguyên", out _cardBar2, out _cardBar2Text);
+            _cardBody = Ui.Label(_card, "", 17);
 
             var buttons = Ui.Node("Buttons", _card);
             Row(buttons, 8).childAlignment = TextAnchor.MiddleLeft;
             Height(buttons, 46f);
-            _followButton = Ui.Button(buttons, null, "Camera bám theo nhân vật", () => _game.Follow = !_game.Follow, 46f, "Camera");
-            Size(_followButton.Frame, 110f, 44f);
-            _watchButton = Ui.Button(buttons, null, "Thêm vào danh sách theo dõi: người này sẽ sống như nhân vật chính", ToggleWatchSelected, 46f, "☆ Theo dõi");
-            Size(_watchButton.Frame, 150f, 44f);
+            _followButton = Ui.Button(buttons, Icons.Target, "Camera bám theo", () => _game.Follow = !_game.Follow, 44f);
+            Size(_followButton.Frame, 44f, 44f);
+            _watchButton = Ui.Button(buttons, Icons.Bookmark, "Theo dõi: người này sẽ sống như nhân vật chính", ToggleWatchSelected, 44f);
+            Size(_watchButton.Frame, 44f, 44f);
+            var gap = Ui.Node("Gap", buttons);
+            Size(gap, 10f, 10f);
             // Thiên Đạo acts on exactly the one shown on the card.
-            var acts = new[] { (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt), (DivineAct.Tribulation, Icons.Tribulation) };
+            var acts = new[]
+            {
+                (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt), (DivineAct.Tribulation, Icons.Tribulation),
+                (DivineAct.Annihilate, Icons.Wrath)
+            };
             for (int k = 0; k < acts.Length; k++)
             {
                 var act = acts[k].Item1;
                 _divineButtons[k] = Ui.Button(buttons, acts[k].Item2, DivineTipPerson[k], () => _game.ActOnSelected(act), 44f);
                 Size(_divineButtons[k].Frame, 44f, 44f);
             }
+            _reviveButton = Ui.Button(buttons, Icons.Revive, "Hồi sinh: sống lại với thêm trăm năm thọ, mang huyết thù với kẻ đã giết mình", _game.ReviveSelected, 44f);
+            Size(_reviveButton.Frame, 44f, 44f);
             _card.gameObject.SetActive(false);
         }
 
-        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[4];
+        // Icon, bar and its numbers on one line.
+        RectTransform BarRow(Sprite icon, Color fill, string tip, out Image bar, out Text value)
+        {
+            var row = Ui.Node("BarRow", _card);
+            Height(row, 24f);
+            Row(row, 6).childAlignment = TextAnchor.MiddleLeft;
+            Ui.Icon(row, icon, 22f);
+            var bg = Ui.Bar(row, fill, out bar);
+            Element(bg).flexibleWidth = 1f;
+            Height(bg, 18f);
+            value = Ui.Label(row, "", 16, TextAnchor.MiddleRight, Ui.Dim);
+            Size(value, 128f, 22f);
+            row.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0f); // hover target
+            row.gameObject.AddComponent<Tooltip>().Text = tip;
+            return row;
+        }
+
+        Image _cardPortrait;
+        Text _cardSub, _cardBar1Text, _cardBar2Text;
+        readonly Ui.Chip[] _cardChips = new Ui.Chip[15];
+        int _chipCount;
+
+        void Chip(Sprite icon, string text, string tip, Color? color = null)
+        {
+            if (_chipCount < _cardChips.Length) _cardChips[_chipCount++].Set(icon, text, tip, color);
+        }
+
+        void EndChips()
+        {
+            for (int k = _chipCount; k < _cardChips.Length; k++) _cardChips[k].Hide();
+            _chipCount = 0;
+        }
+
+        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[5];
+        Ui.IconButton _reviveButton;
+        const int AnnihilateButton = 4;
 
         static readonly string[] DivineTipPerson =
         {
             "Ban linh căn: tẩy luyện linh căn người này lên Thiên / Dị linh căn",
             "Ban cơ duyên: tu vi tăng mạnh, khí vận tràn đầy, thêm 20 năm thọ",
             "Thiên phạt: sét đánh xuống, hồn phi phách tán",
-            "Thiên kiếp: vượt qua thì phá bình cảnh (hoặc được tôi luyện), thất bại thì vẫn lạc; nơi đó hóa lôi địa"
+            "Thiên kiếp: vượt qua thì phá bình cảnh (hoặc được tôi luyện), thất bại thì vẫn lạc; nơi đó hóa lôi địa",
+            ""
         };
 
         static readonly string[] DivineTipVillage =
@@ -512,15 +702,17 @@ namespace ThienDao.UI
             "Ban linh căn: điểm hóa một phàm nhân trưởng thành trong làng",
             "Ban cơ duyên: mùa màng bội thu",
             "Thiên phạt: thiên lôi đánh xuống làng",
-            ""
+            "",
+            "Diệt môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa"
         };
 
-        void ShowDivineButtons(bool show, bool village)
+        void ShowDivineButtons(bool show, bool village, bool sect = false)
         {
             for (int k = 0; k < _divineButtons.Length; k++)
             {
                 var b = _divineButtons[k];
-                bool on = show && (!village || DivineTipVillage[k].Length > 0); // thiên kiếp is for cultivators only
+                // Thiên kiếp is for cultivators only; diệt môn for sects only.
+                bool on = show && (village ? DivineTipVillage[k].Length > 0 && (k != AnnihilateButton || sect) : DivineTipPerson[k].Length > 0);
                 if (b.Frame.gameObject.activeSelf != on) b.Frame.gameObject.SetActive(on);
                 if (!on) continue;
                 var tip = b.Frame.GetComponent<Tooltip>();
@@ -555,18 +747,23 @@ namespace ThienDao.UI
             UpdateLabels();
             if (!_visible) return;
 
-            _date.text = sim.Clock.DateText;
             for (int k = 0; k < _speedButtons.Count; k++) _speedButtons[k].SetSelected(sim.SpeedIndex == k);
-            var cr = sim.Cultivation.CountByRealm;
-            _summary.text = $"Dân {sim.Settlements.TotalPopulation:N0} · {sim.Settlements.AliveCount} làng · Tu sĩ {sim.Cultivation.AliveCount}" +
-                            (cr[(int)Realm.NguyenAnh] + cr[(int)Realm.HoaThan] > 0 ? $" · Nguyên Anh {cr[(int)Realm.NguyenAnh]}" : "");
+            UpdateHud();
             UpdateTicker();
 
-            _inspectButton.SetSelected(_game.Brush.Tool == BrushTool.Inspect);
-            foreach (var (button, tool) in _toolButtons) button.SetSelected(_game.Brush.Tool == tool);
+            var current = _game.Brush.Tool;
+            _inspectButton.SetSelected(current == BrushTool.Inspect);
+            foreach (var (button, tool) in _toolButtons) button.SetSelected(current == tool);
             foreach (var (button, mode) in _overlayButtons) button.SetSelected(_game.Renderer.Overlay == mode);
             if (_labelsToggle != null) _labelsToggle.SetSelected(ShowLabels);
+            if (_ruleValues.Count > 0) UpdateRuleValues();
             _brushSize.text = _game.Brush.Size.ToString();
+            // The brush size only matters to tools that paint an area or reach over one.
+            bool sized = current != BrushTool.Inspect && !WorldBrush.IsDivineTool(current) && !WorldBrush.IsPointTool(current) &&
+                         !WorldBrush.IsBuildingTool(current) && current != BrushTool.Plague && current != BrushTool.Eruption && current != BrushTool.GreatCalamity;
+            _sizeGroup.alpha = sized ? 1f : 0.15f; // faded, not hidden, so the toolbar keeps its shape
+            _sizeGroup.interactable = _sizeGroup.blocksRaycasts = sized;
+            _toolTitle.text = $"{TabNames[_tab].ToUpper()}  <color=#ffd873>›  {WorldBrush.ToolNames[(int)current]}</color>";
 
             _slowRefresh -= Time.unscaledDeltaTime;
             if (_slowRefresh <= 0f)
@@ -574,10 +771,14 @@ namespace ThienDao.UI
                 _slowRefresh = 0.25f;
                 if (_ranking.Open) UpdateRankingRows();
                 UpdateWatchList();
-                if (_events.Open) _events.Body.text = EventsText();
+                if (_events.Open) UpdateEventRows();
                 if (_powers.Open) _powers.Body.text = PowersText();
             }
-            if (_stats.Open) _stats.Body.text = StatsText();
+            if (_stats.Open)
+            {
+                UpdateStatChips();
+                _stats.Body.text = StatsText();
+            }
 
             UpdateCard();
             _chronicle.Tick(Time.unscaledDeltaTime);
@@ -593,30 +794,38 @@ namespace ThienDao.UI
             var recent = events.Recent;
             for (int k = Mathf.Max(0, recent.Count - (int)Mathf.Min(fresh, recent.Count)); k < recent.Count; k++)
             {
-                bool watched = IsWatchedEvent(recent[k]);
-                if (recent[k].Importance < 2 && !watched) continue;
-                var t = Ui.Label(_ticker, watched ? "★ " + recent[k].Text : recent[k].Text, 20, TextAnchor.UpperLeft, watched ? WatchColor : recent[k].Importance >= 3 ? Ui.Gold : Ui.Ink);
-                Element(t).preferredWidth = 560f; // height follows the wrapped text
-                _tickerLines.Add((t, Time.unscaledTime));
+                var ev = recent[k];
+                bool watched = IsWatchedEvent(ev);
+                if (ev.Importance < 2 && !watched) continue;
+                // One line of news: what kind of thing happened, at a glance, then the words.
+                var row = Ui.Node("News", _ticker);
+                var layout = Row(row, 6);
+                layout.childAlignment = TextAnchor.UpperLeft;
+                var icon = Ui.Icon(row, watched ? Icons.Star : Icons.ForEvent(ev.Kind, ev.Fx), 26f);
+                var t = Ui.Label(row, ev.Text, 19, TextAnchor.UpperLeft, watched ? WatchColor : ev.Importance >= 3 ? Ui.Gold : Ui.Ink);
+                Element(t).preferredWidth = 524f; // height follows the wrapped text
+                _tickerLines.Add((t, icon, Time.unscaledTime));
                 if (_tickerLines.Count > 4)
                 {
-                    Destroy(_tickerLines[0].text.gameObject);
+                    Destroy(_tickerLines[0].text.transform.parent.gameObject);
                     _tickerLines.RemoveAt(0);
                 }
             }
             for (int k = _tickerLines.Count - 1; k >= 0; k--)
             {
-                float age = Time.unscaledTime - _tickerLines[k].shownAt;
-                var (text, _) = _tickerLines[k];
+                var (text, img, shownAt) = _tickerLines[k];
+                float age = Time.unscaledTime - shownAt;
                 if (age > 8f)
                 {
-                    Destroy(text.gameObject);
+                    Destroy(text.transform.parent.gameObject);
                     _tickerLines.RemoveAt(k);
                     continue;
                 }
+                float a = Mathf.Clamp01((8f - age) / 1.5f);
                 var c = text.color;
-                c.a = Mathf.Clamp01((8f - age) / 1.5f);
+                c.a = a;
                 text.color = c;
+                img.color = new Color(1f, 1f, 1f, a);
             }
         }
 
@@ -664,8 +873,10 @@ namespace ThienDao.UI
                 var b = Ui.Button(line, null, "Bấm để camera theo người này", () => FocusWatched(row), 46f, "");
                 b.Caption.alignment = TextAnchor.MiddleLeft;
                 b.Caption.fontSize = 16;
-                Ui.Stretch(b.Caption.rectTransform, 10, 6, 2, 2);
+                Ui.Stretch(b.Caption.rectTransform, 46, 6, 2, 2);
                 Size(b.Frame, 324f, 46f);
+                _watchIcons[k] = Ui.Icon(b.Frame.rectTransform, null, 34f);
+                Ui.Place(_watchIcons[k].rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(6f, 0f), new Vector2(34f, 34f));
                 var x = Ui.Button(line, Icons.Close, "Bỏ theo dõi", () => Unwatch(row), 40f);
                 Size(x.Frame, 40f, 40f);
                 _watchRows[k] = b;
@@ -696,6 +907,7 @@ namespace ThienDao.UI
                 if (row.activeSelf != (c != null)) row.SetActive(c != null);
                 if (c == null) continue;
                 _watchRows[k].SetSelected(_game.Selected == c);
+                _watchIcons[k].sprite = c.Alive ? Icons.Cultivator(c) : Icons.Skull;
                 string state = !c.Alive ? $"<color=#ff9090>đã vẫn lạc năm {c.DeathTick / SimClock.DaysPerYear + 1}</color>"
                     : sim.Cultivation.IsShownOnMap(c) ? $"<color=#9fe0a0>{c.Activity}</color>" : $"<color=#b8bccc>{c.Activity}</color>";
                 _watchRows[k].Caption.text = $"<color=#ffe68c>{c.Name}</color> · {c.RealmText}\n<size=14>{state}</size>";
@@ -708,7 +920,8 @@ namespace ThienDao.UI
             if (c == null) return;
             if (!c.Alive)
             {
-                ShowToast($"{c.Title} đã vẫn lạc. Tiểu sử vẫn còn trong Biên niên sử (H).");
+                _game.Inspect(c); // the card still opens: the biography, and the power to bring them back
+                ShowToast($"{c.Title} đã vẫn lạc. Thiên Đạo có thể hồi sinh người này từ thẻ nhân vật.");
                 return;
             }
             // Watched cultivators are drawn even at home, so there is always someone to follow.
@@ -724,6 +937,8 @@ namespace ThienDao.UI
         const int RankRows = 8;
         readonly Ui.IconButton[] _rankRows = new Ui.IconButton[RankRows];
         readonly Cultivator[] _rankWho = new Cultivator[RankRows];
+        readonly Image[] _rankIcons = new Image[RankRows];
+        readonly Image[] _watchIcons = new Image[WatchRows];
 
         // Each row of the ranking is a button: click to select that expert and follow them on the map.
         void BuildRankingRows()
@@ -737,8 +952,10 @@ namespace ThienDao.UI
                 b.Caption.alignment = TextAnchor.MiddleLeft;
                 b.Caption.fontSize = 17;
                 b.Caption.supportRichText = true;
-                Ui.Stretch(b.Caption.rectTransform, 12, 8, 2, 2);
+                Ui.Stretch(b.Caption.rectTransform, 54, 8, 2, 2);
                 Height(b.Frame, 54f);
+                _rankIcons[k] = Ui.Icon(b.Frame.rectTransform, null, 40f);
+                Ui.Place(_rankIcons[k].rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(8f, 0f), new Vector2(40f, 40f));
                 _rankRows[k] = b;
             }
         }
@@ -758,6 +975,7 @@ namespace ThienDao.UI
                 if (b.Frame.gameObject.activeSelf != (c != null)) b.Frame.gameObject.SetActive(c != null);
                 if (c == null) continue;
                 b.SetSelected(_game.Selected == c);
+                _rankIcons[k].sprite = Icons.Cultivator(c);
                 string where = c.SectId >= 0 ? $"{sim.Cultivation.Role(c)} {sim.Cultivation.SectName(c)}" : sim.Cultivation.Role(c);
                 string doing = sim.Cultivation.IsShownOnMap(c) ? $"<color=#9fe0a0>{c.Activity}</color>" : "<color=#8890a8>đang bế quan</color>";
                 b.Caption.text = $"<color=#ffd873>{k + 1}. {c.Title}</color> · {c.RealmText}{(c.Demonic ? " <color=#ff7070>ma tu</color>" : "")}\n" +
@@ -859,55 +1077,112 @@ namespace ThienDao.UI
             return sb.ToString();
         }
 
-        string EventsText()
+        // ---------------------------------------------------------------- events window: one line per event, with its icon
+
+        const int EventRows = 8;
+        readonly (Image icon, Text text)[] _eventRows = new (Image, Text)[EventRows];
+
+        void BuildEventRows()
+        {
+            _events.Body.gameObject.SetActive(false);
+            for (int k = 0; k < EventRows; k++)
+            {
+                var row = Ui.Node("Event", _events.Root);
+                Row(row, 8).childAlignment = TextAnchor.UpperLeft;
+                var icon = Ui.Icon(row, null, 26f);
+                var t = Ui.Label(row, "", 17);
+                Element(t).preferredWidth = 380f;
+                _eventRows[k] = (icon, t);
+                row.gameObject.SetActive(false); // shown once there is news to fill it
+            }
+        }
+
+        void UpdateEventRows()
         {
             var events = _game.Sim.Events.Recent;
-            var sb = new StringBuilder();
             int shown = 0;
-            for (int k = events.Count - 1; k >= 0 && shown < 8; k--)
+            for (int k = events.Count - 1; k >= 0 && shown < EventRows; k--)
             {
                 var ev = events[k];
                 if (ev.Importance < 1) continue;
+                var (icon, text) = _eventRows[shown++];
+                icon.sprite = Icons.ForEvent(ev.Kind, ev.Fx);
                 string color = ev.Importance >= 3 ? "#ffd873" : ev.Importance == 2 ? "#ffffff" : "#b8bccc";
-                sb.Append($"<color=#8890a8>Năm {ev.Tick / SimClock.DaysPerYear + 1}</color> <color={color}>{ev.Text}</color>\n");
-                shown++;
+                text.text = $"<color=#8890a8>{ev.Tick / SimClock.DaysPerYear + 1}</color>  <color={color}>{ev.Text}</color>";
+                text.transform.parent.gameObject.SetActive(true);
             }
-            return shown == 0 ? "Chưa có chuyện gì đáng kể." : sb.ToString().TrimEnd();
+            for (int k = shown; k < EventRows; k++) _eventRows[k].text.transform.parent.gameObject.SetActive(false);
+            _events.Body.gameObject.SetActive(shown == 0);
+            if (shown == 0) _events.Body.text = "Thiên hạ thái bình.";
         }
 
+        // ---------------------------------------------------------------- stats window: the world in icons
+
+        readonly Ui.Chip[] _statChips = new Ui.Chip[21];
+
+        void BuildStatChips()
+        {
+            var grid = Ui.Node("StatChips", _stats.Root);
+            grid.SetSiblingIndex(1); // under the header, above the hovered-cell text
+            var g = grid.gameObject.AddComponent<GridLayoutGroup>();
+            g.cellSize = new Vector2(136f, 30f);
+            g.spacing = new Vector2(4f, 4f);
+            g.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            g.constraintCount = 3;
+            for (int k = 0; k < _statChips.Length; k++) _statChips[k] = Ui.MakeChip(grid, 136f);
+            _stats.Body.fontSize = 16;
+        }
+
+        void UpdateStatChips()
+        {
+            var sim = _game.Sim;
+            var cr = sim.Cultivation.CountByRealm;
+            var wild = sim.Wildlife;
+            var dis = sim.Disasters;
+            var n = sim.Events.CountByKind;
+            int scars = 0, volcanoes = 0;
+            foreach (var l in dis.Landmarks)
+                if (l.Alive) { if (l.Kind == Landmark.Thunder) scars++; else volcanoes++; }
+            int k = 0;
+            _statChips[k++].Set(Icons.Person, $"{sim.Settlements.TotalPopulation:N0}", "Phàm nhân");
+            _statChips[k++].Set(Icons.Object(ObjectType.House), $"{sim.Settlements.AliveCount}", "Làng, trấn, thành");
+            _statChips[k++].Set(Icons.Unit(Unit.Migrants), $"{sim.Settlements.MigrantGroups}", "Đoàn di dân đang đi tìm đất");
+            for (var r = Realm.LuyenKhi; r < Realm.Count; r++) _statChips[k++].Set(Icons.ForRealm(r), $"{cr[(int)r]}", Realms.Names[(int)r]);
+            _statChips[k++].Set(Icons.Banner, $"{sim.Factions.AliveCount}", $"Thế lực · lập tông {n[(int)EventKind.Founding]} · ly khai {n[(int)EventKind.Schism]}");
+            _statChips[k++].Set(Icons.Sword, $"{sim.Factions.WarCount}", "Cuộc chiến đang diễn ra");
+            _statChips[k++].Set(Icons.Wrath, $"{n[(int)EventKind.Destruction]}", "Số lần diệt môn");
+            _statChips[k++].Set(Icons.Unit(Unit.Deer), $"{wild.Total(Species.Deer):N0}", "Hươu");
+            _statChips[k++].Set(Icons.Unit(Unit.Rabbit), $"{wild.Total(Species.Rabbit):N0}", "Thỏ");
+            _statChips[k++].Set(Icons.Unit(Unit.Wolf), $"{wild.Total(Species.Wolf):N0}", "Sói");
+            _statChips[k++].Set(Icons.Sun, $"{dis.DroughtCount}", "Vùng đang hạn hán");
+            _statChips[k++].Set(Icons.Skull, $"{dis.EpidemicCount}", "Ổ dịch");
+            _statChips[k++].Set(Icons.RainCloud, $"{dis.WeatherCount}", "Vùng đang mưa hoặc rét");
+            _statChips[k++].Set(Icons.Tribulation, $"{scars}", "Lôi địa");
+            _statChips[k++].Set(Icons.Volcano, $"{volcanoes}", "Núi lửa");
+            _statChips[k++].Set(Icons.Eclipse, $"{n[(int)EventKind.Calamity]}", "Thiên tai đã xảy ra");
+            while (k < _statChips.Length) _statChips[k++].Hide();
+        }
+
+        // Below the chips: the cell under the pointer, and the engine numbers, in small print.
         string StatsText()
         {
             var sim = _game.Sim;
             var w = _game.World;
-            var cr = sim.Cultivation.CountByRealm;
             var wild = sim.Wildlife;
             var sb = new StringBuilder();
-            sb.Append($"Phàm nhân {sim.Settlements.TotalPopulation:N0} · {sim.Settlements.AliveCount} làng · {sim.Settlements.MigrantGroups} đoàn di dân\n");
-            sb.Append($"Tu sĩ {sim.Cultivation.AliveCount}: Luyện Khí {cr[1]} · Trúc Cơ {cr[2]} · Kết Đan {cr[3]} · Nguyên Anh {cr[4]} · Hóa Thần {cr[5]}\n");
-            sb.Append($"Thế lực {sim.Factions.AliveCount} · {sim.Factions.WarCount} cuộc chiến · lập tông {sim.Events.CountByKind[(int)EventKind.Founding]} · " +
-                      $"ly khai {sim.Events.CountByKind[(int)EventKind.Schism]} · diệt môn {sim.Events.CountByKind[(int)EventKind.Destruction]}\n");
-            sb.Append($"Hoang dã: Hươu {wild.Total(Species.Deer):N0} · Thỏ {wild.Total(Species.Rabbit):N0} · Sói {wild.Total(Species.Wolf):N0}\n");
-            var dis = sim.Disasters;
-            int scars = 0, volcanoes = 0;
-            foreach (var l in dis.Landmarks)
-                if (l.Alive) { if (l.Kind == Landmark.Thunder) scars++; else volcanoes++; }
-            sb.Append($"Thiên tai: {dis.DroughtCount} vùng hạn · {dis.EpidemicCount} ổ dịch · {dis.FloodedCells:N0} ô ngập · {dis.LavaCells:N0} ô dung nham · " +
-                      $"{scars} lôi địa · {volcanoes} núi lửa · {sim.Events.CountByKind[(int)EventKind.Calamity]} sự kiện\n");
-
             int hx = _game.HoverX, hy = _game.HoverY;
             if (w.InBounds(hx, hy))
             {
                 int i = w.Idx(hx, hy);
                 float tempC = -20f + (w.Temperature[i] / 255f + sim.Clock.SeasonalTemperatureOffset) * 60f;
-                sb.Append($"\n<color=#ffd873>Ô ({hx}, {hy})</color> {TerrainInfo.Names[(int)w.Terrain[i]]} · cao {w.Height[i]:0.00} · {tempC:0}°C · ẩm {w.Moisture[i] * 100 / 255}%\n");
-                sb.Append($"Linh khí {sim.Qi.SampleQi(hx, hy):0} / trần {w.QiCap[i]}{(w.LeyLine[i] ? " · LINH MẠCH" : "")} · cỏ {sim.Forage.At(hx, hy):0}\n");
+                sb.Append($"<color=#ffd873>Ô ({hx}, {hy})</color> {TerrainInfo.Names[(int)w.Terrain[i]]} · {tempC:0}°C · ẩm {w.Moisture[i] * 100 / 255}%\n");
+                sb.Append($"Linh khí {sim.Qi.SampleQi(hx, hy):0} / trần {w.QiCap[i]}{(w.LeyLine[i] ? " · linh mạch" : "")} · cỏ {sim.Forage.At(hx, hy):0}\n");
                 int region = wild.RegionOf(hx, hy);
                 sb.Append($"Vùng: hươu {wild.At(Species.Deer, region):0} · thỏ {wild.At(Species.Rabbit, region):0} · sói {wild.At(Species.Wolf, region):0}\n");
             }
-
             var r = _game.Renderer;
-            sb.Append($"\n<color=#8890a8>FPS {_game.Fps:0} · {_game.Camera.PixelsPerCell:0.0} px/ô · chunk {r.ResidentChunks}/{r.ChunkCount} · vẽ lại {r.RedrawsLastFrame}\n" +
-                      $"{sim.TicksLastFrame} tick/frame · {w.Objects.AliveCount:N0} vật thể · {sim.Log.Count} lệnh · seed {w.Seed} ({_game.GenerationMs:0} ms)</color>");
+            sb.Append($"<color=#8890a8>FPS {_game.Fps:0} · {_game.Camera.PixelsPerCell:0.0} px/ô · chunk {r.ResidentChunks}/{r.ChunkCount} · " +
+                      $"{sim.TicksLastFrame} tick/frame · {w.Objects.AliveCount:N0} vật thể · {sim.Log.Count} lệnh · seed {w.Seed}</color>");
             return sb.ToString();
         }
 
@@ -923,12 +1198,17 @@ namespace ThienDao.UI
 
             if (sel.Kind != InspectKind.Cultivator && sel.Kind != InspectKind.Settlement)
             {
+                _cardPortrait.sprite = InspectIcon(sel);
                 _cardTitle.text = InspectTitle(sel);
+                _cardSub.text = "";
                 _cardBody.text = InspectBody(sel);
+                _cardBody.gameObject.SetActive(true);
+                EndChips();
                 _cardBar1Root.gameObject.SetActive(false);
                 _cardBar2Root.gameObject.SetActive(false);
                 _followButton.Frame.gameObject.SetActive(sel.Kind == InspectKind.Migrants);
                 ShowDivineButtons(false, false);
+                ShowRevive(false);
                 _watchButton.Frame.gameObject.SetActive(false);
                 _followButton.SetSelected(_game.Follow);
                 return;
@@ -937,118 +1217,158 @@ namespace ThienDao.UI
             if (c != null)
             {
                 long tick = sim.Clock.Tick;
-                _cardTitle.text = c.Title + (c.Demonic ? " <color=#ff7070>· ma tu</color>" : "");
-                var sb = new StringBuilder();
-                sb.Append(c.SectId >= 0 ? $"{sim.Cultivation.Role(c)} · {sim.Cultivation.SectName(c)}\n" : $"{sim.Cultivation.Role(c)}\n");
+                _cardPortrait.sprite = Icons.Cultivator(c);
+                _cardTitle.text = c.Title;
+                string where = c.SectId >= 0 ? $"{sim.Cultivation.Role(c)} · {sim.Cultivation.SectName(c)}" : sim.Cultivation.Role(c);
+                _cardSub.text = c.Alive ? $"{where} · {c.Activity}" : where;
+                var bad = new Color(1f, 0.55f, 0.5f);
                 if (!c.Alive)
                 {
-                    sb.Append($"<color=#ff9090>Đã vẫn lạc năm {c.DeathTick / SimClock.DaysPerYear + 1}" +
-                              (c.KilledBy >= 0 ? $" dưới tay {sim.Cultivation.All[c.KilledBy].Title}" : "") + ".</color>\n");
+                    var killer = c.KilledBy >= 0 ? sim.Cultivation.All[c.KilledBy] : null;
+                    Chip(Icons.Skull, $"Năm {c.DeathTick / SimClock.DaysPerYear + 1}", killer != null ? $"Vẫn lạc dưới tay {killer.Title}" : "Năm vẫn lạc", bad);
+                    Chip(Icons.ForRealm(c.Realm, c.Demonic), c.RealmText, "Cảnh giới lúc mất");
+                    if (killer != null) Chip(Icons.Sword, killer.Name, $"Kẻ đã giết: {killer.Title}", bad);
                 }
                 else
                 {
-                    sb.Append($"<color=#ffd873>{c.RealmText}</color> · {c.Activity}\n");
-                    sb.Append($"Tuổi {c.AgeYears(tick):0} / thọ nguyên {c.LifespanYears} năm\n");
-                    sb.Append($"{SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}) · tốc độ ×{SpiritRoots.SpeedMultiplier(c.Roots):0.0}\n");
-                    sb.Append($"Ngộ tính {c.Comprehension * 100f:0} · Tâm cảnh {c.DaoHeart * 100f:0} · Khí vận {c.Luck * 100f:0}\n");
-                    sb.Append($"Linh khí nơi ở {sim.Qi.SampleQi((int)c.HomeX, (int)c.HomeY):0} (cần {Realms.RequiredQi[(int)c.Realm]:0})" +
-                              (c.FailedAttempts > 0 ? $" · đột phá thất bại {c.FailedAttempts} lần" : ""));
+                    Chip(Icons.ForRealm(c.Realm, c.Demonic), Realms.Names[(int)c.Realm], $"{c.RealmText}{(c.Demonic ? " · ma tu" : "")}", c.Demonic ? new Color(1f, 0.5f, 0.5f) : Ui.Gold);
+                    Chip(Icons.Seed, $"{RootShort(c.Roots)} · {SpiritRoots.Elements(c.Roots)}",
+                        $"{SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}) · tốc độ tu luyện ×{SpiritRoots.SpeedMultiplier(c.Roots):0.0}");
+                    float qi = sim.Qi.SampleQi((int)c.HomeX, (int)c.HomeY), need = Realms.RequiredQi[(int)c.Realm];
+                    Chip(Icons.Orb, $"{qi:0}", $"Linh khí nơi ở (cần {need:0} để tu luyện hết tốc độ)", qi < need ? bad : (Color?)null);
+                    Chip(Icons.Eye, $"{c.Comprehension * 100f:0}", "Ngộ tính");
+                    Chip(Icons.Heart, $"{c.DaoHeart * 100f:0}", "Tâm cảnh");
+                    Chip(Icons.Star, $"{c.Luck * 100f:0}", "Khí vận");
+                    if (c.Kills > 0) Chip(Icons.Sword, $"{c.Kills}", "Số tu sĩ đã giết");
+                    if (c.Stones > 0) Chip(Icons.Gem, $"{c.Stones:N0}", "Linh thạch trong túi trữ vật");
+                    if (c.Pills > 0) Chip(Icons.Pill, $"{c.Pills}", $"{Lore.PillFor(c.Realm + 1)} (giúp đột phá)");
+                    if (c.Treasures > 0) Chip(Icons.Crown, $"{c.Treasures}", $"Pháp bảo: {c.TreasureName}");
+                    if (c.FailedAttempts > 0) Chip(Icons.Skull, $"{c.FailedAttempts}", "Số lần đột phá thất bại", bad);
                 }
-                // Ties: sư phụ, huyết thù, the tally.
-                var master = sim.Cultivation.MasterOfDisciple(c);
-                var ties = new StringBuilder();
-                if (master != null) ties.Append($"Sư phụ {master.Name}{(master.Alive ? "" : " (đã mất)")}");
-                if (c.Nemesis >= 0)
-                {
-                    var foe = sim.Cultivation.All[c.Nemesis];
-                    string why = c.NemesisFor >= 0 ? $" (giết {sim.Cultivation.All[c.NemesisFor].Name})" : "";
-                    ties.Append(ties.Length > 0 ? " · " : "").Append($"<color=#ff8a6a>Huyết thù: {foe.Name}{why}</color>");
-                }
-                if (c.Kills > 0) ties.Append(ties.Length > 0 ? " · " : "").Append($"{c.Kills} mạng");
-                if (c.Legend) ties.Append(ties.Length > 0 ? " · " : "").Append($"<color=#ffd873>Lưu danh sử sách</color>");
-                if (ties.Length > 0) sb.Append('\n').Append(ties);
-                if (c.Alive && (c.Watched || c.Pills > 0 || c.Treasures > 0))
-                    sb.Append($"\n<color=#b8bccc>Túi trữ vật: {c.Stones:N0} linh thạch" +
-                              (c.Pills > 0 ? $" · {c.Pills} {Lore.PillFor(c.Realm + 1)}" : "") +
-                              (c.Treasures > 0 ? $" · pháp bảo {c.TreasureName}{(c.Treasures > 1 ? $" (+{c.Treasures - 1})" : "")}" : "") + "</color>");
+                if (c.Legend) Chip(Icons.Book, "Truyền kỳ", $"Lưu danh sử sách: {c.Epithet}", Ui.Gold);
+                EndChips();
 
-                // Tiểu sử from the HistoryLog: every remembered deed, not just the last few hundred lines.
-                sim.History.OfCultivator(c.Index, _bio, 6);
-                if (_bio.Count > 0) sb.Append("\n\n<color=#ffd873>Tiểu sử</color>");
+                // Ties and the latest deeds, briefly; the full life is in Biên niên sử.
+                var sb = new StringBuilder();
+                var master = sim.Cultivation.MasterOfDisciple(c);
+                if (master != null) sb.Append($"Sư phụ {master.Name}{(master.Alive ? "" : " (đã mất)")}");
+                if (c.Nemesis >= 0)
+                    sb.Append(sb.Length > 0 ? " · " : "").Append($"<color=#ff8a6a>Huyết thù: {sim.Cultivation.All[c.Nemesis].Name}</color>");
+                sim.History.OfCultivator(c.Index, _bio, 4);
                 for (int k = _bio.Count - 1; k >= 0; k--)
-                    sb.Append($"\n<color=#8890a8>Năm {_bio[k].Year}</color> {_bio[k].Text}");
+                    sb.Append(sb.Length > 0 ? "\n" : "").Append($"<color=#8890a8>{_bio[k].Year}</color> {_bio[k].Text}");
                 int more = sim.History.CountOfCultivator(c.Index) - _bio.Count;
-                if (more > 0) sb.Append($"\n<color=#8890a8>… và {more} sự tích khác (Biên niên sử, H)</color>");
+                if (more > 0) sb.Append($"\n<color=#8890a8>+{more} sự tích (H)</color>");
                 _cardBody.text = sb.ToString();
+                _cardBody.gameObject.SetActive(sb.Length > 0);
                 _cardBar1Root.gameObject.SetActive(c.Alive);
                 _cardBar2Root.gameObject.SetActive(c.Alive);
                 if (c.Alive)
                 {
-                    _cardBar1.fillAmount = Mathf.Clamp01(c.Progress / Realms.Need(c.Realm, c.Stage));
+                    float need = Realms.Need(c.Realm, c.Stage);
+                    _cardBar1.fillAmount = Mathf.Clamp01(c.Progress / need);
+                    string stage = c.Realm == Realm.LuyenKhi ? $"tầng {c.Stage + 1}" : Realms.StageNames[Mathf.Min(c.Stage, 3)];
+                    _cardBar1Text.text = $"{stage} {Mathf.Clamp01(c.Progress / need) * 100f:0}%";
                     _cardBar2.fillAmount = Mathf.Clamp01(c.AgeYears(tick) / c.LifespanYears);
+                    _cardBar2Text.text = $"{c.AgeYears(tick):0}/{c.LifespanYears}";
                 }
                 _followButton.Frame.gameObject.SetActive(c.Alive);
                 _watchButton.Frame.gameObject.SetActive(true);
-                _watchButton.Caption.text = c.Watched ? "★ Bỏ theo dõi" : "☆ Theo dõi";
                 _watchButton.SetSelected(c.Watched);
+                _watchButton.Frame.GetComponent<Tooltip>().Text = c.Watched ? "Bỏ theo dõi" : "Theo dõi: người này sẽ sống như nhân vật chính";
                 ShowDivineButtons(c.Alive, false);
+                ShowRevive(!c.Alive);
                 _followButton.SetSelected(_game.Follow);
                 return;
             }
 
             int pop = Mathf.Max(1, s.Population);
+            _cardPortrait.sprite = Icons.Object(s.Sect ? ObjectType.SectHall : ObjectType.House);
             _cardTitle.text = s.Name;
             var body = new StringBuilder();
-            if (!s.Alive) body.Append("<color=#ff9090>Đã bị bỏ hoang.</color>\n");
-            else
+            var f = s.Sect ? sim.Factions.Get(s.Id) : null;
+            var head = s.Sect ? sim.Cultivation.MasterOf(s.Id) : null;
+            var protector = !s.Sect && s.Alive ? sim.Factions.ProtectorOf(s.X, s.Y) : null;
+            _cardSub.text = !s.Alive ? "<color=#ff9090>Đã bị bỏ hoang</color>"
+                : s.Sect ? $"{(f != null && f.Demonic ? "Ma đạo" : "Chính đạo")}{(head != null ? $" · tông chủ {head.Name} ({Realms.Names[(int)head.Realm]})" : "")}"
+                : protector != null ? $"Dưới sự che chở của {protector.BaseName}" : "Không thuộc tông môn nào";
+            if (s.Alive)
             {
-                body.Append($"{s.Population} người · {s.Houses.Count} nhà · {s.Farms.Count} ô ruộng\n");
-                body.Append($"Lương thực {s.Food / pop:0.0} tháng · năm qua sinh {s.BirthsLastYear}, mất {s.DeathsLastYear}\n");
-                if (sim.Disasters.IsInfected(s.Id)) body.Append("<color=#9fe07a>Ôn dịch đang hoành hành</color>\n");
+                var warn = new Color(1f, 0.55f, 0.5f);
+                Chip(Icons.Person, $"{s.Population}", "Dân số");
+                Chip(Icons.Object(ObjectType.House), $"{s.Houses.Count}", "Nhà");
+                Chip(Icons.TerrainTile(Terrain.Farmland), $"{s.Farms.Count}", "Ô ruộng");
+                Chip(Icons.Bowl, $"{s.Food / pop:0.0} th", "Lương thực còn đủ ăn mấy tháng", s.Food / pop < 1f ? warn : (Color?)null);
+                Chip(Icons.Seed, $"+{s.BirthsLastYear}", "Sinh năm qua");
+                Chip(Icons.Skull, $"-{s.DeathsLastYear}", "Mất năm qua", s.DeathsLastYear > s.BirthsLastYear ? warn : (Color?)null);
+                if (sim.Disasters.IsInfected(s.Id)) Chip(Icons.Skull, "Ôn dịch", "Ôn dịch đang hoành hành", new Color(0.6f, 0.9f, 0.5f));
                 int drought = sim.Disasters.DroughtMonthsLeft(s.X, s.Y, sim.Clock.Tick);
-                if (drought >= 0) body.Append($"<color=#ffb060>Đại hạn, còn khoảng {drought} tháng</color>\n");
+                if (drought >= 0) Chip(Icons.Sun, $"{drought} th", "Đại hạn, còn khoảng chừng ấy tháng", new Color(1f, 0.75f, 0.4f));
             }
-            body.Append($"Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" + (s.ParentId >= 0 ? $" bởi di dân từ {sim.Settlements.All[s.ParentId].Name}" : ""));
             if (s.Sect)
             {
                 var count = new int[(int)Realm.Count];
                 foreach (var m in sim.Cultivation.All)
                     if (m.Alive && m.SectId == s.Id) count[(int)m.Realm]++;
-                var master = sim.Cultivation.MasterOf(s.Id);
-                body.Append($"\n\n<color=#ffd873>Tông môn</color>{(master != null ? $" · tông chủ {master.Title} ({master.RealmText})" : "")}\n");
-                body.Append($"Luyện Khí {count[1]} · Trúc Cơ {count[2]} · Kết Đan {count[3]} · Nguyên Anh {count[4]} · Hóa Thần {count[5]}");
-                var f = sim.Factions.Get(s.Id);
+                for (var r = Realm.LuyenKhi; r < Realm.Count; r++)
+                    if (count[(int)r] > 0) Chip(Icons.ForRealm(r), $"{count[(int)r]}", Realms.Names[(int)r]);
                 if (f != null && f.Alive)
                 {
-                    body.Append($"\n\n<color={Hex(f.Color)}>■</color> <color=#ffd873>Thế lực</color> {(f.Demonic ? "<color=#ff7070>ma đạo</color>" : "chính đạo")}" +
-                                (f.ParentId >= 0 ? $" · tách từ {sim.Factions.NameOf(f.ParentId)}" : "") +
-                                (f.FounderName != null ? $" · khai sơn: {f.FounderName}" : "") + "\n");
-                    body.Append($"{f.Tiles} vùng lãnh thổ, {f.LeyTiles} linh mạch · {f.Treasury:N0} linh thạch (+{f.LastIncome:0}/năm)\n");
-                    body.Append($"Thực lực {f.Power:N0} · trận thắng {f.BattlesWon}, thua {f.BattlesLost} · tử trận {f.Fallen}");
+                    Chip(Icons.Banner, $"{f.Tiles}", "Vùng lãnh thổ");
+                    Chip(Icons.LeyLine, $"{f.LeyTiles}", "Vùng có linh mạch");
+                    Chip(Icons.Gem, $"{f.Treasury:N0}", $"Linh thạch (+{f.LastIncome:0}/năm)");
+                    Chip(Icons.Sword, $"{f.Power:N0}", $"Thực lực · thắng {f.BattlesWon}, thua {f.BattlesLost}, tử trận {f.Fallen}");
                     string ties = TiesText(f.Id, 3);
-                    if (ties.Length > 0) body.Append('\n').Append(ties);
+                    if (ties.Length > 0) body.Append(ties);
                 }
                 // Sử sách of the sect: its greatest moments.
                 sim.History.OfFaction(s.Id, _bio, 30);
                 int told = 0;
                 foreach (var r in _bio)
                 {
-                    if (r.Importance < 3 || told >= 4) continue;
-                    if (told++ == 0) body.Append("\n\n<color=#ffd873>Sử sách</color>");
-                    body.Append($"\n<color=#8890a8>Năm {r.Year}</color> {r.Text}");
+                    if (r.Importance < 3 || told >= 3) continue;
+                    told++;
+                    body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#8890a8>{r.Year}</color> {r.Text}");
                 }
             }
-            else if (s.Alive)
-            {
-                var protector = sim.Factions.ProtectorOf(s.X, s.Y);
-                if (protector != null) body.Append($"\nDưới sự che chở của {protector.BaseName} (nộp cống linh thạch, tiến cử đệ tử)");
-            }
+            EndChips();
+            body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#8890a8>Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" +
+                        (s.ParentId >= 0 ? $" · di dân từ {sim.Settlements.All[s.ParentId].Name}" : "") + "</color>");
             _cardBody.text = body.ToString();
+            _cardBody.gameObject.SetActive(true);
             _cardBar1Root.gameObject.SetActive(false);
             _cardBar2Root.gameObject.SetActive(false);
             _followButton.Frame.gameObject.SetActive(false);
-            ShowDivineButtons(s.Alive, true);
+            ShowDivineButtons(s.Alive, true, s.Sect);
+            ShowRevive(false);
             _watchButton.Frame.gameObject.SetActive(false);
+        }
+
+        void ShowRevive(bool on)
+        {
+            if (_reviveButton.Frame.gameObject.activeSelf != on) _reviveButton.Frame.gameObject.SetActive(on);
+        }
+
+        static string RootShort(int roots)
+        {
+            string k = SpiritRoots.Kind(roots);
+            return k.StartsWith("Thiên") ? "Thiên" : k.StartsWith("Chân") ? "Chân" : k.StartsWith("Ngụy") ? "Ngụy" : "Dị";
+        }
+
+        Sprite InspectIcon(in InspectTarget t)
+        {
+            var w = _game.World;
+            switch (t.Kind)
+            {
+                case InspectKind.Migrants: return Icons.Unit(Unit.Migrants);
+                case InspectKind.Animal:
+                    var kind = WildlifeSystem.Kinds[t.Animal];
+                    return Icons.Unit(kind == Species.Deer ? Unit.Deer : kind == Species.Rabbit ? Unit.Rabbit : Unit.Wolf);
+                case InspectKind.Object:
+                    return w.Objects.IsAlive(t.ObjectId) ? Icons.Object(w.Objects.Get(t.ObjectId).Type) : Icons.Erase;
+                default:
+                    return Icons.TerrainTile(w.Terrain[w.Idx(t.CellX, t.CellY)]);
+            }
         }
 
         string InspectTitle(in InspectTarget t)
@@ -1140,6 +1460,10 @@ namespace ThienDao.UI
             if (terrain == Terrain.Lava) sb.Append("Dung nham đang chảy: ai rơi vào là chết cháy, nguội dần thành đá\n");
             int drought = sim.Disasters.DroughtMonthsLeft(x, y, sim.Clock.Tick);
             if (drought >= 0) sb.Append($"<color=#ffb060>Đang hạn hán</color>, còn khoảng {drought} tháng · mùa màng chỉ được một phần tư\n");
+            int spell = sim.Disasters.WeatherMonthsLeft(x, y, sim.Clock.Tick, out var weather);
+            if (spell >= 0)
+                sb.Append(weather == Calamity.Rain ? $"<color=#80b0ff>Mưa thuận gió hòa</color>, còn khoảng {spell} tháng\n"
+                                                   : $"<color=#e8f0ff>Rét đậm</color>, còn khoảng {spell} tháng · mùa màng mất trắng\n");
             var owner = sim.Settlements.Owning(i);
             if (owner != null && owner.Alive)
                 sb.Append(terrain == Terrain.Farmland ? $"Ruộng của {owner.Name}\n" : $"Đất của {owner.Name}\n");
@@ -1223,6 +1547,8 @@ namespace ThienDao.UI
                            who != null ? $"Ban linh căn → {who}" : "Chọn một người để ban linh căn";
                 else if (tool == BrushTool.Bless)
                     hint = h.Kind == InspectKind.Settlement ? $"Ban phúc → {h.Settlement.Name}" : who != null ? $"Ban cơ duyên → {who}" : "Ban cơ duyên → tu sĩ gần nhất";
+                else if (tool == BrushTool.Annihilate)
+                    hint = h.Kind == InspectKind.Settlement && h.Settlement.Sect ? $"Diệt môn → {h.Settlement.Name}" : "Chọn một tông môn để diệt";
                 else if (tool == BrushTool.Tribulation)
                     hint = h.Kind == InspectKind.Cultivator
                         ? $"Thiên kiếp → {who} ({h.Cultivator.RealmText}{(Realms.IsPeak(h.Cultivator.Realm, h.Cultivator.Stage) ? ", đang ở bình cảnh" : "")})"
@@ -1235,7 +1561,9 @@ namespace ThienDao.UI
                 var tool = _game.Brush.Tool;
                 hint = tool == BrushTool.Plague
                     ? h.Kind == InspectKind.Settlement ? $"Ôn dịch → {h.Settlement.Name}" : "Ôn dịch → làng gần nhất"
-                    : $"{WorldBrush.ToolNames[(int)tool]} · bán kính {DisasterSystem.Radius(WorldBrush.CalamityFor(tool), _game.Brush.Size)} ô";
+                    : tool == BrushTool.GreatCalamity
+                        ? sim.Disasters.GreatCalamityActive ? "Đại kiếp đang diễn ra" : "Đại kiếp → toàn thế giới"
+                        : $"{WorldBrush.ToolNames[(int)tool]} · bán kính {DisasterSystem.Radius(WorldBrush.CalamityFor(tool), _game.Brush.Size)} ô";
             }
             else if (!PointerOverUI && _game.Brush.Tool == BrushTool.Inspect)
             {
@@ -1285,7 +1613,7 @@ namespace ThienDao.UI
         public void OnWorldChanged()
         {
             _tickerSeen = _game.Sim.Events.TotalAdded;
-            foreach (var (text, _) in _tickerLines) Destroy(text.gameObject);
+            foreach (var (text, _, _) in _tickerLines) Destroy(text.transform.parent.gameObject);
             _tickerLines.Clear();
             if (_seedField != null) _seedField.text = _game.SeedText;
         }

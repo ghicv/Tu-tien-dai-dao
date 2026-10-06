@@ -159,6 +159,11 @@ namespace ThienDao.Render
                 case Fx.Miasma:
                     e.Duration = 3f;
                     break;
+                case Fx.Rain:
+                case Fx.Snow:
+                case Fx.Storm:
+                    e.Duration = kind == Fx.Storm ? 3f : 3.5f;
+                    break;
                 case Fx.Stampede:
                     e.Duration = 2.2f;
                     for (int k = 0; k < 16; k++)
@@ -321,6 +326,34 @@ namespace ThienDao.Render
                     if (_rand.NextDouble() < 0.4)
                         Burst(e.X + Rand(-5f, 5f), e.Y + Rand(-3f, 3f), new Color32(230, 60, 50, 255), 4, 3f);
                     break;
+
+                case Fx.Rain:
+                case Fx.Snow:
+                case Fx.Storm:
+                {
+                    // Clouds over the spot; rain streaks, drifting snow, or rain driven sideways by the gale.
+                    float fade = Mathf.Clamp01(Mathf.Min(t / 0.4f, (e.Duration - t) / 0.8f));
+                    var cloud = e.Kind == Fx.Snow ? new Color32(220, 228, 240, 255) : new Color32(70, 76, 96, 255);
+                    cloud.a = (byte)(190 * fade);
+                    float drift = e.Kind == Fx.Storm ? Mathf.Sin(t * 3f) * 1.5f : 0f;
+                    Quad(Sprite.Cloud, e.X - 3f + drift, e.Y + 9f, 2f, 2f, cloud);
+                    Quad(Sprite.Cloud, e.X + 3f + drift, e.Y + 9.5f, 2.2f, 2.2f, cloud);
+                    int drops = e.Kind == Fx.Storm ? 4 : 2;
+                    for (int k = 0; k < drops && fade > 0.2f; k++)
+                    {
+                        bool snow = e.Kind == Fx.Snow;
+                        _particles.Add(new Particle
+                        {
+                            Sprite = snow ? Sprite.Spark : Sprite.Drop, X = e.X + Rand(-6f, 6f), Y = e.Y + 8.5f,
+                            VX = e.Kind == Fx.Storm ? Rand(4f, 7f) : snow ? Rand(-0.6f, 0.6f) : 0f, VY = snow ? Rand(-2.5f, -1.5f) : Rand(-14f, -10f),
+                            Life = snow ? Rand(2.5f, 3.5f) : Rand(0.6f, 0.8f), Size = snow ? 0.8f : 1f,
+                            Color = snow ? new Color32(250, 250, 255, 230) : new Color32(170, 200, 255, 200)
+                        });
+                    }
+                    if (e.Kind == Fx.Storm && _rand.NextDouble() < 0.03) _particles.Add(new Particle { Sprite = Sprite.Flash, X = e.X + Rand(-4f, 4f), Y = e.Y + 9f,
+                        Life = 0.15f, Size = 2.5f, Color = new Color32(230, 235, 255, 220) });
+                    break;
+                }
 
                 case Fx.LightPillar:
                 {

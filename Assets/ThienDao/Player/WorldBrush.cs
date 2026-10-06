@@ -38,7 +38,12 @@ namespace ThienDao.Player
         Flood,
         Drought,
         Plague,
-        BeastTide
+        BeastTide,
+        GreatCalamity, // the order from Earthquake to Cold follows the Calamity enum
+        Rain,
+        Storm,
+        Cold,
+        Annihilate
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -50,7 +55,7 @@ namespace ThienDao.Player
             "Trồng cây", "Nhà dân", "Tông môn", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
             "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
             "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
-            "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều"
+            "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn"
         };
 
         readonly Simulation _sim;
@@ -72,12 +77,21 @@ namespace ThienDao.Player
         public static bool IsBuildingTool(BrushTool t) => t == BrushTool.House || t == BrushTool.SectHall;
 
         public static bool IsDivineTool(BrushTool t) =>
-            t == BrushTool.GrantRoot || t == BrushTool.Bless || t == BrushTool.Smite || t == BrushTool.Tribulation;
+            t == BrushTool.GrantRoot || t == BrushTool.Bless || t == BrushTool.Smite || t == BrushTool.Tribulation || t == BrushTool.Annihilate;
 
-        public static DivineAct ActFor(BrushTool t) =>
-            t == BrushTool.GrantRoot ? DivineAct.GrantRoot : t == BrushTool.Bless ? DivineAct.Bless : t == BrushTool.Tribulation ? DivineAct.Tribulation : DivineAct.Smite;
+        public static DivineAct ActFor(BrushTool t)
+        {
+            switch (t)
+            {
+                case BrushTool.GrantRoot: return DivineAct.GrantRoot;
+                case BrushTool.Bless: return DivineAct.Bless;
+                case BrushTool.Tribulation: return DivineAct.Tribulation;
+                case BrushTool.Annihilate: return DivineAct.Annihilate;
+                default: return DivineAct.Smite;
+            }
+        }
 
-        public static bool IsCalamityTool(BrushTool t) => t >= BrushTool.Earthquake && t <= BrushTool.BeastTide;
+        public static bool IsCalamityTool(BrushTool t) => t >= BrushTool.Earthquake && t <= BrushTool.Cold;
 
         public static Calamity CalamityFor(BrushTool t) => (Calamity)(t - BrushTool.Earthquake);
 

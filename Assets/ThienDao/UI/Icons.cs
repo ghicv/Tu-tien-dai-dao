@@ -515,6 +515,404 @@ namespace ThienDao.UI
             "...kkkkkk...",
         }, P);
 
+        // ---------------------------------------------------------------- M6 phần 2: thời tiết, đại kiếp, quy luật, sinh tử
+
+        public static Sprite RainCloud => Glyph("raincloud", new[]
+        {
+            "...kkkk.....",
+            "..kwwwwk.kk.",
+            ".kwwwwwwkwk.",
+            "kwwwwwwwwwwk",
+            "kwwwwwwwwwwk",
+            ".kkkkkkkkkk.",
+            "..b..b..b...",
+            ".b..b..b....",
+            "............",
+            "...b..b..b..",
+            "..b..b..b...",
+            "............",
+        }, P);
+
+        public static Sprite Storm => Glyph("storm", new[]
+        {
+            "...ssssss...",
+            "..s......s..",
+            ".s..cccc..s.",
+            "s..c....c...",
+            "s.c..ss..c..",
+            "s.c.s..s.c..",
+            "s.c.s.....c.",
+            "s.c..sss..c.",
+            ".s.c.....c..",
+            "..s.ccccc...",
+            "...s........",
+            "....ssss....",
+        }, P);
+
+        public static Sprite Snowflake => Glyph("snowflake", new[]
+        {
+            ".....c......",
+            "...c.c.c....",
+            "....ccc.....",
+            ".c..ccc..c..",
+            "..c..c..c...",
+            "ccccccccccc.",
+            "..c..c..c...",
+            ".c..ccc..c..",
+            "....ccc.....",
+            "...c.c.c....",
+            ".....c......",
+            "............",
+        }, P);
+
+        public static Sprite Eclipse => Glyph("eclipse", new[]
+        {
+            "....o..o....",
+            ".o..oooo..o.",
+            "..ookkkkoo..",
+            "..okkkkkko..",
+            "ookkkkkkkkoo",
+            ".okkkkkkkko.",
+            ".okkkkkkkko.",
+            "ookkkkkkkkoo",
+            "..okkkkkko..",
+            "..ookkkkoo..",
+            ".o..oooo..o.",
+            "....o..o....",
+        }, P);
+
+        public static Sprite Scales => Glyph("scales", new[]
+        {
+            ".....kk.....",
+            "kkkkkyykkkkk",
+            "ky...yy...yk",
+            "ky...yy...yk",
+            "yyy..yy..yyy",
+            "kyyk.yy.kyyk",
+            ".kk..yy..kk.",
+            ".....yy.....",
+            ".....yy.....",
+            "...kkyykk...",
+            "..kyyyyyyk..",
+            "..kkkkkkkk..",
+        }, P);
+
+        public static Sprite Revive => Glyph("revive", new[]
+        {
+            "...kkkkkk...",
+            "..kggggggk..",
+            ".kgggwwgggk.",
+            "kgggwwwwgggk",
+            "kggwwwwwwggk",
+            "kggggwwggggk",
+            "kggggwwggggk",
+            "kggggwwggggk",
+            ".kgggwwgggk.",
+            "..kggggggk..",
+            "...kkkkkk...",
+            "............",
+        }, P);
+
+        public static Sprite Wrath => Glyph("wrath", new[]
+        {
+            "rr........rr",
+            ".rr......rr.",
+            "..rr.kk.rr..",
+            "...rrkkrr...",
+            "....rrrr....",
+            "...krrrrk...",
+            "..kkrrrrkk..",
+            ".kkrrkkrrkk.",
+            "..rrssssrr..",
+            ".rr.ssss.rr.",
+            "rr..ssss..rr",
+            "kkkkkkkkkkkk",
+        }, P);
+
+        // ---------------------------------------------------------------- UI: stat chips and seasons
+
+        public static Sprite Hourglass => Glyph("hourglass", new[]
+        {
+            ".kkkkkkkkkk.",
+            ".knnnnnnnnk.",
+            "..kyyyyyyk..",
+            "...kyyyyk...",
+            "....kyyk....",
+            ".....kk.....",
+            ".....kk.....",
+            "....k..k....",
+            "...k.yy.k...",
+            "..kyyyyyyk..",
+            ".knnnnnnnnk.",
+            ".kkkkkkkkkk.",
+        }, P);
+
+        public static Sprite Heart => Glyph("heart", new[]
+        {
+            "............",
+            "..kk....kk..",
+            ".krrk..krrk.",
+            "krwrrkkrrrrk",
+            "krrrrrrrrrrk",
+            "krrrrrrrrrrk",
+            ".krrrrrrrrk.",
+            "..krrrrrrk..",
+            "...krrrrk...",
+            "....krrk....",
+            ".....kk.....",
+            "............",
+        }, P);
+
+        public static Sprite Sword => Glyph("sword", new[]
+        {
+            "..........kk",
+            ".........kwk",
+            "........kwk.",
+            ".......kwk..",
+            "......kwk...",
+            "..k..kwk....",
+            "...kkwk.....",
+            "...kyk......",
+            "..kykk......",
+            ".kyk..k.....",
+            "kyk.........",
+            "kk..........",
+        }, P);
+
+        public static Sprite Gem => Glyph("gem", new[]
+        {
+            "............",
+            "...kkkkkk...",
+            "..kcwccccck.",
+            ".kcwcccccbck",
+            "kkkkkkkkkkkk",
+            ".kcccccccbk.",
+            "..kcccccbk..",
+            "...kcccbk...",
+            "....kcbk....",
+            ".....kk.....",
+            "............",
+            "............",
+        }, P);
+
+        public static Sprite Pill => Glyph("pill", new[]
+        {
+            "............",
+            "....kkkk....",
+            "...kooook...",
+            "..koowooook.",
+            "..kowoooook.",
+            "..koooooook.",
+            "..koooooook.",
+            "..koooooook.",
+            "...koooook..",
+            "....kkkkk...",
+            "............",
+            "............",
+        }, P);
+
+        public static Sprite Bowl => Glyph("bowl", new[]
+        {
+            "............",
+            "............",
+            "....wwww....",
+            "..wwwwwwww..",
+            ".kkkkkkkkkk.",
+            ".knnnnnnnnk.",
+            "..knnnnnnk..",
+            "...knnnnk...",
+            "....kkkk....",
+            "............",
+            "............",
+            "............",
+        }, P);
+
+        public static Sprite Flower => Glyph("flower", new[]
+        {
+            "............",
+            ".....rr.....",
+            "....rrrr....",
+            "..rr.rr.rr..",
+            ".rrrryyrrrr.",
+            ".rrrryyrrrr.",
+            "..rr.rr.rr..",
+            "....rrrr....",
+            ".....rr.....",
+            ".....gg.....",
+            "....gg......",
+            "............",
+        }, P);
+
+        public static Sprite SunSmall => Glyph("sunsmall", new[]
+        {
+            "............",
+            ".y...y...y..",
+            "..y..y..y...",
+            "....yyy.....",
+            "...yyyyy....",
+            "yyyyyoyyyyy.",
+            "...yyyyy....",
+            "....yyy.....",
+            "..y..y..y...",
+            ".y...y...y..",
+            "............",
+            "............",
+        }, P);
+
+        public static Sprite Leaf => Glyph("leaf", new[]
+        {
+            "..........k.",
+            ".......kkkk.",
+            ".....kooook.",
+            "....koooook.",
+            "...kooooook.",
+            "..koooonook.",
+            "..kooonook..",
+            "..koonook...",
+            "..konook....",
+            "..knook.....",
+            ".knkk.......",
+            "kn..........",
+        }, P);
+
+        public static Sprite Season(Core.Season s) =>
+            s == Core.Season.Xuan ? Flower : s == Core.Season.Ha ? SunSmall : s == Core.Season.Thu ? Leaf : Snowflake;
+
+        public static Sprite ForRealm(Sim.Realm r, bool demonic = false) =>
+            Unit(demonic ? SpriteLibrary.Unit.CultivatorDemonic :
+                r >= Sim.Realm.HoaThan ? SpriteLibrary.Unit.CultivatorHT : r == Sim.Realm.NguyenAnh ? SpriteLibrary.Unit.CultivatorNA :
+                r == Sim.Realm.KetDan ? SpriteLibrary.Unit.CultivatorKD : r == Sim.Realm.TrucCo ? SpriteLibrary.Unit.CultivatorTC : SpriteLibrary.Unit.CultivatorLK);
+
+        // A cultivator's figure by realm (or the demonic one), for cards and lists.
+        public static Sprite Cultivator(Sim.Cultivator c) => ForRealm(c.Realm, c.Demonic);
+
+        public static Sprite Person => Unit(SpriteLibrary.Unit.Villager0);
+
+        // The picture for a line of news: by its effect first (what happened), then by its kind.
+        public static Sprite ForEvent(Sim.EventKind kind, Sim.Fx fx)
+        {
+            switch (fx)
+            {
+                case Sim.Fx.Quake: return Quake;
+                case Sim.Fx.Eruption: return Volcano;
+                case Sim.Fx.Splash: return Wave;
+                case Sim.Fx.Miasma: return Skull;
+                case Sim.Fx.Stampede: return Paw;
+                case Sim.Fx.Rain: return RainCloud;
+                case Sim.Fx.Snow: return Snowflake;
+                case Sim.Fx.Storm: return Storm;
+                case Sim.Fx.Tribulation: return Tribulation;
+            }
+            switch (kind)
+            {
+                case Sim.EventKind.Breakthrough: return Star;
+                case Sim.EventKind.Death: return Skull;
+                case Sim.EventKind.Tribulation: return Tribulation;
+                case Sim.EventKind.Divine: return Bolt;
+                case Sim.EventKind.Legend: return Book;
+                case Sim.EventKind.Calamity: return Eclipse;
+                case Sim.EventKind.Disaster: return Wave;
+                case Sim.EventKind.War:
+                case Sim.EventKind.Battle:
+                case Sim.EventKind.Duel:
+                case Sim.EventKind.Vendetta: return Sword;
+                case Sim.EventKind.Destruction: return Wrath;
+                case Sim.EventKind.Founding:
+                case Sim.EventKind.Schism:
+                case Sim.EventKind.Succession:
+                case Sim.EventKind.Alliance:
+                case Sim.EventKind.Peace:
+                case Sim.EventKind.Patronage: return Banner;
+                case Sim.EventKind.Awakening: return Seed;
+                case Sim.EventKind.Fortune: return Gem;
+                default: return Scroll;
+            }
+        }
+
+        public static Sprite Dice => Glyph("dice", new[]
+        {
+            "............",
+            ".kkkkkkkkkk.",
+            ".kwwwwwwwwk.",
+            ".kwkwwwwkwk.",
+            ".kwwwwwwwwk.",
+            ".kwwwkkwwwk.",
+            ".kwwwkkwwwk.",
+            ".kwwwwwwwwk.",
+            ".kwkwwwwkwk.",
+            ".kwwwwwwwwk.",
+            ".kkkkkkkkkk.",
+            "............",
+        }, P);
+
+        // Crosshair: the camera follows this one.
+        public static Sprite Target => Glyph("target", new[]
+        {
+            ".....kk.....",
+            "...kkwwkk...",
+            "..kw.kk.wk..",
+            ".kw..kk..wk.",
+            ".k...kk...k.",
+            "kwkkk..kkkwk",
+            "kwkkk..kkkwk",
+            ".k...kk...k.",
+            ".kw..kk..wk.",
+            "..kw.kk.wk..",
+            "...kkwwkk...",
+            ".....kk.....",
+        }, P);
+
+        // Bookmark ribbon: on the watch list.
+        public static Sprite Bookmark => Glyph("bookmark", new[]
+        {
+            "..kkkkkkkk..",
+            "..kyyyyyyk..",
+            "..kyyyyyyk..",
+            "..kyywwyyk..",
+            "..kyyyyyyk..",
+            "..kyyyyyyk..",
+            "..kyyyyyyk..",
+            "..kyyyyyyk..",
+            "..kyykkyyk..",
+            "..kyk..kyk..",
+            "..kk....kk..",
+            "............",
+        }, P);
+
+        // Name tags over the map.
+        public static Sprite Tag => Glyph("tag", new[]
+        {
+            "............",
+            "..kkkkkkkk..",
+            ".kwwwwwwwwk.",
+            "kwwkkkkkkwwk",
+            "kwwwwwwwwwwk",
+            "kwwkkkkwwwwk",
+            ".kwwwwwwwwk.",
+            "..kkkkkkkk..",
+            ".....kk.....",
+            ".....k......",
+            "............",
+            "............",
+        }, P);
+
+        // Circular arrow: back to how it was.
+        public static Sprite Undo => Glyph("undo", new[]
+        {
+            "............",
+            "...kwwwwk...",
+            "..kwkkkkwk..",
+            ".kwk....kwk.",
+            "kwk......kwk",
+            "kwk......kwk",
+            "kwk......kwk",
+            ".k......kwk.",
+            "......kwwk..",
+            "....kwwwk...",
+            "....kwwk....",
+            ".....kk.....",
+        }, P);
+
         public static Sprite Pause => Glyph("pause", new[] { "............", "..kkk..kkk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kwk..kwk..", "..kkk..kkk..", "............" }, P);
         public static Sprite Play1 => Glyph("play1", new[] { "............", "...kk.......", "...kwk......", "...kwwk.....", "...kwwwk....", "...kwwwk....", "...kwwk.....", "...kwk......", "...kk.......", "............" }, P);
         public static Sprite Play2 => Glyph("play2", new[] { "............", ".kk...kk....", ".kwk..kwk...", ".kwwk.kwwk..", ".kwwwkkwwwk.", ".kwwwkkwwwk.", ".kwwk.kwwk..", ".kwk..kwk...", ".kk...kk....", "............" }, P);
