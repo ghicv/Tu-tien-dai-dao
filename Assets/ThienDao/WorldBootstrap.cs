@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ThienDao.Player;
 using ThienDao.Render;
 using ThienDao.Sim;
@@ -31,6 +32,8 @@ namespace ThienDao
         Simulation _sim;
         int _speedBeforePause = 1;
         Rect _timeRect;
+        Rect _sidePanelRect;
+        readonly List<Cultivator> _ranking = new List<Cultivator>();
         WorldRenderer _renderer;
         UnitRenderer _units;
         CameraController _cam;
@@ -80,6 +83,9 @@ namespace ThienDao
             if (string.IsNullOrWhiteSpace(seedText)) seedText = "0";
             var sw = System.Diagnostics.Stopwatch.StartNew();
             _world = MapGenerator.Generate(seedText.Trim());
+            _selected = null;
+            _selectedSettlement = null;
+            _follow = false;
             int speed = _sim?.SpeedIndex ?? 1;
             _sim = new Simulation(_world) { SpeedIndex = speed };
             _genMs = (float)sw.Elapsed.TotalMilliseconds;
@@ -113,7 +119,8 @@ namespace ThienDao
             if (mouse == null) return;
             Vector2 mp = mouse.position.ReadValue();
             var gui = new Vector2(mp.x / _uiScale, (Screen.height - mp.y) / _uiScale);
-            _pointerOverUI = _showUI && (_panelRect.Contains(gui) || _timeRect.Contains(gui));
+            _pointerOverUI = _showUI && (_panelRect.Contains(gui) || _timeRect.Contains(gui) || _sidePanelRect.Contains(gui) ||
+                                         (HasSelection && _popupRect.Contains(gui)));
 
             Vector3 wp = _cam.Cam.ScreenToWorldPoint(mp);
             _hoverX = Mathf.FloorToInt(wp.x);
@@ -121,6 +128,7 @@ namespace ThienDao
 
             HandleKeys();
 
+            if (!_pointerOverUI && mouse.leftButton.wasPressedThisFrame && _brush.Tool == BrushTool.Inspect) Select(wp.x, wp.y);
             if (!_pointerOverUI && mouse.leftButton.isPressed)
                 _brush.Apply(_hoverX, _hoverY, mouse.leftButton.wasPressedThisFrame, Time.unscaledDeltaTime);
 
@@ -128,9 +136,122 @@ namespace ThienDao
             UpdateCursor();
         }
 
+        // ---------------------------------------------------------------- selection popup
+
+        Cultivator _selected;
+        Settlement _selectedSettlement;
+        bool _follow;
+        Rect _popupRect = new Rect(0, 0, 360, 10);
+        readonly List<string> _selectedEvents = new List<string>();
+
+        bool HasSelection => _selected != null || _selectedSettlement != null;
+
+        void Select(float x, float y)
+        {
+            _follow = false;
+            _selected = _sim.Cultivation.FindShownNear(x, y, 1.5f);
+            _selectedSettlement = _selected == null && _world.InBounds((int)x, (int)y) ? _sim.Settlements.Owning(_world.Idx((int)x, (int)y)) : null;
+            if (!HasSelection) return;
+            float px = Mathf.Clamp(Screen.width / _uiScale - 360f - 360f, 320f, 99999f);
+            _popupRect = new Rect(px, 130f, 360f, 10f);
+        }
+
+        void FollowSelection()
+        {
+            if (!_follow || _selected == null) return;
+            var e = _sim.Entities;
+            Vector2 target = _sim.Cultivation.IsShownOnMap(_selected)
+                ? new Vector2(e.X[_selected.Entity], e.Y[_selected.Entity])
+                : new Vector2(_selected.HomeX, _selected.HomeY);
+            var t = _cam.transform;
+            var p = Vector2.Lerp(t.position, target, 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime));
+            t.position = new Vector3(p.x, p.y, t.position.z);
+        }
+
+        void DrawPopup(int id)
+        {
+            if (_selected != null) DrawCultivatorPopup(_selected);
+            else if (_selectedSettlement != null) DrawSettlementPopup(_selectedSettlement);
+            GUILayout.BeginHorizontal();
+            if (_selected != null && GUILayout.Button(_follow ? "Bỏ theo dõi" : "Theo dõi")) _follow = !_follow;
+            if (GUILayout.Button("Đóng"))
+            {
+                _selected = null;
+                _selectedSettlement = null;
+                _follow = false;
+            }
+            GUILayout.EndHorizontal();
+            GUI.DragWindow();
+        }
+
+        void DrawCultivatorPopup(Cultivator c)
+        {
+            long tick = _sim.Clock.Tick;
+            GUILayout.Label($"{c.Title}{(c.Demonic ? "  ·  MA TU" : "")}", _title);
+            GUILayout.Label(c.SectId >= 0 ? $"{_sim.Cultivation.Role(c)} · {_sim.Cultivation.SectName(c)}" : _sim.Cultivation.Role(c));
+            if (!c.Alive)
+            {
+                GUILayout.Label("Đã vẫn lạc.");
+            }
+            else
+            {
+                float need = Realms.Need(c.Realm, c.Stage);
+                GUILayout.Label($"Cảnh giới: {c.RealmText}");
+                ProgressBar(Mathf.Clamp01(c.Progress / need), new Color(0.45f, 0.85f, 1f));
+                GUILayout.Label($"Tuổi: {c.AgeYears(tick):0} / thọ nguyên {c.LifespanYears} năm");
+                ProgressBar(Mathf.Clamp01(c.AgeYears(tick) / c.LifespanYears), new Color(1f, 0.6f, 0.4f));
+                GUILayout.Label($"Linh căn: {SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}) · tốc độ ×{SpiritRoots.SpeedMultiplier(c.Roots):0.0}");
+                GUILayout.Label($"Ngộ tính {c.Comprehension * 100f:0} · Tâm cảnh {c.DaoHeart * 100f:0} · Khí vận {c.Luck * 100f:0}");
+                GUILayout.Label($"Hiện tại: {c.Activity}" + (c.FailedAttempts > 0 ? $" · đột phá thất bại {c.FailedAttempts} lần" : ""));
+                GUILayout.Label($"Linh khí nơi ở: {_sim.Qi.SampleQi((int)c.HomeX, (int)c.HomeY):0} (cần {Realms.RequiredQi[(int)c.Realm]:0})");
+            }
+
+            _selectedEvents.Clear();
+            var events = _sim.Events.Recent;
+            for (int k = events.Count - 1; k >= 0 && _selectedEvents.Count < 6; k--)
+                if (events[k].Text.Contains(c.Name)) _selectedEvents.Add($"Năm {events[k].Tick / Core.SimClock.DaysPerYear + 1}: {events[k].Text}");
+            if (_selectedEvents.Count > 0)
+            {
+                GUILayout.Label("Sự kiện gần đây:");
+                foreach (var line in _selectedEvents) GUILayout.Label("• " + line);
+            }
+        }
+
+        void DrawSettlementPopup(Settlement s)
+        {
+            int pop = Mathf.Max(1, s.Population);
+            GUILayout.Label(s.Name, _title);
+            GUILayout.Label(s.Alive
+                ? $"{s.Population} người · {s.Houses.Count} nhà · {s.Farms.Count} ô ruộng\nLương thực {s.Food / pop:0.0} tháng · năm qua sinh {s.BirthsLastYear}, mất {s.DeathsLastYear}"
+                : "Đã bị bỏ hoang.");
+            GUILayout.Label($"Lập năm {s.FoundedTick / Core.SimClock.DaysPerYear + 1}" +
+                            (s.ParentId >= 0 ? $" bởi di dân từ {_sim.Settlements.All[s.ParentId].Name}" : ""));
+            if (!s.Sect) return;
+            var count = new int[(int)Realm.Count];
+            int members = 0;
+            foreach (var c in _sim.Cultivation.All)
+            {
+                if (!c.Alive || c.SectId != s.Id) continue;
+                count[(int)c.Realm]++;
+                members++;
+            }
+            GUILayout.Label($"Tông môn có {members} tu sĩ: Luyện Khí {count[1]} · Trúc Cơ {count[2]} · Kết Đan {count[3]} · Nguyên Anh {count[4]} · Hóa Thần {count[5]}");
+        }
+
+        static void ProgressBar(float value, Color fill)
+        {
+            var r = GUILayoutUtility.GetRect(300f, 10f, GUILayout.ExpandWidth(true));
+            GUI.Box(r, GUIContent.none);
+            var prev = GUI.color;
+            GUI.color = fill;
+            GUI.DrawTexture(new Rect(r.x + 1f, r.y + 1f, (r.width - 2f) * value, r.height - 2f), Texture2D.whiteTexture);
+            GUI.color = prev;
+        }
+
         void LateUpdate()
         {
             if (_world == null) return;
+            FollowSelection();
             _renderer.SetTint(SeasonTint(_sim.Clock.YearFraction));
             _renderer.Tick(_cam.Cam);
             _units.Tick(_cam.Cam, _cam.PixelsPerCell);
@@ -223,12 +344,16 @@ namespace ThienDao
             {
                 _panelRect = Rect.zero;
                 _timeRect = Rect.zero;
+                _sidePanelRect = Rect.zero;
                 GUI.Label(new Rect(10, 10, 300, 24), "F1: hiện giao diện");
                 return;
             }
 
             DrawVillageLabels();
+            DrawCultivatorLabels();
             DrawTimeBar();
+            DrawSidePanel();
+            if (HasSelection) _popupRect = GUILayout.Window(77, _popupRect, DrawPopup, "Thông tin", GUILayout.Width(360f));
 
             var e = Event.current;
             if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) &&
@@ -241,7 +366,7 @@ namespace ThienDao
 
             _panelRect = new Rect(10, 10, 300, Screen.height / _uiScale - 20);
             GUILayout.BeginArea(_panelRect, GUI.skin.box);
-            GUILayout.Label("THIÊN ĐẠO  ·  M2 Sinh mệnh", _title);
+            GUILayout.Label("THIÊN ĐẠO  ·  M3 Tu tiên", _title);
 
             GUILayout.Label("Seed (chữ hoặc số):");
             GUI.SetNextControlName("seed");
@@ -280,8 +405,9 @@ namespace ThienDao
 
         void DrawTimeBar()
         {
-            const float w = 560f, h = 84f;
-            float x = Mathf.Max(320f, (Screen.width / _uiScale - w) * 0.5f);
+            const float h = 104f;
+            float w = Mathf.Clamp(Screen.width / _uiScale - 320f - 360f, 380f, 600f); // between the two side panels
+            float x = 320f;
             _timeRect = new Rect(x, 10, w, h);
             GUILayout.BeginArea(_timeRect, GUI.skin.box);
             GUILayout.Label(_sim.Clock.DateText, _title);
@@ -294,7 +420,64 @@ namespace ThienDao
             var st = _sim.Settlements;
             GUILayout.Label($"Dân: {st.TotalPopulation:N0} · {st.AliveCount} làng · {st.MigrantGroups} đoàn di dân   |   " +
                             $"Hươu {wild.Total(Species.Deer):N0} · Thỏ {wild.Total(Species.Rabbit):N0} · Sói {wild.Total(Species.Wolf):N0}");
+            var cr = _sim.Cultivation.CountByRealm;
+            GUILayout.Label($"Tu sĩ: {_sim.Cultivation.AliveCount} · Luyện Khí {cr[(int)Realm.LuyenKhi]} · Trúc Cơ {cr[(int)Realm.TrucCo]} · " +
+                            $"Kết Đan {cr[(int)Realm.KetDan]} · Nguyên Anh {cr[(int)Realm.NguyenAnh]} · Hóa Thần {cr[(int)Realm.HoaThan]}");
             GUILayout.EndArea();
+        }
+
+        void DrawSidePanel()
+        {
+            const float w = 340f;
+            float h = Mathf.Min(560f, Screen.height / _uiScale - 20f);
+            _sidePanelRect = new Rect(Screen.width / _uiScale - w - 10f, 10f, w, h);
+            GUILayout.BeginArea(_sidePanelRect, GUI.skin.box);
+
+            GUILayout.Label("BẢNG CƯỜNG GIẢ", _title);
+            _ranking.Clear();
+            foreach (var c in _sim.Cultivation.All)
+                if (c.Alive) _ranking.Add(c);
+            _ranking.Sort((a, b) => b.Rank.CompareTo(a.Rank));
+            for (int k = 0; k < Mathf.Min(6, _ranking.Count); k++)
+            {
+                var c = _ranking[k];
+                string where = c.SectId >= 0 ? $"{_sim.Cultivation.Role(c)} {_sim.Cultivation.SectName(c)}" : _sim.Cultivation.Role(c);
+                GUILayout.Label($"{k + 1}. {c.Title} · {c.RealmText}{(c.Demonic ? " (ma tu)" : "")}\n    {where} · {c.AgeYears(_sim.Clock.Tick):0}/{c.LifespanYears} tuổi");
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("SỰ KIỆN", _title);
+            var events = _sim.Events.Recent;
+            int shown = 0;
+            for (int k = events.Count - 1; k >= 0 && shown < 8; k--)
+            {
+                var ev = events[k];
+                if (ev.Importance < 1) continue;
+                GUILayout.Label($"Năm {ev.Tick / Core.SimClock.DaysPerYear + 1}: {ev.Text}");
+                shown++;
+            }
+            GUILayout.EndArea();
+        }
+
+        void DrawCultivatorLabels()
+        {
+            if (_cam.PixelsPerCell < 3f) return;
+            var cam = _cam.Cam;
+            var e = _sim.Entities;
+            foreach (var c in _sim.Cultivation.All)
+            {
+                if (!c.Alive || c.Realm < Realm.KetDan) continue;
+                Vector3 sp = cam.WorldToScreenPoint(new Vector3(e.X[c.Entity], e.Y[c.Entity] + 2.6f, 0f));
+                if (sp.x < 0 || sp.y < 0 || sp.x > Screen.width || sp.y > Screen.height) continue;
+                var r = new Rect(sp.x / _uiScale - 100f, (Screen.height - sp.y) / _uiScale - 10f, 200f, 20f);
+                string text = $"{c.Title} · {Realms.Names[(int)c.Realm]}";
+                var prev = GUI.color;
+                GUI.color = Color.black;
+                GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), text, _label);
+                GUI.color = c.Demonic ? new Color(1f, 0.5f, 0.5f) : new Color(1f, 0.92f, 0.6f);
+                GUI.Label(r, text, _label);
+                GUI.color = prev;
+            }
         }
 
         void DrawVillageLabels()
@@ -348,6 +531,10 @@ namespace ThienDao
                     $"Năm qua: sinh {s.BirthsLastYear} · mất {s.DeathsLastYear} · lập năm {s.FoundedTick / Core.SimClock.DaysPerYear + 1}");
             }
 
+            var shown = _sim.Cultivation.FindShownNear(_hoverX + 0.5f, _hoverY + 0.5f, 1.5f);
+            if (shown != null)
+                GUILayout.Label($"{shown.Title} · {shown.RealmText} · {shown.Activity}  (click để xem)");
+
             var wild = _sim.Wildlife;
             int region = wild.RegionOf(_hoverX, _hoverY);
             GUILayout.Label($"Thú hoang trong vùng: Hươu {wild.At(Species.Deer, region):0} · Thỏ {wild.At(Species.Rabbit, region):0} · Sói {wild.At(Species.Wolf, region):0}");
@@ -356,8 +543,11 @@ namespace ThienDao
             if (c >= 0)
             {
                 var e = _sim.Entities;
-                float days = _sim.Clock.Tick - e.BirthTick[c];
-                GUILayout.Label($"{SpeciesInfo.Names[(int)e.Species[c]]}: đã đi {days:0} ngày");
+                var cu = _sim.Cultivation.ForEntity(c);
+                if (cu == null)
+                {
+                    GUILayout.Label($"{SpeciesInfo.Names[(int)e.Species[c]]}: đã đi {_sim.Clock.Tick - e.BirthTick[c]:0} ngày");
+                }
             }
         }
     }

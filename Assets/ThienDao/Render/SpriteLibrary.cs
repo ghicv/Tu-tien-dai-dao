@@ -91,7 +91,12 @@ namespace ThienDao.Render
 
         // ---------------------------------------------------------------- units (moving things)
 
-        public enum Unit { Deer, Rabbit, Wolf, Villager0, Villager1, Villager2, Villager3, Migrants, Count }
+        public enum Unit
+        {
+            Deer, Rabbit, Wolf, Villager0, Villager1, Villager2, Villager3, Migrants,
+            CultivatorLK, CultivatorTC, CultivatorKD, CultivatorNA, CultivatorHT, CultivatorDemonic, FlyingSword, Aura,
+            Count
+        }
 
         public const int UnitFrames = 2;
         const int UnitSlot = 16;
@@ -147,6 +152,14 @@ namespace ThienDao.Render
                 list[(int)Unit.Villager2 * UnitFrames + f] = Villager(f, C(70, 150, 70));
                 list[(int)Unit.Villager3 * UnitFrames + f] = Villager(f, C(170, 120, 60));
                 list[(int)Unit.Migrants * UnitFrames + f] = MigrantCart(f);
+                list[(int)Unit.CultivatorLK * UnitFrames + f] = Cultivator(f, C(120, 150, 185), C(232, 232, 242));
+                list[(int)Unit.CultivatorTC * UnitFrames + f] = Cultivator(f, C(70, 165, 115), C(232, 242, 222));
+                list[(int)Unit.CultivatorKD * UnitFrames + f] = Cultivator(f, C(226, 180, 70), C(252, 242, 204));
+                list[(int)Unit.CultivatorNA * UnitFrames + f] = Cultivator(f, C(150, 95, 205), C(242, 222, 255));
+                list[(int)Unit.CultivatorHT * UnitFrames + f] = Cultivator(f, C(234, 236, 244), C(170, 196, 240));
+                list[(int)Unit.CultivatorDemonic * UnitFrames + f] = Cultivator(f, C(70, 26, 36), C(214, 40, 52));
+                list[(int)Unit.FlyingSword * UnitFrames + f] = FlyingSword(f);
+                list[(int)Unit.Aura * UnitFrames + f] = Aura(f);
             }
             _units = list;
             if (_unitUv == null) _ = UnitAtlas;
@@ -244,6 +257,68 @@ namespace ThienDao.Render
             cv.Outline(0.45f);
             cv.Shadow(3.5f, 0.7f, 2.6f, 0.9f);
             return cv.ToSprite(0, 0, shirt);
+        }
+
+        // Long-sleeved đạo bào, belt, topknot with hairpin: reads differently from a villager's tunic and trousers.
+        static PixelSprite Cultivator(int frame, Color32 robe, Color32 trim)
+        {
+            var cv = new Canvas(9, 13);
+            var robeDark = Shade(robe, 0.78f);
+            var skin = C(240, 200, 158);
+            var hair = C(36, 28, 30);
+            cv.Rect(2, 1, 6, 2, robe);                    // flared hem
+            cv.Set(frame == 0 ? 2 : 6, 1, robeDark);       // stride
+            cv.Rect(3, 3, 5, 7, robe);                     // body
+            cv.Rect(5, 3, 5, 7, robeDark);
+            cv.Rect(2, 4, 2, 6, robe);                     // hanging sleeves
+            cv.Rect(6, 4, 6, 6, robeDark);
+            cv.Rect(3, 4, 5, 4, trim);                     // belt
+            cv.Set(4, 7, trim);                            // collar
+            cv.Rect(3, 8, 5, 9, skin);                     // face
+            cv.Set(5, 9, C(30, 24, 24));                   // eye
+            cv.Rect(3, 10, 5, 10, hair);
+            cv.Set(3, 9, hair);
+            cv.Set(4, 11, hair);                           // topknot
+            cv.Set(5, 11, C(236, 196, 80));                // hairpin
+            cv.Outline(0.45f);
+            cv.Shadow(4.5f, 0.8f, 2.6f, 0.9f);
+            return cv.ToSprite(0, 0, robe);
+        }
+
+        static PixelSprite FlyingSword(int frame)
+        {
+            var cv = new Canvas(14, 5);
+            var blade = C(206, 228, 246);
+            var gold = C(224, 176, 72);
+            cv.Rect(3, 2, 12, 2, blade);
+            cv.Set(13, 2, C(240, 250, 255));
+            cv.Rect(2, 1, 2, 3, gold);
+            cv.Rect(0, 2, 1, 2, Shade(gold, 0.8f));
+            cv.Outline(0.5f);
+            // Sword light flickers between frames.
+            var glow = new Color32(130, 224, 255, (byte)(frame == 0 ? 120 : 70));
+            for (int x = 4; x <= 11; x++)
+            {
+                if (cv.P[1 * cv.W + x].a == 0) cv.Set(x, 1, glow);
+                if (cv.P[3 * cv.W + x].a == 0) cv.Set(x, 3, glow);
+            }
+            return cv.ToSprite(0, 0, blade);
+        }
+
+        // Soft halo; tinted per realm through vertex colour.
+        static PixelSprite Aura(int frame)
+        {
+            var cv = new Canvas(16, 16);
+            float radius = frame == 0 ? 7.5f : 7f;
+            for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+            {
+                float dx = x + 0.5f - 8f, dy = y + 0.5f - 8f;
+                float d = Mathf.Sqrt(dx * dx + dy * dy) / radius;
+                if (d >= 1f) continue;
+                cv.Set(x, y, new Color32(255, 255, 255, (byte)(110f * Mathf.Pow(1f - d, 1.5f))));
+            }
+            return cv.ToSprite(0, 0, new Color32(255, 255, 255, 255));
         }
 
         static PixelSprite MigrantCart(int frame)

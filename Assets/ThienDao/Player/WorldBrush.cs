@@ -28,7 +28,10 @@ namespace ThienDao.Player
         SpawnDeer,
         SpawnRabbit,
         SpawnWolf,
-        FoundVillage
+        FoundVillage,
+        GrantRoot,
+        Bless,
+        Smite
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -38,7 +41,8 @@ namespace ThienDao.Player
         {
             "Xem", "Cỏ", "Cát", "Sa mạc", "Nước nông", "Biển sâu", "Đồi", "Núi", "Tuyết",
             "Trồng cây", "Nhà dân", "Tông môn", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
-            "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng"
+            "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
+            "Ban linh căn", "Ban cơ duyên", "Thiên phạt"
         };
 
         readonly Simulation _sim;
@@ -72,6 +76,12 @@ namespace ThienDao.Player
             if (Tool == BrushTool.FoundVillage)
             {
                 if (pressedThisFrame) _sim.Enqueue(new FoundVillageCommand(cx, cy, 24, (byte)_rng.Range(0, 4)));
+                return;
+            }
+            if (Tool == BrushTool.GrantRoot || Tool == BrushTool.Bless || Tool == BrushTool.Smite)
+            {
+                var act = Tool == BrushTool.GrantRoot ? DivineAct.GrantRoot : Tool == BrushTool.Bless ? DivineAct.Bless : DivineAct.Smite;
+                if (pressedThisFrame) _sim.Enqueue(new DivineActCommand(act, cx, cy));
                 return;
             }
             if (Tool == BrushTool.SpawnDeer || Tool == BrushTool.SpawnRabbit || Tool == BrushTool.SpawnWolf)

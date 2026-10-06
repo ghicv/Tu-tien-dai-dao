@@ -216,6 +216,11 @@ Mỗi lần "suy nghĩ" (không mỗi tick, chỉ khi xong mục tiêu hoặc m�
 | 9 | Phi thăng | – | – | Độ Kiếp thành công → rời thế giới, để lại truyền thừa |
 
 - Bản đầu (MVP) chỉ cần tới **Nguyên Anh**; từ Hóa Thần trở lên có thể để thế giới "nhân giới" có trần linh khí thấp khiến rất hiếm người đạt tới, giống truyện.
+- **Đã cài (M3), thứ bậc theo truyện:**
+  - Luyện Khí là đệ tử ngoại môn, Trúc Cơ là đệ tử nội môn, Kết Đan là trưởng lão hoặc tông chủ.
+  - Nguyên Anh là bá chủ một phương. Hóa Thần là truyền thuyết: tỉ lệ đột phá 0,3% và cần linh khí từ 8.000.
+  - Tỉ lệ đột phá cơ bản: Trúc Cơ 10% (+25% nếu có Trúc Cơ Đan), Kết Đan 4%, Nguyên Anh 1,5% kèm thiên kiếp.
+  - Chi tiết và số liệu kiểm chứng: `Docs/Devlog/04-m3-tu-tien.md`.
 - Mỗi cấp tăng sức mạnh theo cấp số (vd ×4–×6). Chênh 1 đại cảnh giới gần như không thể thắng, trừ pháp bảo/thần thông/hội đồng.
 
 ### 4.2 Linh căn
@@ -479,7 +484,7 @@ Tham khảo 3 ảnh: địa hình là khối ô vuông (viền bờ biển bậc
 | **M0 — Thế giới tĩnh** ✅ | MapGen từ seed, terrain texture, camera pan/zoom, brush địa hình, overlay linh khí | vẽ & sửa map 1024² mượt, đặt thử vài nhà/cây nhiều cell |
 | **M1 — Thời gian & linh khí** ✅ | Clock, tick, mùa, linh mạch, khuếch tán linh khí, Command queue | linh khí lan, cạn, hồi |
 | **M2 — Sinh mệnh cơ bản** ✅ | EntityStore, phàm nhân + động vật, ăn/di chuyển/sinh/chết, làng dạng quần thể, sprite instancing | dân số tự tăng/giảm theo tài nguyên |
-| **M3 — Tu tiên lõi** | linh căn, Luyện Khí → Nguyên Anh, tu luyện hút linh khí, đột phá, tẩu hỏa, thọ nguyên | tu sĩ tự tìm phúc địa, có người đột phá/chết già |
+| **M3 — Tu tiên lõi** ✅ | linh căn, Luyện Khí → Nguyên Anh, tu luyện hút linh khí, đột phá, tẩu hỏa, thọ nguyên | tu sĩ tự tìm phúc địa, có người đột phá/chết già |
 | **M4 — Thế lực** | Faction chung, làng → thành, tông môn lập/tuyển đệ tử, ngoại giao opinion | tông môn tự sinh & tranh linh mạch |
 | **M5 — Xung đột & lịch sử** | chiến đấu cá nhân, trận trừu tượng, HistoryLog, biên niên sử UI, StoryDetector v1 | đọc được "câu chuyện" sau 1.000 năm |
 | **M6 — Thiên Đạo** | đủ các tab quyền năng, thiên kiếp, thiên tai | vòng CREATE → INTERVENE → CONSEQUENCE hoàn chỉnh |

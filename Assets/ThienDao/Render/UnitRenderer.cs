@@ -125,6 +125,27 @@ namespace ThienDao.Render
             }
         }
 
+        static readonly Color32[] AuraTint =
+        {
+            default, default, default,
+            new Color32(255, 214, 110, 255), // Kết Đan: gold
+            new Color32(200, 140, 255, 255), // Nguyên Anh: violet
+            new Color32(220, 240, 255, 255), // Hóa Thần: silver
+        };
+
+        static Unit CultivatorLook(Cultivator c)
+        {
+            if (c.Demonic) return Unit.CultivatorDemonic;
+            switch (c.Realm)
+            {
+                case Realm.TrucCo: return Unit.CultivatorTC;
+                case Realm.KetDan: return Unit.CultivatorKD;
+                case Realm.NguyenAnh: return Unit.CultivatorNA;
+                case Realm.HoaThan: return Unit.CultivatorHT;
+                default: return Unit.CultivatorLK;
+            }
+        }
+
         void DrawCreatures(Rect view)
         {
             var e = _sim.Entities;
@@ -140,7 +161,25 @@ namespace ThienDao.Render
                 bool moving = e.X[id] != e.PrevX[id] || e.Y[id] != e.PrevY[id];
                 bool left = e.TX[id] < e.X[id] - 0.01f;
                 int frame = moving && !_sim.Paused ? ((int)(time * 6f) + id) & 1 : 0;
-                AddQuad(UnitFor(s), frame, x, y, left);
+
+                if (s != Species.Cultivator)
+                {
+                    AddQuad(UnitFor(s), frame, x, y, left);
+                    continue;
+                }
+
+                var c = _sim.Cultivation.ForEntity(id);
+                if (c == null || !_sim.Cultivation.IsShownOnMap(c)) continue;
+                bool flying = e.Flying[id] && moving;
+                // Hover above the ground while flying, with a gentle bob.
+                float lift = flying ? 0.7f + Mathf.Sin(time * 3f + id) * 0.08f : 0f;
+                if (c.Realm >= Realm.KetDan)
+                {
+                    var tint = c.Demonic ? new Color32(255, 70, 70, 255) : AuraTint[(int)c.Realm];
+                    AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + lift + 0.7f, tint);
+                }
+                if (flying) AddQuadCentered(Unit.FlyingSword, ((int)(time * 8f) + id) & 1, x, y + lift - 0.1f, White, left);
+                AddQuad(CultivatorLook(c), flying ? 0 : frame, x, y + lift, left);
             }
         }
 
@@ -163,13 +202,12 @@ namespace ThienDao.Render
                     list = new List<Villager>();
                     _villagers[s.Id] = list;
                 }
-                int want = Mathf.Clamp(s.Population / 5, 1, 20);
-                while (list.Count > want) list.RemoveAt(list.Count - 1);
-                while (list.Count < want)
-                {
-                    var p = RandomSpot(s, objects);
-                    list.Add(new Villager { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 2f, Look = (Unit)((int)Unit.Villager0 + _rand.Next(4)) });
-                }
+                // Wanted stand-ins: mortals for the population; at a sect also a few disciples and elders who are home.
+                _wantLooks.Clear();
+                int mortals = Mathf.Clamp(s.Population / 5, 1, 20);
+                for (int k = 0; k < mortals; k++) _wantLooks.Add(Unit.Villager0);
+                if (s.Sect) AddSectStandIns(s.Id);
+                SyncStandIns(list, s, objects);
 
                 for (int k = 0; k < list.Count; k++)
                 {
@@ -179,7 +217,7 @@ namespace ThienDao.Render
                     if (v.Wait > 0f) v.Wait -= dt;
                     else if (d < 0.05f)
                     {
-                        var p = RandomSpot(s, objects);
+                        var p = RandomSpot(s, objects, v.Look);
                         v.TX = p.x;
                         v.TY = p.y;
                         v.Wait = 0.5f + (float)_rand.NextDouble() * 2.5f;
@@ -198,6 +236,44 @@ namespace ThienDao.Render
                 }
             }
             foreach (int id in _staleVillages) _villagers.Remove(id);
+        }
+
+        readonly List<Unit> _wantLooks = new List<Unit>();
+        readonly List<Cultivator> _elders = new List<Cultivator>();
+
+        static bool IsVillagerLook(Unit u) => u >= Unit.Villager0 && u <= Unit.Villager3;
+
+        void AddSectStandIns(int sectId)
+        {
+            int disciples = 0;
+            _elders.Clear();
+            foreach (var c in _sim.Cultivation.All)
+            {
+                if (c.SectId != sectId || !_sim.Cultivation.IsAtHome(c)) continue;
+                if (c.Realm == Realm.LuyenKhi) disciples++;
+                else _elders.Add(c);
+            }
+            for (int k = 0; k < Mathf.Min(6, (disciples + 2) / 3); k++) _wantLooks.Add(Unit.CultivatorLK);
+            _elders.Sort((a, b) => b.Rank.CompareTo(a.Rank));
+            for (int k = 0; k < Mathf.Min(2, _elders.Count); k++) _wantLooks.Add(CultivatorLook(_elders[k]));
+        }
+
+        // Keep the stand-ins in step with what is wanted, reusing existing ones so they don't jump around.
+        void SyncStandIns(List<Villager> list, Settlement s, WorldObjects objects)
+        {
+            for (int k = list.Count - 1; k >= 0; k--)
+            {
+                var look = list[k].Look;
+                int idx = IsVillagerLook(look) ? _wantLooks.IndexOf(Unit.Villager0) : _wantLooks.IndexOf(look);
+                if (idx >= 0) _wantLooks.RemoveAt(idx);
+                else list.RemoveAt(k);
+            }
+            foreach (var want in _wantLooks)
+            {
+                var look = want == Unit.Villager0 ? (Unit)((int)Unit.Villager0 + _rand.Next(4)) : want;
+                var p = RandomSpot(s, objects, look);
+                list.Add(new Villager { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 2f, Look = look });
+            }
         }
 
         void DrawWildlife(Rect view)
@@ -291,8 +367,11 @@ namespace ThienDao.Render
         }
 
         // A house doorstep or a field cell of the settlement.
-        Vector2 RandomSpot(Settlement s, WorldObjects objects)
+        Vector2 RandomSpot(Settlement s, WorldObjects objects, Unit look)
         {
+            // Disciples and elders keep to the sect hall grounds; mortals go between fields and houses.
+            if (!IsVillagerLook(look))
+                return new Vector2(s.X + 0.5f + (float)(_rand.NextDouble() - 0.5) * 8f, s.Y - 1f + (float)(_rand.NextDouble() - 0.5) * 4f);
             if (s.Farms.Count > 0 && (_rand.NextDouble() < 0.6 || s.Houses.Count == 0))
             {
                 int cell = s.Farms[_rand.Next(s.Farms.Count)];
@@ -307,13 +386,21 @@ namespace ThienDao.Render
             return new Vector2(s.X + 0.5f, s.Y + 0.5f);
         }
 
-        void AddQuad(Unit unit, int frame, float x, float y, bool flip)
+        static readonly Color32 White = new Color32(255, 255, 255, 255);
+
+        // Feet at (x, y).
+        void AddQuad(Unit unit, int frame, float x, float y, bool flip) => AddQuadAt(unit, frame, x, y, flip, White, false);
+
+        void AddQuadCentered(Unit unit, int frame, float x, float y, Color32 color, bool flip = false) =>
+            AddQuadAt(unit, frame, x, y, flip, color, true);
+
+        void AddQuadAt(Unit unit, int frame, float x, float y, bool flip, Color32 color, bool centered)
         {
             if (_verts.Count >= MaxQuads * 4) return;
             var sp = SpriteLibrary.UnitSprite(unit, frame);
             var uv = SpriteLibrary.UnitUv(unit, frame);
             float w = sp.W / (float)WorldRenderer.CellPx, h = sp.H / (float)WorldRenderer.CellPx;
-            float x0 = x - w * 0.5f, y0 = y - 0.15f;
+            float x0 = x - w * 0.5f, y0 = centered ? y - h * 0.5f : y - 0.15f;
             _verts.Add(new Vector3(x0, y0, 0f));
             _verts.Add(new Vector3(x0, y0 + h, 0f));
             _verts.Add(new Vector3(x0 + w, y0 + h, 0f));
@@ -323,11 +410,10 @@ namespace ThienDao.Render
             _uvs.Add(new Vector2(u0, uv.yMax));
             _uvs.Add(new Vector2(u1, uv.yMax));
             _uvs.Add(new Vector2(u1, uv.yMin));
-            var white = new Color32(255, 255, 255, 255);
-            _colors.Add(white);
-            _colors.Add(white);
-            _colors.Add(white);
-            _colors.Add(white);
+            _colors.Add(color);
+            _colors.Add(color);
+            _colors.Add(color);
+            _colors.Add(color);
         }
     }
 }

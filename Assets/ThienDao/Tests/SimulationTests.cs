@@ -145,6 +145,51 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void SectsStartWithCultivators()
+        {
+            var sim = new Simulation(MapGenerator.Generate("tutien"));
+            int sects = 0;
+            foreach (var s in sim.Settlements.All)
+            {
+                if (!s.Sect) continue;
+                sects++;
+                int members = 0;
+                foreach (var c in sim.Cultivation.All)
+                    if (c.SectId == s.Id) members++;
+                Assert.GreaterOrEqual(members, 15, s.BaseName);
+                var master = sim.Cultivation.MasterOf(s.Id);
+                Assert.IsNotNull(master, s.BaseName);
+                Assert.GreaterOrEqual((int)master.Realm, (int)Realm.KetDan, "a sect is led by at least a Kết Đan master");
+            }
+            Assert.Greater(sects, 0);
+            Assert.LessOrEqual(sim.Cultivation.CountByRealm[(int)Realm.NguyenAnh], 1, "Nguyên Anh overlords are rare");
+        }
+
+        [Test]
+        public void CultivatorsBreakThroughAgeAndAwaken()
+        {
+            var sim = new Simulation(MapGenerator.Generate("tutien"));
+            Run(sim, SimClock.DaysPerYear * 60);
+            var n = sim.Events.CountByKind;
+            Assert.Greater(n[(int)EventKind.Breakthrough], 0, "someone should break through");
+            Assert.Greater(n[(int)EventKind.Death], 0, "someone should die");
+            Assert.Greater(n[(int)EventKind.Awakening], 0, "village children should awaken spirit roots");
+            Assert.Greater(sim.Cultivation.AliveCount, 0);
+        }
+
+        [Test]
+        public void CultivatorsDrawDownQiAroundTheirSect()
+        {
+            var sim = new Simulation(MapGenerator.Generate("tutien"));
+            Run(sim, SimClock.DaysPerYear * 5);
+            Settlement sect = null;
+            foreach (var s in sim.Settlements.All)
+                if (s.Sect) { sect = s; break; }
+            int bx = sect.X / QiSystem.Block, by = sect.Y / QiSystem.Block;
+            Assert.Less(sim.Qi.BlockQi(bx, by), sim.Qi.BlockCap(bx, by) * 0.98f);
+        }
+
+        [Test]
         public void CalendarRollsOver()
         {
             var clock = new SimClock();

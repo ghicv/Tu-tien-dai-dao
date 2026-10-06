@@ -1,0 +1,590 @@
+using System.Collections.Generic;
+using ThienDao.Core;
+using ThienDao.World;
+using UnityEngine;
+
+namespace ThienDao.Sim
+{
+    public enum Trip : byte { None, Relocate, Excursion, Return }
+    public enum Outing : byte { Sightseeing, Training, HerbHunting }
+
+    public sealed class Cultivator
+    {
+        public static readonly string[] OutingNames = { "đang du ngoạn", "đang lịch luyện", "đang tìm linh thảo" };
+
+        public int Index;
+        public string Name;
+        public long BirthTick;
+        public int Roots;           // SpiritRoots bitmask
+        public float Comprehension; // ngộ tính 0..1
+        public float Luck;          // khí vận 0..1
+        public float DaoHeart;      // tâm cảnh 0..1
+        public Realm Realm;
+        public int Stage;
+        public float Progress;
+        public int Entity;
+        public int SectId = -1;     // settlement id of the sect, -1 = tán tu
+        public bool Alive = true;
+        public bool Demonic;        // ma tu
+        public bool Travelling;
+        public bool Away;           // at an excursion destination
+        public Trip Trip;
+        public Outing Outing;
+        public long StayUntil;
+        public float HomeX, HomeY;  // sect hall or own cave
+        public int FailedAttempts;
+        public long LastAttemptTick = -100000;
+        public int BonusYears;      // lifespan gained from blessings
+
+        public float AgeYears(long tick) => (tick - BirthTick) / (float)SimClock.DaysPerYear;
+
+        public string Activity =>
+            Trip == Trip.Relocate ? "đang đi tìm động phủ mới" :
+            Trip == Trip.Return ? "đang trở về" :
+            Trip == Trip.Excursion || Away ? OutingNames[(int)Outing] : "đang bế quan";
+        public int LifespanYears => Realms.LifespanYears[(int)Realm] + BonusYears;
+        public string RealmText => Realms.Describe(Realm, Stage);
+
+        public string Title
+        {
+            get
+            {
+                string t = Realms.Titles[(int)Realm];
+                return t.Length > 0 ? $"{Name} {t}" : Name;
+            }
+        }
+
+        // Ordering key for the power ranking.
+        public float Rank => (int)Realm * 100f + Stage * 10f + Mathf.Min(9.9f, Progress / Mathf.Max(1f, Realms.Need(Realm, Stage)) * 10f);
+    }
+
+    // Tu sĩ: awakened from village children, cultivate by drawing qi from where they sit, break through,
+    // deviate, face tribulation, die of old age, and move toward richer qi.
+    public sealed class CultivationSystem
+    {
+        const float AwakenChance = 0.01f;     // share of 10-year-olds with a spirit root, before local qi bonus
+        const int SectRecruitRange = 260;
+        const float DesperateAge = 0.85f;     // share of lifespan after which they gamble on breakthroughs
+
+        readonly Simulation _sim;
+        readonly WorldData _w;
+        readonly EntityStore _e;
+
+        public readonly List<Cultivator> All = new List<Cultivator>();
+        public readonly int[] CountByRealm = new int[(int)Realm.Count];
+        public int AliveCount { get; private set; }
+
+        public CultivationSystem(Simulation sim)
+        {
+            _sim = sim;
+            _w = sim.World;
+            _e = sim.Entities;
+            SeedInitial();
+        }
+
+        public Cultivator ForEntity(int entity)
+        {
+            if (!_e.IsAlive(entity) || _e.Species[entity] != Species.Cultivator) return null;
+            int i = _e.Payload[entity];
+            return i >= 0 && i < All.Count ? All[i] : null;
+        }
+
+        public string SectName(Cultivator c) => c.SectId >= 0 ? _sim.Settlements.All[c.SectId].BaseName : "tán tu";
+
+        readonly Dictionary<int, Cultivator> _masters = new Dictionary<int, Cultivator>(); // sect id → tông chủ
+
+        public Cultivator MasterOf(int sectId) => _masters.TryGetValue(sectId, out var m) && m.Alive ? m : null;
+
+        // Tông chủ is the strongest living member; other Kết Đan+ are elders.
+        public string Role(Cultivator c)
+        {
+            if (c.SectId < 0) return c.Realm >= Realm.NguyenAnh ? "Tán tu, bá chủ một phương" : "Tán tu";
+            if (MasterOf(c.SectId) == c) return c.Realm >= Realm.NguyenAnh ? "Tông chủ, bá chủ một phương" : "Tông chủ";
+            if (c.Realm >= Realm.KetDan) return "Trưởng lão";
+            return c.Realm == Realm.TrucCo ? "Đệ tử nội môn" : "Đệ tử ngoại môn";
+        }
+
+        void UpdateMasters(long tick)
+        {
+            var best = new Dictionary<int, Cultivator>();
+            foreach (var c in All)
+            {
+                if (!c.Alive || c.SectId < 0) continue;
+                if (!best.TryGetValue(c.SectId, out var b) || c.Rank > b.Rank) best[c.SectId] = c;
+            }
+            foreach (var kv in best)
+            {
+                var old = MasterOf(kv.Key);
+                if (old == kv.Value) continue;
+                _masters[kv.Key] = kv.Value;
+                if (old != null || tick > 0)
+                    _sim.Events.Add(tick, EventKind.Succession, kv.Value.Realm >= Realm.KetDan ? 2 : 1,
+                        $"{kv.Value.Title} trở thành tông chủ {SectName(kv.Value)}.");
+            }
+        }
+
+        // Cultivators in seclusion or at their sect are off the map (the sect shows a few stand-ins);
+        // they appear only while out on the road or at an excursion spot.
+        public bool IsShownOnMap(Cultivator c) => c.Alive && (c.Travelling || c.Away);
+
+        public bool IsAtHome(Cultivator c) => c.Alive && !c.Travelling && !c.Away;
+
+        // Nearest cultivator currently visible on the map within radius (for clicks, hover and divine acts).
+        public Cultivator FindShownNear(float x, float y, float radius)
+        {
+            Cultivator best = null;
+            float bestD = radius * radius;
+            foreach (var c in All)
+            {
+                if (!IsShownOnMap(c)) continue;
+                float dx = _e.X[c.Entity] - x, dy = _e.Y[c.Entity] - y, d = dx * dx + dy * dy;
+                if (d < bestD) { bestD = d; best = c; }
+            }
+            return best;
+        }
+
+        const float OutingChancePerMonth = 1f / 60f;
+
+        DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0xC017u, (int)tick, salt));
+
+        // ---------------------------------------------------------------- creation
+
+        static int RollRoots(ref DetRandom rng)
+        {
+            float roll = rng.NextFloat();
+            if (roll < 0.02f) return 1 << (5 + rng.Range(0, 3)); // Lôi / Phong / Băng
+            int count = roll < 0.05f ? 1 : roll < 0.17f ? 2 : roll < 0.45f ? 3 : roll < 0.75f ? 4 : 5;
+            int mask = 0;
+            while (SpiritRoots.Count(mask) < count) mask |= 1 << rng.Range(0, 5);
+            return mask;
+        }
+
+        Cultivator Create(ref DetRandom rng, Realm realm, int stage, float ageYears, int sectId, float x, float y, long tick, int roots = -1)
+        {
+            var c = new Cultivator
+            {
+                Index = All.Count,
+                Name = Lore.PersonName(ref rng),
+                Roots = roots >= 0 ? roots : RollRoots(ref rng),
+                Comprehension = rng.NextFloat(),
+                Luck = rng.NextFloat(),
+                DaoHeart = rng.Range(0.4f, 0.8f),
+                Realm = realm,
+                Stage = stage,
+                SectId = sectId
+            };
+            c.Progress = rng.Range(0f, 0.8f) * Realms.Need(realm, stage);
+            ageYears = Mathf.Min(ageYears, c.LifespanYears * 0.8f);
+            c.BirthTick = tick - (long)(ageYears * SimClock.DaysPerYear);
+            c.HomeX = x;
+            c.HomeY = y;
+            c.Entity = _e.Spawn(Species.Cultivator, x, y, c.BirthTick);
+            _e.Payload[c.Entity] = c.Index;
+            All.Add(c);
+            AliveCount++;
+            CountByRealm[(int)realm]++;
+            return c;
+        }
+
+        void SeedInitial()
+        {
+            var rng = new DetRandom(_w.Seed ^ 0xC0171u);
+            Settlement richest = null;
+            float richestQi = -1f;
+            // Sect hierarchy after the novel: Kết Đan masters and elders, Trúc Cơ inner disciples, Luyện Khí outer disciples.
+            foreach (var s in _sim.Settlements.All)
+            {
+                if (!s.Sect) continue;
+                float sx = s.X + 0.5f, sy = s.Y + 0.5f;
+                Create(ref rng, Realm.KetDan, rng.Range(2, 4), rng.Range(250f, 420f), s.Id, sx, sy, 0);
+                int elders = rng.Range(1, 4);
+                for (int k = 0; k < elders; k++)
+                    Create(ref rng, Realm.KetDan, rng.Range(0, 2), rng.Range(180f, 330f), s.Id, sx + rng.Range(-3f, 3f), sy + rng.Range(-3f, 3f), 0);
+                int inner = rng.Range(3, 8);
+                for (int k = 0; k < inner; k++)
+                    Create(ref rng, Realm.TrucCo, rng.Range(0, 4), rng.Range(60f, 170f), s.Id, sx + rng.Range(-3f, 3f), sy + rng.Range(-3f, 3f), 0);
+                int outer = rng.Range(10, 21);
+                for (int k = 0; k < outer; k++)
+                    Create(ref rng, Realm.LuyenKhi, rng.Range(0, 10), rng.Range(12f, 60f), s.Id, sx + rng.Range(-3f, 3f), sy + rng.Range(-3f, 3f), 0);
+
+                float qi = _w.QiCap[_w.Idx(s.X, s.Y)];
+                if (qi > richestQi) { richestQi = qi; richest = s; }
+            }
+
+            // A Nguyên Anh lão tổ is overlord of a whole region; at most one at the start, heading the richest sect.
+            if (richest != null && rng.NextFloat() < 0.5f)
+                Create(ref rng, Realm.NguyenAnh, rng.Range(0, 2), rng.Range(450f, 750f), richest.Id, richest.X + 0.5f, richest.Y + 1.5f, 0);
+
+            // Tán tu scattered where qi is decent.
+            for (int attempt = 0, made = 0; attempt < 4000 && made < 20; attempt++)
+            {
+                int x = rng.Range(8, _w.W - 8), y = rng.Range(8, _w.H - 8);
+                int i = _w.Idx(x, y);
+                if (!TerrainInfo.IsWalkable(_w.Terrain[i]) || _w.QiCap[i] < 1500) continue;
+                bool trucCo = rng.NextFloat() < 0.2f;
+                Create(ref rng, trucCo ? Realm.TrucCo : Realm.LuyenKhi, trucCo ? rng.Range(0, 2) : rng.Range(3, 12),
+                    rng.Range(25f, 110f), -1, x + 0.5f, y + 0.5f, 0);
+                made++;
+            }
+            UpdateMasters(0);
+        }
+
+        // ---------------------------------------------------------------- monthly
+
+        public void MonthlyStep(long tick)
+        {
+            int count = All.Count;
+            for (int k = 0; k < count; k++)
+            {
+                var c = All[k];
+                if (!c.Alive) continue;
+                var rng = RngFor(tick, c.Index);
+
+                if (c.AgeYears(tick) >= c.LifespanYears)
+                {
+                    Die(c, tick, $"{c.Title} ({SectName(c)}) thọ nguyên đã tận, tọa hóa ở cảnh giới {c.RealmText}.", c.Realm >= Realm.KetDan ? 2 : c.Realm >= Realm.TrucCo ? 1 : 0);
+                    continue;
+                }
+
+                if (c.Travelling)
+                {
+                    if (!_sim.Creatures.HasArrived(c.Entity)) continue; // no cultivating on the road
+                    Arrive(c, tick, ref rng);
+                }
+                else if (c.Away && tick >= c.StayUntil)
+                {
+                    SendTo(c, c.HomeX, c.HomeY, Trip.Return);
+                    continue;
+                }
+                else if (!c.Away && CanRoam(c) && rng.NextFloat() < OutingChancePerMonth)
+                {
+                    StartOuting(c, ref rng);
+                    continue;
+                }
+
+                Cultivate(c);
+
+                float need = Realms.Need(c.Realm, c.Stage);
+                while (c.Progress >= need && !Realms.IsPeak(c.Realm, c.Stage))
+                {
+                    c.Progress -= need;
+                    c.Stage++;
+                    need = Realms.Need(c.Realm, c.Stage);
+                }
+
+                if (c.Realm < Realm.HoaThan && Realms.IsPeak(c.Realm, c.Stage) &&
+                    tick - c.LastAttemptTick >= SimClock.DaysPerYear * Realms.AttemptCooldownYears[(int)c.Realm])
+                {
+                    bool ready = c.Progress >= need;
+                    bool desperate = c.AgeYears(tick) > c.LifespanYears * DesperateAge && c.Progress >= need * 0.6f;
+                    bool placeAllows = c.Realm != Realm.NguyenAnh ||
+                                       _sim.Qi.SampleQi((int)_e.X[c.Entity], (int)_e.Y[c.Entity]) >= Realms.HoaThanMinQi;
+                    if ((ready || desperate) && placeAllows) TryBreakthrough(c, tick, !ready, ref rng);
+                }
+            }
+        }
+
+        void Cultivate(Cultivator c)
+        {
+            float x = _e.X[c.Entity], y = _e.Y[c.Entity];
+            float qi = _sim.Qi.SampleQi((int)x, (int)y);
+            float qiFactor = Mathf.Clamp(qi / Realms.RequiredQi[(int)c.Realm], 0f, 1.5f);
+            float gain = SpiritRoots.SpeedMultiplier(c.Roots) * qiFactor * (0.6f + 0.8f * c.Comprehension) * (0.7f + 0.6f * c.DaoHeart);
+            if (c.Demonic) gain *= 1.5f; // ma đạo: fast, at a price
+            c.Progress += gain;
+            // Drawing qi depletes the spot; crowded caves run dry and push cultivators to look elsewhere.
+            _sim.Qi.AddQi((int)x, (int)y, 4, -Realms.AbsorbPerMonth[(int)c.Realm] * Mathf.Min(1f, qiFactor + 0.2f));
+        }
+
+        void TryBreakthrough(Cultivator c, long tick, bool desperate, ref DetRandom rng)
+        {
+            c.LastAttemptTick = tick;
+            var next = c.Realm + 1;
+            string who = $"{c.Title} ({SectName(c)})";
+            // Talent helps in proportion to how hard the gate is.
+            float baseChance = Realms.BreakChance[(int)next];
+            float chance = baseChance * (1f + c.Comprehension * 0.8f + c.DaoHeart * 0.4f + c.Luck * 0.4f);
+            bool pill = next == Realm.TrucCo && c.SectId >= 0 && rng.NextFloat() < 0.5f;
+            if (pill) chance += 0.25f;
+            if (desperate) chance *= 0.6f;
+
+            if (next >= Realm.NguyenAnh)
+            {
+                bool great = next == Realm.HoaThan;
+                float survive = (great ? 0.3f : 0.5f) + 0.3f * c.DaoHeart + 0.2f * c.Luck;
+                _sim.Events.Add(tick, EventKind.Tribulation, 3,
+                    $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!");
+                if (rng.NextFloat() >= survive)
+                {
+                    Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3);
+                    return;
+                }
+            }
+
+            if (rng.NextFloat() < chance)
+            {
+                SetRealm(c, next, 0);
+                c.Progress = 0f;
+                c.FailedAttempts = 0;
+                int importance = next >= Realm.NguyenAnh ? 3 : next == Realm.KetDan ? 2 : 1;
+                _sim.Events.Add(tick, EventKind.Breakthrough, importance,
+                    $"{c.Name} ({SectName(c)}) đột phá {Realms.Names[(int)next]}{(pill ? " nhờ Trúc Cơ Đan" : "")}.");
+                return;
+            }
+
+            c.Progress *= 0.6f;
+            c.DaoHeart = Mathf.Max(0f, c.DaoHeart - 0.1f);
+            c.FailedAttempts++;
+            float deviation = 0.12f * (1.3f - c.DaoHeart) * (1f + c.FailedAttempts * 0.2f);
+            if (rng.NextFloat() >= deviation)
+            {
+                _sim.Events.Add(tick, EventKind.BreakthroughFailed, c.Realm >= Realm.TrucCo ? 1 : 0, $"{who} đột phá {Realms.Names[(int)next]} thất bại.");
+                return;
+            }
+
+            float outcome = rng.NextFloat();
+            if (outcome < 0.4f)
+            {
+                Die(c, tick, $"{who} tẩu hỏa nhập ma, kinh mạch đứt đoạn mà chết.", c.Realm >= Realm.TrucCo ? 2 : 1);
+            }
+            else if (outcome < 0.7f || c.Demonic)
+            {
+                if (c.Realm > Realm.LuyenKhi) SetRealm(c, c.Realm - 1, Realms.Stages[(int)c.Realm - 1] - 1);
+                else c.Stage = Mathf.Max(0, c.Stage - 3);
+                c.Progress = 0f;
+                _sim.Events.Add(tick, EventKind.Deviation, 1, $"{who} tẩu hỏa nhập ma, tu vi tụt xuống {c.RealmText}.");
+            }
+            else
+            {
+                c.Demonic = true;
+                _sim.Events.Add(tick, EventKind.Deviation, 2, $"{who} tẩu hỏa nhập ma, sa vào ma đạo.");
+            }
+        }
+
+        void SetRealm(Cultivator c, Realm realm, int stage)
+        {
+            CountByRealm[(int)c.Realm]--;
+            c.Realm = realm;
+            c.Stage = stage;
+            CountByRealm[(int)realm]++;
+        }
+
+        void Die(Cultivator c, long tick, string text, int importance)
+        {
+            c.Alive = false;
+            AliveCount--;
+            CountByRealm[(int)c.Realm]--;
+            _e.Kill(c.Entity, DeathCause.Natural);
+            _sim.Events.Add(tick, EventKind.Death, importance, text);
+        }
+
+        // ---------------------------------------------------------------- yearly
+
+        public void YearlyStep(long tick)
+        {
+            Awaken(tick);
+            UpdateMasters(tick);
+            int count = All.Count;
+            for (int k = 0; k < count; k++)
+            {
+                var c = All[k];
+                if (c.Alive && !c.Travelling) ConsiderRelocating(c, tick);
+            }
+        }
+
+        void Awaken(long tick)
+        {
+            foreach (var s in _sim.Settlements.All)
+            {
+                if (!s.Alive) continue;
+                var rng = RngFor(tick, 500000 + s.Id);
+                float qi = _sim.Qi.SampleQi(s.X, s.Y);
+                float expected = s.Cohorts[2] / 5f * AwakenChance * (1f + qi / 3000f);
+                int awakened = Mathf.FloorToInt(expected) + (rng.NextFloat() < expected - Mathf.Floor(expected) ? 1 : 0);
+                for (int k = 0; k < awakened; k++)
+                {
+                    if (!_sim.Settlements.TakeChild(s)) break;
+                    var sect = NearestSect(s.X, s.Y);
+                    var c = Create(ref rng, Realm.LuyenKhi, 0, 10f, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick);
+                    c.Progress = 0f;
+                    if (sect != null) Recruit(c, sect, ref rng);
+                    bool gifted = SpiritRoots.Count(c.Roots) == 1;
+                    _sim.Events.Add(tick, EventKind.Awakening, gifted ? 2 : 0,
+                        $"Đứa trẻ {c.Name} ở {s.Name} lộ {SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}){(sect != null ? $", được {sect.BaseName} thu nhận" : ", trở thành tán tu")}.");
+                }
+            }
+        }
+
+        // A new disciple walks from the village to the sect, which becomes home.
+        void Recruit(Cultivator c, Settlement sect, ref DetRandom rng)
+        {
+            c.HomeX = sect.X + 0.5f + rng.Range(-2f, 2f);
+            c.HomeY = sect.Y + 0.5f + rng.Range(-2f, 2f);
+            SendTo(c, c.HomeX, c.HomeY, Trip.Return);
+        }
+
+        Settlement NearestSect(int x, int y)
+        {
+            Settlement best = null;
+            int bestD = SectRecruitRange * SectRecruitRange;
+            foreach (var s in _sim.Settlements.All)
+            {
+                if (!s.Sect || !s.Alive) continue;
+                int d = (s.X - x) * (s.X - x) + (s.Y - y) * (s.Y - y);
+                if (d < bestD) { bestD = d; best = s; }
+            }
+            return best;
+        }
+
+        // Cultivators whose spot no longer feeds their realm look for a richer cave.
+        void ConsiderRelocating(Cultivator c, long tick)
+        {
+            if (!CanRoam(c) || c.Away) return;
+            float x = c.HomeX, y = c.HomeY;
+            float need = Realms.RequiredQi[(int)c.Realm];
+            float here = _sim.Qi.SampleQi((int)x, (int)y);
+            if (here >= need * 0.9f) return;
+
+            var rng = RngFor(tick, 900000 + c.Index);
+            bool flies = c.Realm >= Realm.TrucCo;
+            float reach = flies ? 220f : 80f;
+            float bestScore = here * 1.25f, bx = -1f, by = -1f;
+            for (int k = 0; k < 10; k++)
+            {
+                float tx = x + rng.Range(-reach, reach), ty = y + rng.Range(-reach, reach);
+                if (!_w.InBounds((int)tx, (int)ty) || tx < 0f || ty < 0f) continue;
+                if (!_w.IsWalkable(tx, ty)) continue; // even flyers land on solid ground
+                float score = _sim.Qi.SampleQi((int)tx, (int)ty);
+                if (score > bestScore) { bestScore = score; bx = tx; by = ty; }
+            }
+            if (bx < 0f) return;
+            SendTo(c, bx, by, Trip.Relocate);
+            if (c.Realm >= Realm.KetDan)
+                _sim.Events.Add(tick, EventKind.Relocation, 1, $"{c.Title} rời đi tìm động phủ có linh khí dồi dào hơn.");
+        }
+
+        void SendTo(Cultivator c, float x, float y, Trip trip)
+        {
+            c.Travelling = true;
+            c.Trip = trip;
+            if (trip != Trip.Excursion) c.Away = false;
+            _e.Flying[c.Entity] = c.Realm >= Realm.TrucCo; // từ Trúc Cơ: ngự kiếm phi hành
+            _e.TX[c.Entity] = x;
+            _e.TY[c.Entity] = y;
+        }
+
+        // Luyện Khí disciples keep to their sect; everyone else wanders out now and then.
+        static bool CanRoam(Cultivator c) => !(c.SectId >= 0 && c.Realm == Realm.LuyenKhi);
+
+        void StartOuting(Cultivator c, ref DetRandom rng)
+        {
+            bool flies = c.Realm >= Realm.TrucCo;
+            float reach = flies ? 150f : 40f;
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                float tx = c.HomeX + rng.Range(-reach, reach), ty = c.HomeY + rng.Range(-reach, reach);
+                if (!_w.IsWalkable(tx, ty)) continue;
+                c.Outing = (Outing)rng.Range(0, 3);
+                SendTo(c, tx, ty, Trip.Excursion);
+                return;
+            }
+        }
+
+        void Arrive(Cultivator c, long tick, ref DetRandom rng)
+        {
+            c.Travelling = false;
+            _e.Flying[c.Entity] = false;
+            var trip = c.Trip;
+            c.Trip = Trip.None;
+            switch (trip)
+            {
+                case Trip.Relocate:
+                    c.HomeX = _e.X[c.Entity];
+                    c.HomeY = _e.Y[c.Entity];
+                    break;
+                case Trip.Excursion:
+                    c.Away = true;
+                    c.StayUntil = tick + rng.Range(20, 90);
+                    OutingReward(c, tick, ref rng);
+                    break;
+                default:
+                    c.Away = false;
+                    break;
+            }
+        }
+
+        void OutingReward(Cultivator c, long tick, ref DetRandom rng)
+        {
+            switch (c.Outing)
+            {
+                case Outing.Sightseeing:
+                    c.DaoHeart = Mathf.Min(1f, c.DaoHeart + 0.03f);
+                    break;
+                case Outing.Training:
+                    c.Comprehension = Mathf.Min(1f, c.Comprehension + 0.02f);
+                    break;
+                default:
+                    if (rng.NextFloat() < 0.25f)
+                    {
+                        c.Progress += Realms.Need(c.Realm, c.Stage) * 0.15f;
+                        string herb = Lore.Herbs[rng.Range(0, Lore.Herbs.Length)];
+                        _sim.Events.Add(tick, EventKind.Fortune, c.Realm >= Realm.KetDan ? 1 : 0, $"{c.Title} tìm được {herb}, tu vi tăng tiến.");
+                    }
+                    break;
+            }
+        }
+
+        // ---------------------------------------------------------------- Thiên Đạo
+
+        public Cultivator GrantRoot(int x, int y, long tick)
+        {
+            Settlement best = null;
+            int bestD = 60 * 60;
+            foreach (var s in _sim.Settlements.All)
+            {
+                if (!s.Alive) continue;
+                int d = (s.X - x) * (s.X - x) + (s.Y - y) * (s.Y - y);
+                if (d < bestD) { bestD = d; best = s; }
+            }
+            if (best == null || !_sim.Settlements.TakeChild(best)) return null;
+            var rng = RngFor(tick, 700000 + x * 1031 + y);
+            int roots = rng.NextFloat() < 0.5f ? 1 << (5 + rng.Range(0, 3)) : 1 << rng.Range(0, 5);
+            var sect = NearestSect(best.X, best.Y);
+            var c = Create(ref rng, Realm.LuyenKhi, 0, 12f, sect?.Id ?? -1, best.X + 0.5f, best.Y + 0.5f, tick, roots);
+            c.Progress = 0f;
+            c.Comprehension = Mathf.Max(c.Comprehension, 0.85f);
+            c.Luck = Mathf.Max(c.Luck, 0.8f);
+            if (sect != null) Recruit(c, sect, ref rng);
+            _sim.Events.Add(tick, EventKind.Divine, 2, $"Thiên Đạo ban {SpiritRoots.Kind(roots)} ({SpiritRoots.Elements(roots)}) cho {c.Name} ở {best.Name}.");
+            return c;
+        }
+
+        public void Bless(Cultivator c, long tick)
+        {
+            if (c == null || !c.Alive) return;
+            c.Progress += Realms.Need(c.Realm, c.Stage) * 0.8f;
+            c.Luck = 1f;
+            c.DaoHeart = Mathf.Min(1f, c.DaoHeart + 0.2f);
+            c.BonusYears += 20;
+            _sim.Events.Add(tick, EventKind.Divine, 1, $"{c.Title} gặp cơ duyên, tu vi tăng mạnh.");
+        }
+
+        public void Smite(Cultivator c, long tick)
+        {
+            if (c == null || !c.Alive) return;
+            Die(c, tick, $"Thiên phạt giáng xuống, {c.Title} ({SectName(c)}) hồn phi phách tán.", c.Realm >= Realm.KetDan ? 3 : 2);
+        }
+
+        public void HashInto(ref ulong h)
+        {
+            foreach (var c in All)
+            {
+                StateHash.Add(ref h, c.Alive ? c.Index : -c.Index - 1);
+                StateHash.Add(ref h, (int)c.Realm | (c.Stage << 8) | (c.Demonic ? 1 << 16 : 0) | (c.Travelling ? 1 << 17 : 0) |
+                                     (c.Away ? 1 << 18 : 0) | ((int)c.Trip << 20) | ((long)c.StayUntil << 24));
+                StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Progress));
+                StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.DaoHeart));
+            }
+        }
+    }
+}

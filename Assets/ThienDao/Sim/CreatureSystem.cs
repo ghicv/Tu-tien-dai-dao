@@ -78,8 +78,11 @@ namespace ThienDao.Sim
                 _e.PrevX[id] = _e.X[id];
                 _e.PrevY[id] = _e.Y[id];
                 if (s == Species.Migrants) TickMigrants(id, tick);
+                else if (s == Species.Cultivator) Move(id, _e.Flying[id] ? SpeciesInfo.FlyingSpeed : SpeciesInfo.Speed[(int)s]);
             }
         }
+
+        public bool HasArrived(int id) => Arrived(id);
 
         void TickMigrants(int id, long tick)
         {
@@ -104,7 +107,8 @@ namespace ThienDao.Sim
             float nx, ny;
             if (d <= speed) { nx = _e.TX[id]; ny = _e.TY[id]; }
             else { nx = x + dx / d * speed; ny = y + dy / d * speed; }
-            if (_w.IsWalkable(nx, ny))
+            bool canPass = _e.Flying[id] ? _w.InBounds((int)nx, (int)ny) && nx >= 0f && ny >= 0f : _w.IsWalkable(nx, ny);
+            if (canPass)
             {
                 _e.X[id] = nx;
                 _e.Y[id] = ny;

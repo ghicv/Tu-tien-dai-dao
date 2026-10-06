@@ -209,6 +209,38 @@ namespace ThienDao.Sim
         public void Apply(Simulation sim) => sim.Settlements.FoundVillage(X, Y, Roof, People, sim.Clock.Tick);
     }
 
+    public enum DivineAct : byte { GrantRoot, Bless, Smite }
+
+    // Thiên Đạo acting on cultivation: grant a spirit root in the nearest village, or bless / smite the nearest cultivator.
+    public sealed class DivineActCommand : IWorldCommand
+    {
+        const int CultivatorMask = 1 << (int)Species.Cultivator;
+        public readonly DivineAct Act;
+        public readonly int X, Y;
+
+        public DivineActCommand(DivineAct act, int x, int y)
+        {
+            Act = act;
+            X = x;
+            Y = y;
+        }
+
+        public void Apply(Simulation sim)
+        {
+            long tick = sim.Clock.Tick;
+            if (Act == DivineAct.GrantRoot)
+            {
+                sim.Cultivation.GrantRoot(X, Y, tick);
+                return;
+            }
+            // Prefer someone visible under the cursor; otherwise whoever is meditating nearby.
+            var c = sim.Cultivation.FindShownNear(X + 0.5f, Y + 0.5f, 3f) ??
+                    sim.Cultivation.ForEntity(sim.Creatures.FindNearest(X + 0.5f, Y + 0.5f, 6f, CultivatorMask));
+            if (Act == DivineAct.Bless) sim.Cultivation.Bless(c, tick);
+            else sim.Cultivation.Smite(c, tick);
+        }
+    }
+
     // Positive amount pours qi in, negative drains it; amount is a fraction of MaxQi at the centre.
     public sealed class InfuseQiCommand : IWorldCommand
     {

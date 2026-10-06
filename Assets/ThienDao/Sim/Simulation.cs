@@ -32,6 +32,8 @@ namespace ThienDao.Sim
         public readonly CreatureSystem Creatures;
         public readonly WildlifeSystem Wildlife;
         public readonly SettlementSystem Settlements;
+        public readonly CultivationSystem Cultivation;
+        public readonly EventLog Events = new EventLog();
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
         readonly Queue<IWorldCommand> _pending = new Queue<IWorldCommand>();
@@ -53,6 +55,7 @@ namespace ThienDao.Sim
             Creatures = new CreatureSystem(this);
             Settlements = new SettlementSystem(this);
             Wildlife = new WildlifeSystem(world, Forage); // after villages have cleared their first fields
+            Cultivation = new CultivationSystem(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -78,8 +81,13 @@ namespace ThienDao.Sim
                 Forage.MonthlyStep(Clock.Season);
                 Wildlife.MonthlyStep(Clock.Season);
                 Settlements.MonthlyStep(tick);
+                Cultivation.MonthlyStep(tick);
             }
-            if (Clock.IsYearStart) Settlements.YearlyStep(tick);
+            if (Clock.IsYearStart)
+            {
+                Settlements.YearlyStep(tick);
+                Cultivation.YearlyStep(tick);
+            }
         }
 
         public void RunFrame(float realDeltaSeconds, double budgetMs)
@@ -136,6 +144,7 @@ namespace ThienDao.Sim
             Forage.HashInto(ref h);
             Creatures.HashInto(ref h);
             Wildlife.HashInto(ref h);
+            Cultivation.HashInto(ref h);
             Settlements.HashInto(ref h);
             return h;
         }

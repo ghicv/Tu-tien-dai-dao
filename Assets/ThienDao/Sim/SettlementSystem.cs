@@ -57,7 +57,9 @@ namespace ThienDao.Sim
     public sealed class SettlementSystem
     {
         public const int PeoplePerHouse = 6;
-        public const int MaxSettlements = 400;
+        public const int MaxSettlements = 150;
+        const int CrowdedPopulation = 800;     // births fade out as a village approaches this size
+        const float PlagueChancePerYear = 0.015f;
         const float CellsPerWorker = 2.5f;
         const float YieldPerFertility = 1.4f;
 
@@ -277,9 +279,24 @@ namespace ThienDao.Sim
                     continue;
                 }
 
+                if (rng.NextFloat() < PlagueChancePerYear && pop >= 20)
+                {
+                    int dead = Stoch(pop * rng.Range(0.1f, 0.25f), ref rng);
+                    RemovePeople(s, dead);
+                    s.DeathsLastYear += dead;
+                    pop = s.Population;
+                    _sim.Events.Add(tick, EventKind.Disaster, dead >= 50 ? 2 : 1, $"Ôn dịch hoành hành ở {s.Name}, {dead} người chết.");
+                    if (pop == 0)
+                    {
+                        Abandon(s);
+                        continue;
+                    }
+                }
+
                 float foodFactor = Mathf.Clamp(s.Food / pop / 4f, 0.25f, 1.2f);
                 float crowding = pop > s.HousingCapacity ? 0.4f : 1f;
-                int births = Stoch(s.FertileAdults * 0.5f * 0.3f * foodFactor * crowding, ref rng);
+                float saturation = Mathf.Clamp01(1f - pop / (float)CrowdedPopulation);
+                int births = Stoch(s.FertileAdults * 0.5f * 0.3f * foodFactor * crowding * saturation, ref rng);
                 s.Cohorts[0] += births;
                 s.BirthsLastYear = births;
                 pop += births;
@@ -297,6 +314,18 @@ namespace ThienDao.Sim
                 if (pop >= 70 && (pop > s.HousingCapacity || s.Food < pop * 3f) && AliveCount < MaxSettlements && rng.NextFloat() < 0.35f)
                     Emigrate(s, tick, ref rng);
             }
+        }
+
+        // A child (preferably 10–14) leaves the village to walk the path of cultivation.
+        public bool TakeChild(Settlement s)
+        {
+            for (int b = 2; b <= 3; b++)
+            {
+                if (s.Cohorts[b] == 0) continue;
+                s.Cohorts[b]--;
+                return true;
+            }
+            return false;
         }
 
         void RemovePeople(Settlement s, int n)

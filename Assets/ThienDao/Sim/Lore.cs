@@ -32,9 +32,33 @@ namespace ThienDao.Sim
         // Items, pills and beasts for upcoming milestones (cultivation, economy, yêu thú).
         public static readonly string[] Pills = { "Trúc Cơ Đan", "Hoàng Long Đan", "Định Nhan Đan", "Thanh Linh Tán", "Kết Kim Đan", "Bổ Thiên Đan" };
         public static readonly string[] SpiritStones = { "Hạ phẩm linh thạch", "Trung phẩm linh thạch", "Thượng phẩm linh thạch", "Cực phẩm linh thạch" };
+        public static readonly string[] Herbs =
+        {
+            "Ngọc Tủy Chi", "Thiên Linh Quả", "Huyết Sâm ngàn năm", "Băng Tâm Thảo", "Hỏa Linh Chi", "Kim Tủy Hoa",
+            "Tử Hà Thảo", "Vạn Niên Linh Nhũ", "Thanh Linh Thảo", "Long Diên Hương"
+        };
+
         public static readonly string[] Beasts = { "Huyết Ngọc Tri Chu", "Phệ Kim Trùng", "Thiết Giáp Ngô Công", "Hỏa Lân Thú", "Băng Phượng", "Giao Long" };
 
+        // Cultivator names in the novel's style (surname + given name).
+        public static readonly string[] Surnames =
+        {
+            "Hàn", "Lệ", "Nam Cung", "Mặc", "Lý", "Trương", "Vương", "Triệu", "Lăng", "Tần", "Đổng", "Âu Dương",
+            "Mộ Dung", "Lục", "Tô", "Liễu", "Diệp", "Bạch", "Hạ Hầu", "Thạch", "Tề", "Ngô", "Chu", "Tôn", "Phùng",
+            "Khúc", "Lạc", "Vạn", "Ôn", "Từ", "Cổ", "Thượng Quan", "Lâm", "Tiêu", "Hoàng Phủ", "Đoan Mộc"
+        };
+
+        public static readonly string[] GivenNames =
+        {
+            "Lập", "Phi Vũ", "Uyển", "Thiên Đô", "Ngọc", "Nguyệt", "Thanh Phong", "Vân", "Huyền", "Kiếm", "Tử Linh",
+            "Mộng", "Hạo", "Thiên Nam", "Tuyết", "Băng", "Hồng Phất", "Dao", "Viêm", "Minh", "Tiêu Dao", "Nhược Hy",
+            "Long", "Thần", "Bá", "Sương", "Diệu", "Trần", "Phong", "Lãnh", "Yên", "Khuyết", "Ly", "Tịch", "Vô Kỵ"
+        };
+
         public static string Tier(int population) => population >= 400 ? "Thành" : population >= 150 ? "Trấn" : "Thôn";
+
+        public static string PersonName(ref DetRandom rng) =>
+            Surnames[rng.Range(0, Surnames.Length)] + " " + GivenNames[rng.Range(0, GivenNames.Length)];
 
         // Hands out each pool entry once per world before inventing two-syllable names.
         public sealed class Picker
