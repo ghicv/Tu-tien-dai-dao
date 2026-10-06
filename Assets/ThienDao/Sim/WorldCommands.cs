@@ -211,6 +211,27 @@ namespace ThienDao.Sim
         public void Apply(Simulation sim) => sim.Settlements.FoundVillage(X, Y, Roof, People, sim.Clock.Tick);
     }
 
+    // Add a cultivator to (or drop them from) the player's watch list. Watched cultivators live by ProtagonistAI,
+    // so this changes the simulation and goes through the command log like every other act of Thiên Đạo.
+    public sealed class WatchCommand : IWorldCommand
+    {
+        public readonly int Target;
+        public readonly bool On;
+
+        public WatchCommand(int target, bool on)
+        {
+            Target = target;
+            On = on;
+        }
+
+        public void Apply(Simulation sim)
+        {
+            var all = sim.Cultivation.All;
+            if (Target < 0 || Target >= all.Count || (On && !all[Target].Alive)) return; // the fallen can still be dropped
+            sim.Cultivation.SetWatched(all[Target], On, sim.Clock.Tick);
+        }
+    }
+
     public enum DivineAct : byte { GrantRoot, Bless, Smite }
 
     // Thiên Đạo acting on one being: the chosen cultivator (Target, an index into Cultivation.All) or a mortal of

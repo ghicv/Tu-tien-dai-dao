@@ -937,9 +937,24 @@ namespace ThienDao.Sim
                 float chance = c.Realm >= Realm.NguyenAnh ? 0.12f : c.Realm == Realm.KetDan ? 0.05f :
                     c.Realm == Realm.TrucCo && Realms.IsPeak(c.Realm, c.Stage) ? 0.01f : 0f;
                 if (chance <= 0f || rng.NextFloat() >= chance * (0.4f + c.Ambition)) continue;
-                if (!FindSite(c.HomeX, c.HomeY, 120f, 0f, ref rng, out int x, out int y)) continue;
+                FoundBy(c, tick, ref rng);
+            }
+        }
+
+        // A nhân vật chính decides to found a sect: same rules as for anyone else.
+        public Faction TryFound(Cultivator c, long tick)
+        {
+            if (c == null || !c.Alive || c.SectId >= 0 || AliveCount >= MaxFactions) return null;
+            var rng = new DetRandom(Hash.U32(_w.Seed ^ 0xF0D5u, (int)tick, c.Index));
+            return FoundBy(c, tick, ref rng);
+        }
+
+        Faction FoundBy(Cultivator c, long tick, ref DetRandom rng)
+        {
+            {
+                if (!FindSite(c.HomeX, c.HomeY, 120f, 0f, ref rng, out int x, out int y)) return null;
                 var f = Found(c, x, y, null, tick, ref rng);
-                if (f == null) continue;
+                if (f == null) return null;
 
                 // Tán tu nearby may follow a new sect master.
                 int followers = 0;
@@ -954,6 +969,7 @@ namespace ThienDao.Sim
                 _sim.Events.Add(tick, EventKind.Founding, c.Realm >= Realm.KetDan ? 3 : 2,
                     $"{c.Title} khai tông lập phái, sáng lập {NameOf(f.Id)}{(f.Demonic ? " (ma đạo)" : "")}" +
                     (followers > 0 ? $", {followers} tán tu theo về." : "."), x + 0.5f, y + 0.5f, Fx.LightPillar, c.Index, -1, f.Id);
+                return f;
             }
         }
 

@@ -15,6 +15,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 08 | [08-m4-the-luc.md](08-m4-the-luc.md) | M4 — Thế lực: lãnh thổ, linh thạch, ngoại giao, chiến tranh, lập tông, ly khai | `855a9a3` |
 | 09 | [09-tha-sinh-vat-hien-ngay.md](09-tha-sinh-vat-hien-ngay.md) | Thả thú hiện ngay tại chỗ click; Thiên Đạo (ban linh căn, cơ duyên, thiên phạt) tác động đúng người được chọn | `9d33469` |
 | 10 | [10-m5-xung-dot-lich-su.md](10-m5-xung-dot-lich-su.md) | M5 — HistoryLog, đấu pháp, sư đồ & báo thù, StoryDetector, biên niên sử, bảng cường giả theo dõi được | `12d446e` |
+| 11 | [11-nhan-vat-chinh.md](11-nhan-vat-chinh.md) | Nhân vật chính: danh sách theo dõi, ProtagonistAI, túi trữ vật, bấm để follow | (commit này) |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Sim/Lore.cs`).

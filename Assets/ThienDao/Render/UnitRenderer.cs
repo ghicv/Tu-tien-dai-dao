@@ -212,12 +212,15 @@ namespace ThienDao.Render
                 }
 
                 var c = _sim.Cultivation.ForEntity(id);
-                if (c == null || !_sim.Cultivation.IsShownOnMap(c)) continue;
+                // Nhân vật chính are always drawn, meditating at home included.
+                if (c == null || (!_sim.Cultivation.IsShownOnMap(c) && !c.Watched)) continue;
                 bool flying = e.Flying[id] && moving;
                 if (!flying && !_sim.World.IsWalkable(x, y)) continue; // the sim moves them ashore within the month
                 // Hover above the ground while flying, with a gentle bob.
                 float lift = flying ? 0.7f + Mathf.Sin(time * 3f + id) * 0.08f : 0f;
-                if (c.Realm >= Realm.KetDan)
+                if (c.Watched)
+                    AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + lift + 0.7f, WatchedTint);
+                else if (c.Realm >= Realm.KetDan)
                 {
                     var tint = c.Demonic ? new Color32(255, 70, 70, 255) : AuraTint[(int)c.Realm];
                     AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + lift + 0.7f, tint);
@@ -318,7 +321,7 @@ namespace ThienDao.Render
             _elders.Clear();
             foreach (var c in _sim.Cultivation.All)
             {
-                if (c.SectId != sectId || !_sim.Cultivation.IsAtHome(c)) continue;
+                if (c.SectId != sectId || !_sim.Cultivation.IsAtHome(c) || c.Watched) continue; // watched ones are drawn as themselves
                 if (c.Realm == Realm.LuyenKhi) _disciples.Add(c);
                 else _elders.Add(c);
             }
@@ -506,6 +509,7 @@ namespace ThienDao.Render
         }
 
         static readonly Color32 White = new Color32(255, 255, 255, 255);
+        static readonly Color32 WatchedTint = new Color32(255, 236, 120, 255);
 
         // Same box as AddQuad draws (feet at (x, y)).
         void AddHit(Unit unit, float x, float y, Hit hit)

@@ -20,7 +20,8 @@ namespace ThienDao.Sim
 
         // Realm dominates; stage, tâm cảnh, khí vận and the demonic path tilt it.
         public static float Strength(Cultivator c) =>
-            Realms.Power[(int)c.Realm] * (1f + c.Stage * 0.15f) * (0.7f + 0.3f * c.DaoHeart) * (0.9f + 0.2f * c.Luck) * (c.Demonic ? 1.15f : 1f);
+            Realms.Power[(int)c.Realm] * (1f + c.Stage * 0.15f) * (0.7f + 0.3f * c.DaoHeart) * (0.9f + 0.2f * c.Luck) * (c.Demonic ? 1.15f : 1f) *
+            (1f + 0.12f * Mathf.Min(3, c.Treasures)); // pháp bảo
 
         // Returns the winner. The loser dies with probability deathBase × 2^(realm gap) (to the death: much higher),
         // otherwise flees badly hurt. The winner takes the loser's storage bag.
@@ -60,6 +61,14 @@ namespace ThienDao.Sim
             killer.Kills++;
             float need = Realms.Need(killer.Realm, killer.Stage);
             killer.Progress += need * 0.1f * Mathf.Max(1, 1 + (int)victim.Realm - (int)killer.Realm); // the storage bag
+            killer.Stones += victim.Stones;
+            victim.Stones = 0f;
+            if (victim.Treasures > 0)
+            {
+                killer.Treasures++;
+                victim.Treasures--;
+                if (killer.TreasureName == null || killer.Treasures == 1) killer.TreasureName = victim.TreasureName;
+            }
             _sim.Cultivation.Slay(victim, killer, tick, text, importance);
 
             foreach (var c in _sim.Cultivation.All)
@@ -187,13 +196,22 @@ namespace ThienDao.Sim
                 if (!ready || c.Realm < Realm.TrucCo) continue;
                 var rng = RngFor(tick, 2000000 + c.Index);
                 if (rng.NextFloat() >= 0.5f) continue;
-                c.HuntTarget = t.Index;
-                var e = _sim.Entities;
-                _sim.Cultivation.SendToHunt(c, e.X[t.Entity], e.Y[t.Entity], tick + 2L * SimClock.DaysPerYear);
-                string whom = c.NemesisFor >= 0 ? all[c.NemesisFor].Name : "người thân";
-                _sim.Events.Add(tick, EventKind.Vendetta, 2,
-                    $"{c.Title} lên đường truy sát {t.Title}, báo thù cho {whom}.", e.X[c.Entity], e.Y[c.Entity], Fx.None, c.Index, t.Index, c.SectId, t.SectId);
+                StartHunt(c, tick);
             }
+        }
+
+        // Sets out after their nemesis (who must be alive).
+        public void StartHunt(Cultivator c, long tick)
+        {
+            var all = _sim.Cultivation.All;
+            if (c.Nemesis < 0 || !all[c.Nemesis].Alive) return;
+            var t = all[c.Nemesis];
+            c.HuntTarget = t.Index;
+            var e = _sim.Entities;
+            _sim.Cultivation.SendToHunt(c, e.X[t.Entity], e.Y[t.Entity], tick + 2L * SimClock.DaysPerYear);
+            string whom = c.NemesisFor >= 0 ? all[c.NemesisFor].Name : "người thân";
+            _sim.Events.Add(tick, EventKind.Vendetta, 2,
+                $"{c.Title} lên đường truy sát {t.Title}, báo thù cho {whom}.", e.X[c.Entity], e.Y[c.Entity], Fx.None, c.Index, t.Index, c.SectId, t.SectId);
         }
 
         public void HashInto(ref ulong h)

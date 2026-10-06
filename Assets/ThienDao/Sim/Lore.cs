@@ -58,6 +58,17 @@ namespace ThienDao.Sim
 
         // Items, pills and beasts for upcoming milestones (cultivation, economy, yêu thú).
         public static readonly string[] Pills = { "Trúc Cơ Đan", "Hoàng Long Đan", "Định Nhan Đan", "Thanh Linh Tán", "Kết Kim Đan", "Bổ Thiên Đan" };
+        // The pill that helps through each gate (indexed by the realm being broken into).
+        public static string PillFor(Realm next) =>
+            next == Realm.TrucCo ? "Trúc Cơ Đan" : next == Realm.KetDan ? "Kết Kim Đan" : next == Realm.NguyenAnh ? "Bổ Thiên Đan" : "Hoàng Long Đan";
+
+        // Pháp bảo found on the road, after the novel.
+        public static readonly string[] Treasures =
+        {
+            "Thanh Trúc Phong Vân Kiếm", "Huyền Thiết Phi Thiên Thuẫn", "Kim Lôi Trúc phi kiếm", "Phong Lôi Sí", "Hư Thiên Đỉnh mảnh vỡ",
+            "Ngũ Hành Hoàn", "Huyết Ngọc Châu", "Tử Mẫu Âm Dương Thoa", "Bát Quái Kính", "Hàn Băng Kiếm", "Liệt Hỏa Phiến", "Ngân Nguyệt Câu"
+        };
+
         public static readonly string[] SpiritStones = { "Hạ phẩm linh thạch", "Trung phẩm linh thạch", "Thượng phẩm linh thạch", "Cực phẩm linh thạch" };
         public static readonly string[] Herbs =
         {

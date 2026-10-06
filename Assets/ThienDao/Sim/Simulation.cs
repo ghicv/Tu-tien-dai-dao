@@ -37,6 +37,7 @@ namespace ThienDao.Sim
         public readonly CombatSystem Combat;
         public readonly HistoryLog History = new HistoryLog();
         public readonly StoryDetector Stories;
+        public readonly ProtagonistAI Protagonists;
         public readonly EventLog Events = new EventLog();
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
@@ -64,6 +65,7 @@ namespace ThienDao.Sim
             Factions = new FactionSystem(this); // needs the sect members to weigh each sect's power
             Combat = new CombatSystem(this);
             Stories = new StoryDetector(this);
+            Protagonists = new ProtagonistAI(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -91,6 +93,7 @@ namespace ThienDao.Sim
                 Settlements.MonthlyStep(tick);
                 Cultivation.MonthlyStep(tick);
                 Combat.MonthlyStep(tick);
+                Protagonists.MonthlyStep(tick);
                 Factions.MonthlyStep(tick);
             }
             if (Clock.IsYearStart)

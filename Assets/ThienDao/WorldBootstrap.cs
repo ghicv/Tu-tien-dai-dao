@@ -266,7 +266,7 @@ namespace ThienDao
 
         // From the ranking: select that expert; if they are out on the map, the camera follows them there.
         // Returns false when they are in seclusion (nothing on the map to follow).
-        public bool FocusCultivator(Cultivator c)
+        public bool FocusCultivator(Cultivator c, bool evenAtHome = false)
         {
             if (c == null || !c.Alive) return false;
             var e = Sim.Entities;
@@ -275,7 +275,7 @@ namespace ThienDao
                 Kind = InspectKind.Cultivator, Cultivator = c, Entity = -1, Region = -1, Animal = -1, ObjectId = -1,
                 CellX = (int)e.X[c.Entity], CellY = (int)e.Y[c.Entity]
             });
-            if (!Sim.Cultivation.IsShownOnMap(c)) return false;
+            if (!Sim.Cultivation.IsShownOnMap(c) && !evenAtHome) return false;
             Follow = true;
             // Jump straight there, close enough to see them, then keep following.
             var t = _cam.transform;

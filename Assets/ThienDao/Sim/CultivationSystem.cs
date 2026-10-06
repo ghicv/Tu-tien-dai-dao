@@ -6,6 +6,9 @@ using UnityEngine;
 namespace ThienDao.Sim
 {
     public enum Trip : byte { None, Relocate, Excursion, Return, Battle, Hunt }
+
+    // What a nhân vật chính is doing with their life right now.
+    public enum Goal : byte { None, Seclusion, SeekCave, Training, SeekFortune, Market, JoinSect, Flee }
     public enum Outing : byte { Sightseeing, Training, HerbHunting }
 
     public sealed class Cultivator
@@ -57,8 +60,22 @@ namespace ThienDao.Sim
         public bool Blessed;         // Thiên Đạo has touched them
         public int OriginRoots;      // the root they were born with
 
+        // Nhân vật chính: the player watches them, and they live by goals (ProtagonistAI) instead of idling at home.
+        public bool Watched;
+        public float Stones;         // own linh thạch
+        public int Pills;            // breakthrough pills for the next gate
+        public int Treasures;        // pháp bảo
+        public string TreasureName;
+        public Goal Goal;
+        public string GoalText;
+        public long GoalUntil;
+        public bool GoalDone;
+        public long LastDiscipleTick = -100000;
+        public int GoalMark;          // realm and stage when the goal began (to tell progress from a stuck bottleneck)
+
         public string Activity =>
             AtWar ? "đang xuất chiến" :
+            Watched && GoalText != null && Goal != Goal.None ? GoalText :
             Trip == Trip.Hunt || HuntTarget >= 0 ? "đang truy sát kẻ thù" :
             Trip == Trip.Relocate ? "đang đi tìm động phủ mới" :
             Trip == Trip.Return ? "đang trở về" :
@@ -292,7 +309,7 @@ namespace ThienDao.Sim
                     SendTo(c, c.HomeX, c.HomeY, Trip.Return);
                     continue;
                 }
-                else if (!c.Away && CanRoam(c) && rng.NextFloat() < OutingChancePerMonth)
+                else if (!c.Away && !c.Watched && CanRoam(c) && rng.NextFloat() < OutingChancePerMonth)
                 {
                     StartOuting(c, ref rng);
                     continue;
@@ -327,6 +344,7 @@ namespace ThienDao.Sim
             float qiFactor = Mathf.Clamp(qi / Realms.RequiredQi[(int)c.Realm], 0f, 1.5f);
             float gain = SpiritRoots.SpeedMultiplier(c.Roots) * qiFactor * (0.6f + 0.8f * c.Comprehension) * (0.7f + 0.6f * c.DaoHeart);
             if (c.Demonic) gain *= 1.5f; // ma đạo: fast, at a price
+            if (c.Watched && c.Goal == Goal.Seclusion && IsAtHome(c)) gain *= 1.3f; // bế quan khổ tu
             c.Progress += gain;
             // Drawing qi depletes the spot; crowded caves run dry and push cultivators to look elsewhere.
             _sim.Qi.AddQi((int)x, (int)y, 4, -Realms.AbsorbPerMonth[(int)c.Realm] * Mathf.Min(1f, qiFactor + 0.2f));
@@ -343,6 +361,9 @@ namespace ThienDao.Sim
             // The sect buys Trúc Cơ Đan with its linh thạch; a poor sect's disciples go without.
             bool pill = next == Realm.TrucCo && c.SectId >= 0 && _sim.Factions != null && _sim.Factions.TrySpend(c.SectId, FactionSystem.PillCost);
             if (pill) chance += 0.25f;
+            // Their own pill for this gate, bought or found on the road.
+            bool ownPill = c.Pills > 0;
+            if (ownPill) { c.Pills--; chance += 0.2f; }
             if (desperate) chance *= 0.6f;
 
             float px = _e.X[c.Entity], py = _e.Y[c.Entity];
@@ -366,7 +387,7 @@ namespace ThienDao.Sim
                 c.FailedAttempts = 0;
                 int importance = next >= Realm.NguyenAnh ? 3 : next == Realm.KetDan ? 2 : 1;
                 _sim.Events.Add(tick, EventKind.Breakthrough, importance,
-                    $"{c.Name} ({SectName(c)}) đột phá {Realms.Names[(int)next]}{(pill ? " nhờ Trúc Cơ Đan" : "")}.", px, py, Fx.LightPillar, c.Index, -1, c.SectId);
+                    $"{c.Name} ({SectName(c)}) đột phá {Realms.Names[(int)next]}{(pill ? " nhờ Trúc Cơ Đan" : ownPill ? $" nhờ {Lore.PillFor(next)}" : "")}.", px, py, Fx.LightPillar, c.Index, -1, c.SectId);
                 _sim.Stories?.OnBreakthrough(c, tick);
                 return;
             }
@@ -438,7 +459,8 @@ namespace ThienDao.Sim
             for (int k = 0; k < count; k++)
             {
                 var c = All[k];
-                if (c.Alive && !c.Travelling) ConsiderRelocating(c, tick);
+                if (c.Alive && !c.Travelling && !c.Watched) ConsiderRelocating(c, tick); // nhân vật chính choose for themselves
+                if (c.Alive && c.SectId >= 0) c.Stones += 1f + 2f * (int)c.Realm; // the sect's yearly stipend
             }
         }
 
@@ -758,6 +780,27 @@ namespace ThienDao.Sim
 
         public void LeaveSect(Cultivator c) => c.SectId = -1;
 
+        // ---------------------------------------------------------------- nhân vật chính (driven by ProtagonistAI)
+
+        public void SetWatched(Cultivator c, bool on, long tick)
+        {
+            if (c == null || c.Watched == on) return;
+            c.Watched = on;
+            if (!on) { c.Goal = Goal.None; c.GoalText = null; }
+            _sim.Events.Add(tick, EventKind.Divine, 1, on ? $"Thiên Đạo để mắt tới {c.Title}." : $"Thiên Đạo thôi dõi theo {c.Title}.",
+                _e.X[c.Entity], _e.Y[c.Entity], Fx.None, c.Index, -1, c.SectId);
+        }
+
+        // A purposeful trip: Relocate makes the destination home; Excursion stays a while and comes back.
+        public void Travel(Cultivator c, float x, float y, Trip trip) => SendTo(c, x, y, trip);
+
+        public void BringHome(Cultivator c)
+        {
+            if (c.Away) SendTo(c, c.HomeX, c.HomeY, Trip.Return);
+        }
+
+        public void JoinSectByChoice(Cultivator c, Settlement sect, long tick) => JoinSect(c, sect, tick);
+
         // The founder heads a new sect from day one (no succession event).
         public void SetMaster(int sectId, Cultivator c) => _masters[sectId] = c;
 
@@ -839,7 +882,8 @@ namespace ThienDao.Sim
                                      (c.Away ? 1 << 18 : 0) | ((int)c.Trip << 20) | ((long)c.StayUntil << 24));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Progress));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.DaoHeart));
-                StateHash.Add(ref h, c.SectId | (c.AtWar ? 1L << 32 : 0));
+                StateHash.Add(ref h, c.SectId | (c.AtWar ? 1L << 32 : 0) | (c.Watched ? 1L << 33 : 0) | ((long)c.Pills << 40) | ((long)c.Goal << 50));
+                StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Stones));
             }
         }
     }

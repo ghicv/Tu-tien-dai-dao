@@ -118,6 +118,7 @@ namespace ThienDao.UI
             BuildToolbar();
             BuildWindows();
             BuildCard();
+            BuildWatchList();
             BuildPointerHelpers();
             SelectTab(0);
         }
@@ -464,8 +465,10 @@ namespace ThienDao.UI
             var buttons = Ui.Node("Buttons", _card);
             Row(buttons, 8).childAlignment = TextAnchor.MiddleLeft;
             Height(buttons, 46f);
-            _followButton = Ui.Button(buttons, null, "Camera bám theo nhân vật", () => _game.Follow = !_game.Follow, 46f, "Theo dõi");
-            Size(_followButton.Frame, 140f, 44f);
+            _followButton = Ui.Button(buttons, null, "Camera bám theo nhân vật", () => _game.Follow = !_game.Follow, 46f, "Camera");
+            Size(_followButton.Frame, 110f, 44f);
+            _watchButton = Ui.Button(buttons, null, "Thêm vào danh sách theo dõi: người này sẽ sống như nhân vật chính", ToggleWatchSelected, 46f, "☆ Theo dõi");
+            Size(_watchButton.Frame, 150f, 44f);
             // Thiên Đạo acts on exactly the one shown on the card.
             var acts = new[] { (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt) };
             for (int k = 0; k < acts.Length; k++)
@@ -550,6 +553,7 @@ namespace ThienDao.UI
             {
                 _slowRefresh = 0.25f;
                 if (_ranking.Open) UpdateRankingRows();
+                UpdateWatchList();
                 if (_events.Open) _events.Body.text = EventsText();
                 if (_powers.Open) _powers.Body.text = PowersText();
             }
@@ -569,8 +573,9 @@ namespace ThienDao.UI
             var recent = events.Recent;
             for (int k = Mathf.Max(0, recent.Count - (int)Mathf.Min(fresh, recent.Count)); k < recent.Count; k++)
             {
-                if (recent[k].Importance < 2) continue;
-                var t = Ui.Label(_ticker, recent[k].Text, 20, TextAnchor.UpperLeft, recent[k].Importance >= 3 ? Ui.Gold : Ui.Ink);
+                bool watched = IsWatchedEvent(recent[k]);
+                if (recent[k].Importance < 2 && !watched) continue;
+                var t = Ui.Label(_ticker, watched ? "★ " + recent[k].Text : recent[k].Text, 20, TextAnchor.UpperLeft, watched ? WatchColor : recent[k].Importance >= 3 ? Ui.Gold : Ui.Ink);
                 Element(t).preferredWidth = 560f; // height follows the wrapped text
                 _tickerLines.Add((t, Time.unscaledTime));
                 if (_tickerLines.Count > 4)
@@ -593,6 +598,107 @@ namespace ThienDao.UI
                 c.a = Mathf.Clamp01((8f - age) / 1.5f);
                 text.color = c;
             }
+        }
+
+        // ---------------------------------------------------------------- watch list (nhân vật chính)
+
+        static readonly Color WatchColor = new Color(1f, 0.92f, 0.55f);
+        const int WatchRows = 8;
+        Ui.IconButton _watchButton;
+        RectTransform _watchPanel;
+        Text _watchTitle;
+        readonly Ui.IconButton[] _watchRows = new Ui.IconButton[WatchRows];
+        readonly Ui.IconButton[] _watchRemove = new Ui.IconButton[WatchRows];
+        readonly Cultivator[] _watchWho = new Cultivator[WatchRows];
+
+        bool IsWatchedEvent(WorldEvent ev)
+        {
+            var all = _game.Sim.Cultivation.All;
+            return (ev.A >= 0 && ev.A < all.Count && all[ev.A].Watched) || (ev.B >= 0 && ev.B < all.Count && all[ev.B].Watched);
+        }
+
+        void ToggleWatchSelected()
+        {
+            var c = _game.Selected;
+            if (c == null) return;
+            _game.Sim.Enqueue(new WatchCommand(c.Index, !c.Watched));
+            if (!c.Watched) ShowToast($"{c.Title} được thêm vào danh sách theo dõi. Từ nay người này tự quyết định cuộc đời mình.");
+        }
+
+        // Bottom-right: everyone the player watches. Click a name to follow them; × to stop watching.
+        void BuildWatchList()
+        {
+            var panel = Ui.Panel(_root, "WatchList");
+            _watchPanel = panel.rectTransform;
+            Ui.Place(_watchPanel, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-12f, 12f), new Vector2(400f, 0f));
+            Column(_watchPanel, 4, 10);
+            Fit(_watchPanel, false, true);
+            _watchTitle = Ui.Label(_watchPanel, "", 18, TextAnchor.MiddleLeft, Ui.Gold);
+            Height(_watchTitle, 24f);
+            for (int k = 0; k < WatchRows; k++)
+            {
+                int row = k;
+                var line = Ui.Node("Row", _watchPanel);
+                Row(line, 4).childAlignment = TextAnchor.MiddleLeft;
+                Height(line, 48f);
+                var b = Ui.Button(line, null, "Bấm để camera theo người này", () => FocusWatched(row), 46f, "");
+                b.Caption.alignment = TextAnchor.MiddleLeft;
+                b.Caption.fontSize = 16;
+                Ui.Stretch(b.Caption.rectTransform, 10, 6, 2, 2);
+                Size(b.Frame, 324f, 46f);
+                var x = Ui.Button(line, Icons.Close, "Bỏ theo dõi", () => Unwatch(row), 40f);
+                Size(x.Frame, 40f, 40f);
+                _watchRows[k] = b;
+                _watchRemove[k] = x;
+            }
+            _watchPanel.gameObject.SetActive(false);
+        }
+
+        void UpdateWatchList()
+        {
+            var sim = _game.Sim;
+            int n = 0, total = 0;
+            foreach (var c in sim.Cultivation.All)
+            {
+                if (!c.Watched) continue;
+                total++;
+                if (n < WatchRows) _watchWho[n++] = c;
+            }
+            for (int k = n; k < WatchRows; k++) _watchWho[k] = null;
+            bool show = total > 0;
+            if (_watchPanel.gameObject.activeSelf != show) _watchPanel.gameObject.SetActive(show);
+            if (!show) return;
+            _watchTitle.text = $"★ Theo dõi ({total})";
+            for (int k = 0; k < WatchRows; k++)
+            {
+                var c = _watchWho[k];
+                var row = _watchRows[k].Frame.transform.parent.gameObject;
+                if (row.activeSelf != (c != null)) row.SetActive(c != null);
+                if (c == null) continue;
+                _watchRows[k].SetSelected(_game.Selected == c);
+                string state = !c.Alive ? $"<color=#ff9090>đã vẫn lạc năm {c.DeathTick / SimClock.DaysPerYear + 1}</color>"
+                    : sim.Cultivation.IsShownOnMap(c) ? $"<color=#9fe0a0>{c.Activity}</color>" : $"<color=#b8bccc>{c.Activity}</color>";
+                _watchRows[k].Caption.text = $"<color=#ffe68c>{c.Name}</color> · {c.RealmText}\n<size=14>{state}</size>";
+            }
+        }
+
+        void FocusWatched(int row)
+        {
+            var c = _watchWho[row];
+            if (c == null) return;
+            if (!c.Alive)
+            {
+                ShowToast($"{c.Title} đã vẫn lạc. Tiểu sử vẫn còn trong Biên niên sử (H).");
+                return;
+            }
+            // Watched cultivators are drawn even at home, so there is always someone to follow.
+            _game.FocusCultivator(c, true);
+        }
+
+        void Unwatch(int row)
+        {
+            var c = _watchWho[row];
+            if (c != null) _game.Sim.Enqueue(new WatchCommand(c.Index, false));
         }
 
         const int RankRows = 8;
@@ -643,7 +749,7 @@ namespace ThienDao.UI
         {
             var c = _rankWho[row];
             if (c == null || !c.Alive) return;
-            if (_game.FocusCultivator(c)) return;
+            if (_game.FocusCultivator(c, c.Watched)) return; // nhân vật chính are on the map even in seclusion
             string place = c.SectId >= 0 ? $"tại {_game.Sim.Cultivation.SectName(c)}" : "trong động phủ";
             ShowToast($"{c.Title} đang bế quan {place}, không xuất hiện trên bản đồ.");
         }
@@ -797,6 +903,7 @@ namespace ThienDao.UI
                 _cardBar2Root.gameObject.SetActive(false);
                 _followButton.Frame.gameObject.SetActive(sel.Kind == InspectKind.Migrants);
                 ShowDivineButtons(false, false);
+                _watchButton.Frame.gameObject.SetActive(false);
                 _followButton.SetSelected(_game.Follow);
                 return;
             }
@@ -834,6 +941,10 @@ namespace ThienDao.UI
                 if (c.Kills > 0) ties.Append(ties.Length > 0 ? " · " : "").Append($"{c.Kills} mạng");
                 if (c.Legend) ties.Append(ties.Length > 0 ? " · " : "").Append($"<color=#ffd873>Lưu danh sử sách</color>");
                 if (ties.Length > 0) sb.Append('\n').Append(ties);
+                if (c.Alive && (c.Watched || c.Pills > 0 || c.Treasures > 0))
+                    sb.Append($"\n<color=#b8bccc>Túi trữ vật: {c.Stones:N0} linh thạch" +
+                              (c.Pills > 0 ? $" · {c.Pills} {Lore.PillFor(c.Realm + 1)}" : "") +
+                              (c.Treasures > 0 ? $" · pháp bảo {c.TreasureName}{(c.Treasures > 1 ? $" (+{c.Treasures - 1})" : "")}" : "") + "</color>");
 
                 // Tiểu sử from the HistoryLog: every remembered deed, not just the last few hundred lines.
                 sim.History.OfCultivator(c.Index, _bio, 6);
@@ -851,6 +962,9 @@ namespace ThienDao.UI
                     _cardBar2.fillAmount = Mathf.Clamp01(c.AgeYears(tick) / c.LifespanYears);
                 }
                 _followButton.Frame.gameObject.SetActive(c.Alive);
+                _watchButton.Frame.gameObject.SetActive(true);
+                _watchButton.Caption.text = c.Watched ? "★ Bỏ theo dõi" : "☆ Theo dõi";
+                _watchButton.SetSelected(c.Watched);
                 ShowDivineButtons(c.Alive, false);
                 _followButton.SetSelected(_game.Follow);
                 return;
@@ -905,6 +1019,7 @@ namespace ThienDao.UI
             _cardBar2Root.gameObject.SetActive(false);
             _followButton.Frame.gameObject.SetActive(false);
             ShowDivineButtons(s.Alive, true);
+            _watchButton.Frame.gameObject.SetActive(false);
         }
 
         string InspectTitle(in InspectTarget t)
@@ -1041,6 +1156,11 @@ namespace ThienDao.UI
                 var e = sim.Entities;
                 foreach (var c in sim.Cultivation.All)
                 {
+                    if (c.Watched && c.Alive)
+                    {
+                        PlaceLabel(ref used, cam, new Vector3(e.X[c.Entity], e.Y[c.Entity] + 2.6f, 0f), $"★ {c.Name} · {c.RealmText}", WatchColor, 18);
+                        continue;
+                    }
                     if (c.Realm < Realm.KetDan || !sim.Cultivation.IsShownOnMap(c)) continue;
                     PlaceLabel(ref used, cam, new Vector3(e.X[c.Entity], e.Y[c.Entity] + 2.6f, 0f), $"{c.Title} · {Realms.Names[(int)c.Realm]}",
                         c.Demonic ? new Color(1f, 0.5f, 0.5f) : Ui.Gold, 18);

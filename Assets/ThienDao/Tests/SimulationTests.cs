@@ -369,6 +369,36 @@ namespace ThienDao.Tests
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
+        static Simulation RunWatched(out Cultivator hero)
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var all = sim.Cultivation.All;
+            hero = all.Find(c => c.Alive && c.Realm == Realm.TrucCo && c.SectId >= 0);
+            sim.Enqueue(new WatchCommand(hero.Index, true));
+            Run(sim, SimClock.DaysPerYear * 40);
+            return sim;
+        }
+
+        [Test]
+        public void WatchedCultivatorLivesByGoals()
+        {
+            var sim = RunWatched(out var hero);
+            Assert.IsTrue(hero.Watched);
+            var bio = new System.Collections.Generic.List<HistoryRecord>();
+            sim.History.OfCultivator(hero.Index, bio);
+            // A protagonist's life is full: seclusions, journeys, finds, dangers, not just a line at birth and death.
+            Assert.GreaterOrEqual(bio.Count, 6, "a watched cultivator should have a rich biography after 40 years");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void WatchingIsPartOfTheReplayableLog()
+        {
+            var a = RunWatched(out _);
+            var b = RunWatched(out _);
+            Assert.AreEqual(a.ComputeStateHash(), b.ComputeStateHash());
+        }
+
         [Test]
         public void HigherRealmUsuallyWinsADuel()
         {

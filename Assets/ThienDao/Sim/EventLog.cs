@@ -39,8 +39,9 @@ namespace ThienDao.Sim
         public readonly string Text;
         public readonly float X, Y;     // world position, X < 0 when it has none
         public readonly Fx Fx;
+        public readonly int A, B; // the cultivators it is about (subject, other party), -1 if none
 
-        public WorldEvent(long tick, EventKind kind, int importance, string text, float x, float y, Fx fx)
+        public WorldEvent(long tick, EventKind kind, int importance, string text, float x, float y, Fx fx, int a = -1, int b = -1)
         {
             Tick = tick;
             Kind = kind;
@@ -49,6 +50,8 @@ namespace ThienDao.Sim
             X = x;
             Y = y;
             Fx = fx;
+            A = a;
+            B = b;
         }
     }
 
@@ -70,7 +73,7 @@ namespace ThienDao.Sim
             CountByKind[(int)kind]++;
             TotalAdded++;
             if (_events.Count == Capacity) _events.RemoveAt(0);
-            _events.Add(new WorldEvent(tick, kind, importance, text, x, y, fx));
+            _events.Add(new WorldEvent(tick, kind, importance, text, x, y, fx, a, b));
             if (History == null) return;
             History.Count(tick, kind);
             // Lesser deeds of named people are kept too (a first kill, a Trúc Cơ breakthrough): stories and biographies need them.
