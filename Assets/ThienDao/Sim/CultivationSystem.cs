@@ -690,26 +690,51 @@ namespace ThienDao.Sim
 
         // ---------------------------------------------------------------- Thiên Đạo
 
-        public Cultivator GrantRoot(int x, int y, long tick)
+        // Ban linh căn on a chosen cultivator: a mixed root is refined to Thiên linh căn (one of its own elements),
+        // a Thiên linh căn to Dị linh căn; a Dị linh căn cannot rise further, so insight and fortune grow instead.
+        public bool GrantRootTo(Cultivator c, long tick)
         {
-            Settlement best = null;
-            int bestD = 60 * 60;
-            foreach (var s in _sim.Settlements.All)
+            if (c == null || !c.Alive) return false;
+            var rng = RngFor(tick, 700000 + c.Index);
+            string before = $"{SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)})";
+            bool variant = (c.Roots & SpiritRoots.Variant) != 0;
+            if (!variant && SpiritRoots.Count(c.Roots) > 1)
             {
-                if (!s.Alive) continue;
-                int d = (s.X - x) * (s.X - x) + (s.Y - y) * (s.Y - y);
-                if (d < bestD) { bestD = d; best = s; }
+                int pick = rng.Range(0, SpiritRoots.Count(c.Roots));
+                for (int b = 0; b < 5; b++)
+                {
+                    if ((c.Roots & (1 << b)) == 0) continue;
+                    if (pick-- == 0) { c.Roots = 1 << b; break; }
+                }
             }
-            if (best == null || !_sim.Settlements.TakeChild(best)) return null;
-            var rng = RngFor(tick, 700000 + x * 1031 + y);
+            else if (!variant) c.Roots = 1 << (5 + rng.Range(0, 3));
+            c.Comprehension = Mathf.Max(c.Comprehension, 0.85f);
+            c.Luck = Mathf.Max(c.Luck, 0.8f);
+            string after = $"{SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)})";
+            _sim.Events.Add(tick, EventKind.Divine, 2,
+                variant ? $"Thiên Đạo điểm hóa {c.Title}: linh căn vốn đã cực phẩm, ngộ tính và khí vận tăng vọt."
+                        : $"Thiên Đạo tẩy luyện linh căn của {c.Title}: {before} hóa thành {after}.",
+                _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing);
+            return true;
+        }
+
+        // Ban linh căn on a mortal of a village: that grown man or woman awakens a heavenly root and sets out.
+        public Cultivator AwakenMortal(Settlement s, long tick)
+        {
+            if (s == null || !s.Alive || !_sim.Settlements.TakeAdult(s, out float age)) return null;
+            var rng = RngFor(tick, 710000 + s.Id);
             int roots = rng.NextFloat() < 0.5f ? 1 << (5 + rng.Range(0, 3)) : 1 << rng.Range(0, 5);
-            var sect = NearestSect(best.X, best.Y);
-            var c = Create(ref rng, Realm.LuyenKhi, 0, 12f, sect?.Id ?? -1, best.X + 0.5f, best.Y + 0.5f, tick, roots);
+            var sect = _sim.Factions?.ProtectorOf(s.X, s.Y) ?? NearestSect(s.X, s.Y);
+            var c = Create(ref rng, Realm.LuyenKhi, 0, age, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick, roots);
             c.Progress = 0f;
             c.Comprehension = Mathf.Max(c.Comprehension, 0.85f);
             c.Luck = Mathf.Max(c.Luck, 0.8f);
+            // Either way they set out at once, so the player sees who was chosen.
             if (sect != null) Recruit(c, sect, ref rng);
-            _sim.Events.Add(tick, EventKind.Divine, 2, $"Thiên Đạo ban {SpiritRoots.Kind(roots)} ({SpiritRoots.Elements(roots)}) cho {c.Name} ở {best.Name}.");
+            else StartOuting(c, ref rng);
+            _sim.Events.Add(tick, EventKind.Divine, 2,
+                $"Thiên Đạo điểm hóa {c.Name} ({age:0} tuổi) ở {s.Name}, thức tỉnh {SpiritRoots.Kind(roots)} ({SpiritRoots.Elements(roots)})" +
+                (sect != null ? $", lên đường bái nhập {sect.BaseName}." : ", trở thành tán tu."), s.X + 0.5f, s.Y + 0.5f, Fx.Blessing);
             return c;
         }
 

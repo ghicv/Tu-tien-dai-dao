@@ -130,6 +130,7 @@ namespace ThienDao
 
             var prev = Brush;
             Brush = new WorldBrush(Sim);
+            Brush.Spawned += _units.ShowSpawn;
             if (prev != null)
             {
                 Brush.Tool = prev.Tool;
@@ -165,6 +166,7 @@ namespace ThienDao
             bool overUI = _ui != null && _ui.PointerOverUI;
             Hovered = overUI || !World.InBounds(HoverX, HoverY) ? default : PickAt(wp);
             if (!overUI && mouse.leftButton.wasPressedThisFrame && Brush.Tool == BrushTool.Inspect) Select(Hovered);
+            if (!overUI && mouse.leftButton.wasPressedThisFrame && WorldBrush.IsDivineTool(Brush.Tool)) ActOn(WorldBrush.ActFor(Brush.Tool), Hovered);
             if (!overUI && mouse.leftButton.isPressed)
                 Brush.Apply(HoverX, HoverY, mouse.leftButton.wasPressedThisFrame, Time.unscaledDeltaTime);
 
@@ -247,6 +249,26 @@ namespace ThienDao
             return t;
         }
 
+        // Thiên Đạo acts on exactly the one pointed at (or selected): that cultivator, or a mortal of that village.
+        public void ActOn(DivineAct act, InspectTarget t)
+        {
+            int target = t.Kind == InspectKind.Cultivator && t.Cultivator != null ? t.Cultivator.Index : -1;
+            int village = t.Kind == InspectKind.Settlement && t.Settlement != null ? t.Settlement.Id : -1;
+            if (act == DivineAct.GrantRoot && target < 0 && village < 0) return; // nobody chosen
+            int x = t.CellX, y = t.CellY;
+            if (t.Cultivator != null && Sim.Cultivation.IsShownOnMap(t.Cultivator))
+            {
+                x = (int)Sim.Entities.X[t.Cultivator.Entity];
+                y = (int)Sim.Entities.Y[t.Cultivator.Entity];
+            }
+            Sim.Enqueue(new DivineActCommand(act, x, y, target, village));
+        }
+
+        public void ActOnSelected(DivineAct act)
+        {
+            if (Selection.Kind != InspectKind.None) ActOn(act, Selection);
+        }
+
         void Select(InspectTarget target)
         {
             Follow = false;
@@ -319,7 +341,8 @@ namespace ThienDao
             Rect? sel = SelectionBox();
             _highlight.Selection(sel, SelectColor, ppc);
             // No hover outline over what is already selected, nor while painting with another tool.
-            bool hover = Brush.Tool == BrushTool.Inspect && Hovered.Kind != InspectKind.None && !Hovered.Same(Selection);
+            bool aiming = Brush.Tool == BrushTool.Inspect || WorldBrush.IsDivineTool(Brush.Tool);
+            bool hover = aiming && Hovered.Kind != InspectKind.None && !Hovered.Same(Selection);
             _highlight.Hover(hover ? Hovered.HoverBox : null, HoverColor, ppc);
         }
 
@@ -381,7 +404,8 @@ namespace ThienDao
         void UpdateCursor(bool overUI)
         {
             bool inside = World.InBounds(HoverX, HoverY);
-            _cursor.enabled = !overUI && inside && Brush.Tool != BrushTool.Inspect; // Xem uses the hover outline instead
+            // Xem and the Thiên Đạo acts use the hover outline on their target instead.
+            _cursor.enabled = !overUI && inside && Brush.Tool != BrushTool.Inspect && !WorldBrush.IsDivineTool(Brush.Tool);
             if (!_cursor.enabled) return;
 
             if (WorldBrush.IsBuildingTool(Brush.Tool))

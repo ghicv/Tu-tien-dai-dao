@@ -27,6 +27,34 @@ namespace ThienDao.Render
         {
             public float X, Y, TX, TY, Wait;
             public int Kind;
+            public float Pinned; // real seconds left: spawned by the player, kept on screen beyond the usual cap
+        }
+
+        const int ExtraSpawnTokens = 8;   // per region and kind, on top of MaxTokensPerRegion
+        const float SpawnTokenSeconds = 60f;
+
+        // Thiên Đạo just dropped animals here: show one right where the player clicked.
+        public void ShowSpawn(Species s, float x, float y)
+        {
+            if (_sim == null || !_sim.World.IsWalkable(x, y)) return; // the sim drops them in the sea as well
+            int kind = System.Array.IndexOf(WildlifeSystem.Kinds, s);
+            if (kind < 0) return;
+            int region = _sim.Wildlife.RegionOf(x, y);
+            if (!_tokens.TryGetValue(region, out var list))
+            {
+                list = new List<Token>();
+                _tokens[region] = list;
+            }
+            int pinned = 0, oldest = -1;
+            for (int k = 0; k < list.Count; k++)
+            {
+                if (list[k].Kind != kind || list[k].Pinned <= 0f) continue;
+                pinned++;
+                if (oldest < 0 || list[k].Pinned < list[oldest].Pinned) oldest = k;
+            }
+            var t = new Token { X = x, Y = y, TX = x, TY = y, Wait = 0.5f + (float)_rand.NextDouble(), Kind = kind, Pinned = SpawnTokenSeconds };
+            if (pinned >= ExtraSpawnTokens) list[oldest] = t; // holding the brush keeps moving the newest ones under it
+            else list.Add(t);
         }
 
         // Click target for something drawn this frame.
@@ -374,6 +402,8 @@ namespace ThienDao.Render
                     for (int k = list.Count - 1; k >= 0; k--)
                     {
                         if (list[k].Kind != kind) continue;
+                        // Freshly spawned ones stay while their kind still lives here, even past the cap.
+                        if (list[k].Pinned > 0f && pop >= 1f) { have++; continue; }
                         if (have >= want) list.RemoveAt(k);
                         else have++;
                     }
@@ -392,6 +422,7 @@ namespace ThienDao.Render
                         list.RemoveAt(k);
                         continue;
                     }
+                    if (t.Pinned > 0f) t.Pinned -= Time.unscaledDeltaTime;
                     float dx = t.TX - t.X, dy = t.TY - t.Y, d = Mathf.Sqrt(dx * dx + dy * dy);
                     bool moving = false;
                     if (t.Wait > 0f) t.Wait -= dt;

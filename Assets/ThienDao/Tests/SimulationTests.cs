@@ -286,6 +286,43 @@ namespace ThienDao.Tests
             Assert.AreEqual((2, 1, 1, Season.Xuan), (clock.Year, clock.Month, clock.Day, clock.Season));
         }
 
+        [Test]
+        public void GrantRootActsOnTheChosenOne()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            // A cultivator with a mixed root is refined to a single-element Thiên linh căn, nobody new appears.
+            Cultivator chosen = null;
+            foreach (var c in sim.Cultivation.All)
+                if (c.Alive && SpiritRoots.Count(c.Roots) >= 3 && (c.Roots & SpiritRoots.Variant) == 0) { chosen = c; break; }
+            Assert.IsNotNull(chosen);
+            int count = sim.Cultivation.All.Count;
+            int oldRoots = chosen.Roots;
+            sim.Enqueue(new DivineActCommand(DivineAct.GrantRoot, (int)chosen.HomeX, (int)chosen.HomeY, chosen.Index));
+            sim.ApplyPending();
+            Assert.AreEqual(count, sim.Cultivation.All.Count, "granting a root must not create a new person");
+            Assert.AreEqual(1, SpiritRoots.Count(chosen.Roots));
+            Assert.AreNotEqual(0, chosen.Roots & oldRoots, "the refined root keeps one of the person's own elements");
+
+            // A mortal of the chosen village (an adult, not a newborn child) awakens.
+            Settlement village = null;
+            foreach (var s in sim.Settlements.All)
+                if (s.Alive && !s.Sect && s.Population > 20) { village = s; break; }
+            int pop = village.Population;
+            sim.Enqueue(new DivineActCommand(DivineAct.GrantRoot, village.X, village.Y, -1, village.Id));
+            sim.ApplyPending();
+            Assert.AreEqual(count + 1, sim.Cultivation.All.Count);
+            Assert.AreEqual(pop - 1, village.Population);
+            var awakened = sim.Cultivation.All[count];
+            Assert.GreaterOrEqual(awakened.AgeYears(sim.Clock.Tick), 15f);
+            Assert.IsTrue(awakened.Travelling, "the awakened one sets out at once and shows on the map");
+
+            // Granting on empty ground does nothing.
+            sim.Enqueue(new DivineActCommand(DivineAct.GrantRoot, 5, 5));
+            sim.ApplyPending();
+            Assert.AreEqual(count + 1, sim.Cultivation.All.Count);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
         // ---------------------------------------------------------------- M4: thế lực
 
         [Test]

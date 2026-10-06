@@ -76,9 +76,9 @@ namespace ThienDao.UI
             { BrushTool.SpawnDeer, "Thả hươu vào vùng" }, { BrushTool.SpawnRabbit, "Thả thỏ vào vùng" }, { BrushTool.SpawnWolf, "Thả sói vào vùng" },
             { BrushTool.LeyAdd, "Vẽ linh mạch — trần linh khí quanh đó tăng dần" }, { BrushTool.LeyErase, "Phá linh mạch" },
             { BrushTool.QiInfuse, "Rót linh khí — linh khí tràn ra rồi tản dần" }, { BrushTool.QiDrain, "Hút linh khí — vùng đó cạn kiệt" },
-            { BrushTool.GrantRoot, "Ban linh căn — một đứa trẻ ở làng gần nhất được Thiên linh căn / Dị linh căn" },
-            { BrushTool.Bless, "Ban cơ duyên — tu sĩ gần nhất tu vi tăng mạnh, thêm thọ" },
-            { BrushTool.Smite, "Thiên phạt — sét đánh xuống; trúng tu sĩ thì hồn phi phách tán" },
+            { BrushTool.GrantRoot, "Ban linh căn — bấm vào một người: tu sĩ được tẩy luyện linh căn, phàm nhân trong làng thức tỉnh linh căn" },
+            { BrushTool.Bless, "Ban cơ duyên — bấm vào tu sĩ: tu vi tăng mạnh, thêm thọ; bấm vào làng: mùa màng bội thu" },
+            { BrushTool.Smite, "Thiên phạt — sét đánh xuống người được chọn (hồn phi phách tán) hoặc xuống chỗ bấm" },
         };
 
         public bool PointerOverUI => _visible && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
@@ -459,7 +459,43 @@ namespace ThienDao.UI
             Height(buttons, 46f);
             _followButton = Ui.Button(buttons, null, "Camera bám theo nhân vật", () => _game.Follow = !_game.Follow, 46f, "Theo dõi");
             Size(_followButton.Frame, 140f, 44f);
+            // Thiên Đạo acts on exactly the one shown on the card.
+            var acts = new[] { (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt) };
+            for (int k = 0; k < acts.Length; k++)
+            {
+                var act = acts[k].Item1;
+                _divineButtons[k] = Ui.Button(buttons, acts[k].Item2, DivineTipPerson[k], () => _game.ActOnSelected(act), 44f);
+                Size(_divineButtons[k].Frame, 44f, 44f);
+            }
             _card.gameObject.SetActive(false);
+        }
+
+        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[3];
+
+        static readonly string[] DivineTipPerson =
+        {
+            "Ban linh căn: tẩy luyện linh căn người này lên Thiên / Dị linh căn",
+            "Ban cơ duyên: tu vi tăng mạnh, khí vận tràn đầy, thêm 20 năm thọ",
+            "Thiên phạt: sét đánh xuống, hồn phi phách tán"
+        };
+
+        static readonly string[] DivineTipVillage =
+        {
+            "Ban linh căn: điểm hóa một phàm nhân trưởng thành trong làng",
+            "Ban cơ duyên: mùa màng bội thu",
+            "Thiên phạt: thiên lôi đánh xuống làng"
+        };
+
+        void ShowDivineButtons(bool show, bool village)
+        {
+            for (int k = 0; k < _divineButtons.Length; k++)
+            {
+                var b = _divineButtons[k];
+                if (b.Frame.gameObject.activeSelf != show) b.Frame.gameObject.SetActive(show);
+                if (!show) continue;
+                var tip = b.Frame.GetComponent<Tooltip>();
+                if (tip != null) tip.Text = village ? DivineTipVillage[k] : DivineTipPerson[k];
+            }
         }
 
         void BuildPointerHelpers()
@@ -686,6 +722,7 @@ namespace ThienDao.UI
                 _cardBar1Root.gameObject.SetActive(false);
                 _cardBar2Root.gameObject.SetActive(false);
                 _followButton.Frame.gameObject.SetActive(sel.Kind == InspectKind.Migrants);
+                ShowDivineButtons(false, false);
                 _followButton.SetSelected(_game.Follow);
                 return;
             }
@@ -727,6 +764,7 @@ namespace ThienDao.UI
                     _cardBar2.fillAmount = Mathf.Clamp01(c.AgeYears(tick) / c.LifespanYears);
                 }
                 _followButton.Frame.gameObject.SetActive(c.Alive);
+                ShowDivineButtons(c.Alive, false);
                 _followButton.SetSelected(_game.Follow);
                 return;
             }
@@ -770,6 +808,7 @@ namespace ThienDao.UI
             _cardBar1Root.gameObject.SetActive(false);
             _cardBar2Root.gameObject.SetActive(false);
             _followButton.Frame.gameObject.SetActive(false);
+            ShowDivineButtons(s.Alive, true);
         }
 
         string InspectTitle(in InspectTarget t)
@@ -916,7 +955,21 @@ namespace ThienDao.UI
 
             string hint = null;
             var h = _game.Hovered;
-            if (!PointerOverUI && _game.Brush.Tool == BrushTool.Inspect)
+            if (!PointerOverUI && WorldBrush.IsDivineTool(_game.Brush.Tool))
+            {
+                // Say who the act will fall on before the click.
+                var tool = _game.Brush.Tool;
+                string who = h.Kind == InspectKind.Cultivator ? h.Cultivator.Title :
+                             h.Kind == InspectKind.Settlement ? $"một phàm nhân ở {h.Settlement.Name}" : null;
+                if (tool == BrushTool.GrantRoot)
+                    hint = h.Kind == InspectKind.Cultivator ? $"Ban linh căn → {who} ({SpiritRoots.Kind(h.Cultivator.Roots)})" :
+                           who != null ? $"Ban linh căn → {who}" : "Chọn một người để ban linh căn";
+                else if (tool == BrushTool.Bless)
+                    hint = h.Kind == InspectKind.Settlement ? $"Ban phúc → {h.Settlement.Name}" : who != null ? $"Ban cơ duyên → {who}" : "Ban cơ duyên → tu sĩ gần nhất";
+                else
+                    hint = h.Kind == InspectKind.Cultivator ? $"Thiên phạt → {who}" : h.Kind == InspectKind.Settlement ? $"Thiên lôi → {h.Settlement.Name}" : "Thiên lôi đánh xuống đây";
+            }
+            else if (!PointerOverUI && _game.Brush.Tool == BrushTool.Inspect)
             {
                 switch (h.Kind)
                 {

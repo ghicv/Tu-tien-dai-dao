@@ -52,6 +52,9 @@ namespace ThienDao.Player
         public BrushTool Tool = BrushTool.Inspect;
         public int Size = 6;
 
+        // Presentation hook: animals were just dropped at this spot (the sim only tracks region totals).
+        public event System.Action<Species, float, float> Spawned;
+
         public WorldBrush(Simulation sim)
         {
             _sim = sim;
@@ -59,6 +62,10 @@ namespace ThienDao.Player
         }
 
         public static bool IsBuildingTool(BrushTool t) => t == BrushTool.House || t == BrushTool.SectHall;
+
+        public static bool IsDivineTool(BrushTool t) => t == BrushTool.GrantRoot || t == BrushTool.Bless || t == BrushTool.Smite;
+
+        public static DivineAct ActFor(BrushTool t) => t == BrushTool.GrantRoot ? DivineAct.GrantRoot : t == BrushTool.Bless ? DivineAct.Bless : DivineAct.Smite;
 
         public static ObjectType BuildingFor(BrushTool t) => t == BrushTool.SectHall ? ObjectType.SectHall : ObjectType.House;
 
@@ -78,12 +85,7 @@ namespace ThienDao.Player
                 if (pressedThisFrame) _sim.Enqueue(new FoundVillageCommand(cx, cy, 24, (byte)_rng.Range(0, 4)));
                 return;
             }
-            if (Tool == BrushTool.GrantRoot || Tool == BrushTool.Bless || Tool == BrushTool.Smite)
-            {
-                var act = Tool == BrushTool.GrantRoot ? DivineAct.GrantRoot : Tool == BrushTool.Bless ? DivineAct.Bless : DivineAct.Smite;
-                if (pressedThisFrame) _sim.Enqueue(new DivineActCommand(act, cx, cy));
-                return;
-            }
+            if (IsDivineTool(Tool)) return; // aimed at whoever is under the pointer: see WorldBootstrap.ActOn
             if (Tool == BrushTool.SpawnDeer || Tool == BrushTool.SpawnRabbit || Tool == BrushTool.SpawnWolf)
             {
                 _cooldown -= dt;
@@ -91,6 +93,7 @@ namespace ThienDao.Player
                 _cooldown = 0.15f;
                 var species = Tool == BrushTool.SpawnDeer ? Species.Deer : Tool == BrushTool.SpawnRabbit ? Species.Rabbit : Species.Wolf;
                 _sim.Enqueue(new SpawnCreaturesCommand(species, cx, cy, species == Species.Wolf ? 2 : 10));
+                Spawned?.Invoke(species, cx + 0.5f, cy + 0.5f);
                 return;
             }
 

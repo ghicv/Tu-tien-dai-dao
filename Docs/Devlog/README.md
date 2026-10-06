@@ -13,6 +13,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 06 | [06-ui-kieu-worldbox.md](06-ui-kieu-worldbox.md) | UI kiểu WorldBox — toolbar tab + icon, cửa sổ, thẻ nhân vật | `b86d936` |
 | 07 | [07-xem-moi-thu-va-highlight.md](07-xem-moi-thu-va-highlight.md) | Sửa click nhân vật; Xem mọi thứ (thú, vật thể, ô đất); highlight khi rê chuột | `9157b11` |
 | 08 | [08-m4-the-luc.md](08-m4-the-luc.md) | M4 — Thế lực: lãnh thổ, linh thạch, ngoại giao, chiến tranh, lập tông, ly khai | `855a9a3` |
+| 09 | [09-tha-sinh-vat-hien-ngay.md](09-tha-sinh-vat-hien-ngay.md) | Thả thú hiện ngay tại chỗ click; Thiên Đạo (ban linh căn, cơ duyên, thiên phạt) tác động đúng người được chọn | (commit này) |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Sim/Lore.cs`).

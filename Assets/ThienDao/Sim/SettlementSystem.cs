@@ -612,6 +612,22 @@ namespace ThienDao.Sim
             return false;
         }
 
+        // One grown villager (15–39, else any child old enough) leaves; returns their age.
+        public bool TakeAdult(Settlement s, out float ageYears)
+        {
+            int best = -1;
+            for (int b = 3; b <= 7; b++)
+                if (s.Cohorts[b] > 0 && (best < 0 || s.Cohorts[b] > s.Cohorts[best])) best = b;
+            if (best < 0)
+                for (int b = 2; b < Settlement.AgeGroups && best < 0; b++)
+                    if (s.Cohorts[b] > 0) best = b;
+            ageYears = 0f;
+            if (best < 0) return false;
+            s.Cohorts[best]--;
+            ageYears = best * 5 + 2.5f;
+            return true;
+        }
+
         void RemovePeople(Settlement s, int n)
         {
             int guard = 0;

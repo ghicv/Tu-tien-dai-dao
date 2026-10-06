@@ -213,31 +213,46 @@ namespace ThienDao.Sim
 
     public enum DivineAct : byte { GrantRoot, Bless, Smite }
 
-    // Thiên Đạo acting on cultivation: grant a spirit root in the nearest village, or bless / smite the nearest cultivator.
+    // Thiên Đạo acting on one being: the chosen cultivator (Target, an index into Cultivation.All) or a mortal of
+    // the chosen village (Village, a settlement id). Without a target, Bless / Smite fall back to whoever is nearby.
     public sealed class DivineActCommand : IWorldCommand
     {
         const int CultivatorMask = 1 << (int)Species.Cultivator;
         public readonly DivineAct Act;
         public readonly int X, Y;
+        public readonly int Target, Village;
 
-        public DivineActCommand(DivineAct act, int x, int y)
+        public DivineActCommand(DivineAct act, int x, int y, int target = -1, int village = -1)
         {
             Act = act;
             X = x;
             Y = y;
+            Target = target;
+            Village = village;
         }
 
         public void Apply(Simulation sim)
         {
             long tick = sim.Clock.Tick;
+            var all = sim.Cultivation.All;
+            var chosen = Target >= 0 && Target < all.Count && all[Target].Alive ? all[Target] : null;
+            var village = Village >= 0 && Village < sim.Settlements.All.Count && sim.Settlements.All[Village].Alive ? sim.Settlements.All[Village] : null;
             if (Act == DivineAct.GrantRoot)
             {
-                sim.Cultivation.GrantRoot(X, Y, tick);
+                if (chosen != null) sim.Cultivation.GrantRootTo(chosen, tick);
+                else if (village != null) sim.Cultivation.AwakenMortal(village, tick);
+                return; // a spirit root is given to someone, never to empty ground
+            }
+            if (Act == DivineAct.Bless && chosen == null && village != null)
+            {
+                village.Food += village.Population * 6f; // a good harvest for the chosen village
+                sim.Events.Add(tick, EventKind.Divine, 1, $"Thiên Đạo ban phúc cho {village.Name}, mùa màng bội thu.", village.X + 0.5f, village.Y + 0.5f, Fx.Blessing);
                 return;
             }
-            // Prefer someone visible under the cursor; otherwise whoever is meditating nearby.
-            var c = sim.Cultivation.FindShownNear(X + 0.5f, Y + 0.5f, 3f) ??
-                    sim.Cultivation.ForEntity(sim.Creatures.FindNearest(X + 0.5f, Y + 0.5f, 6f, CultivatorMask));
+            // Prefer the chosen one; otherwise someone visible under the cursor, or whoever is meditating nearby.
+            var c = chosen ?? (Target >= 0 ? null : sim.Cultivation.FindShownNear(X + 0.5f, Y + 0.5f, 3f) ??
+                                                  sim.Cultivation.ForEntity(sim.Creatures.FindNearest(X + 0.5f, Y + 0.5f, 6f, CultivatorMask)));
+            if (village != null && chosen == null) c = null; // a village was chosen: the bolt falls on it
             if (Act == DivineAct.Bless)
             {
                 sim.Cultivation.Bless(c, tick);
