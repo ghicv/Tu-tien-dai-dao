@@ -20,6 +20,7 @@ namespace ThienDao.Render
         {
             public float X, Y, TX, TY, Wait;
             public Unit Look;
+            public Cultivator Who; // the real sect member this stand-in shows; null for mortals
         }
 
         struct Token
@@ -27,6 +28,18 @@ namespace ThienDao.Render
             public float X, Y, TX, TY, Wait;
             public int Kind;
         }
+
+        // Click target for something drawn this frame.
+        public struct Hit
+        {
+            public Rect Box;
+            public Cultivator Cultivator;
+            public Settlement Settlement; // a mortal stand-in's village
+            public int Entity;            // an individual entity (migrants), else -1
+            public int Region, Kind;      // a wildlife token's region and kind, else -1
+        }
+
+        readonly List<Hit> _hits = new List<Hit>();
 
         // Decorative wildlife: one token stands for this many animals, capped per region and kind.
         static readonly float[] AnimalsPerToken = { 20f, 30f, 3f };
@@ -93,6 +106,7 @@ namespace ThienDao.Render
             _verts.Clear();
             _uvs.Clear();
             _colors.Clear();
+            _hits.Clear();
 
             if (pixelsPerCell >= HideBelowPixelsPerCell)
             {
@@ -165,6 +179,7 @@ namespace ThienDao.Render
                 if (s != Species.Cultivator)
                 {
                     AddQuad(UnitFor(s), frame, x, y, left);
+                    AddHit(UnitFor(s), x, y, new Hit { Entity = id, Region = -1, Kind = -1 });
                     continue;
                 }
 
@@ -181,6 +196,7 @@ namespace ThienDao.Render
                 }
                 if (flying) AddQuadCentered(Unit.FlyingSword, ((int)(time * 8f) + id) & 1, x, y + lift - 0.1f, White, left);
                 AddQuad(CultivatorLook(c), flying ? 0 : frame, x, y + lift, left);
+                AddHit(CultivatorLook(c), x, y + lift, new Hit { Cultivator = c, Entity = -1, Region = -1, Kind = -1 });
             }
         }
 
@@ -205,8 +221,9 @@ namespace ThienDao.Render
                 }
                 // Wanted stand-ins: mortals for the population; at a sect also a few disciples and elders who are home.
                 _wantLooks.Clear();
+                _wantWho.Clear();
                 int mortals = Mathf.Clamp(s.Population / 5, 1, 20);
-                for (int k = 0; k < mortals; k++) _wantLooks.Add(Unit.Villager0);
+                for (int k = 0; k < mortals; k++) Want(Unit.Villager0, null);
                 if (s.Sect) AddSectStandIns(s.Id);
                 SyncStandIns(list, s, objects);
 
@@ -247,29 +264,40 @@ namespace ThienDao.Render
                     if (!view.Contains(new Vector2(v.X, v.Y))) continue;
                     int frame = moving ? ((int)(time * 7f) + k) & 1 : 0;
                     AddQuad(v.Look, frame, v.X, v.Y, dx < 0f);
+                    AddHit(v.Look, v.X, v.Y, new Hit { Cultivator = v.Who, Settlement = s, Entity = -1, Region = -1, Kind = -1 });
                 }
             }
             foreach (int id in _staleVillages) _villagers.Remove(id);
         }
 
         readonly List<Unit> _wantLooks = new List<Unit>();
+        readonly List<Cultivator> _wantWho = new List<Cultivator>();
+        readonly List<Cultivator> _disciples = new List<Cultivator>();
         readonly List<Cultivator> _elders = new List<Cultivator>();
 
         static bool IsVillagerLook(Unit u) => u >= Unit.Villager0 && u <= Unit.Villager3;
 
+        void Want(Unit look, Cultivator who)
+        {
+            _wantLooks.Add(look);
+            _wantWho.Add(who);
+        }
+
+        // Each sect stand-in is a real member who is at home, so clicking it opens that person's card.
         void AddSectStandIns(int sectId)
         {
-            int disciples = 0;
+            _disciples.Clear();
             _elders.Clear();
             foreach (var c in _sim.Cultivation.All)
             {
                 if (c.SectId != sectId || !_sim.Cultivation.IsAtHome(c)) continue;
-                if (c.Realm == Realm.LuyenKhi) disciples++;
+                if (c.Realm == Realm.LuyenKhi) _disciples.Add(c);
                 else _elders.Add(c);
             }
-            for (int k = 0; k < Mathf.Min(6, (disciples + 2) / 3); k++) _wantLooks.Add(Unit.CultivatorLK);
+            int shown = Mathf.Min(6, (_disciples.Count + 2) / 3);
+            for (int k = 0; k < shown; k++) Want(CultivatorLook(_disciples[k]), _disciples[k]);
             _elders.Sort((a, b) => b.Rank.CompareTo(a.Rank));
-            for (int k = 0; k < Mathf.Min(2, _elders.Count); k++) _wantLooks.Add(CultivatorLook(_elders[k]));
+            for (int k = 0; k < Mathf.Min(2, _elders.Count); k++) Want(CultivatorLook(_elders[k]), _elders[k]);
         }
 
         // Keep the stand-ins in step with what is wanted, reusing existing ones so they don't jump around.
@@ -277,17 +305,28 @@ namespace ThienDao.Render
         {
             for (int k = list.Count - 1; k >= 0; k--)
             {
-                var look = list[k].Look;
-                int idx = IsVillagerLook(look) ? _wantLooks.IndexOf(Unit.Villager0) : _wantLooks.IndexOf(look);
-                if (idx >= 0) _wantLooks.RemoveAt(idx);
-                else list.RemoveAt(k);
+                var v = list[k];
+                int idx = v.Who == null ? _wantLooks.IndexOf(Unit.Villager0) : _wantWho.IndexOf(v.Who);
+                if (idx < 0)
+                {
+                    list.RemoveAt(k);
+                    continue;
+                }
+                if (v.Who != null && v.Look != _wantLooks[idx])
+                {
+                    v.Look = _wantLooks[idx]; // broke through or turned demonic while at home
+                    list[k] = v;
+                }
+                _wantLooks.RemoveAt(idx);
+                _wantWho.RemoveAt(idx);
             }
-            foreach (var want in _wantLooks)
+            for (int k = 0; k < _wantLooks.Count; k++)
             {
+                var want = _wantLooks[k];
                 var look = want == Unit.Villager0 ? (Unit)((int)Unit.Villager0 + _rand.Next(4)) : want;
                 var p = RandomSpot(s, objects, look);
                 if (!_sim.World.IsWalkable(p.x, p.y)) continue; // no dry ground found this frame
-                list.Add(new Villager { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 2f, Look = look });
+                list.Add(new Villager { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 2f, Look = look, Who = _wantWho[k] });
             }
         }
 
@@ -383,6 +422,7 @@ namespace ThienDao.Render
                     if (!view.Contains(new Vector2(t.X, t.Y))) continue;
                     int frame = moving ? ((int)(time * 6f) + k) & 1 : 0;
                     AddQuad(TokenLook[t.Kind], frame, t.X, t.Y, dx < 0f);
+                    AddHit(TokenLook[t.Kind], t.X, t.Y, new Hit { Entity = -1, Region = region, Kind = t.Kind });
                 }
             }
             foreach (int region in _staleRegions) _tokens.Remove(region);
@@ -435,6 +475,56 @@ namespace ThienDao.Render
         }
 
         static readonly Color32 White = new Color32(255, 255, 255, 255);
+
+        // Same box as AddQuad draws (feet at (x, y)).
+        void AddHit(Unit unit, float x, float y, Hit hit)
+        {
+            var sp = SpriteLibrary.UnitSprite(unit, 0);
+            float w = sp.W / (float)WorldRenderer.CellPx, h = sp.H / (float)WorldRenderer.CellPx;
+            hit.Box = new Rect(x - w * 0.5f, y - 0.15f, w, h);
+            _hits.Add(hit);
+        }
+
+        // Where a cultivator (travelling or as a sect stand-in) or an entity was drawn last frame.
+        public bool BoxOf(Cultivator c, int entity, out Rect box)
+        {
+            foreach (var hit in _hits)
+            {
+                if (c != null ? hit.Cultivator != c : hit.Entity != entity) continue;
+                box = hit.Box;
+                return true;
+            }
+            box = default;
+            return false;
+        }
+
+        // What was drawn under (or within slop of) a world point last frame. Cultivators beat mortals and
+        // migrants, which beat animals; among equals the sprite whose centre is nearest wins.
+        public bool Pick(Vector2 p, float slop, out Hit result)
+        {
+            result = default;
+            int best = -1;
+            float bestScore = float.MaxValue;
+            for (int k = 0; k < _hits.Count; k++)
+            {
+                var hit = _hits[k];
+                var b = hit.Box;
+                float ox = Mathf.Max(0f, Mathf.Max(b.xMin - p.x, p.x - b.xMax));
+                float oy = Mathf.Max(0f, Mathf.Max(b.yMin - p.y, p.y - b.yMax));
+                if (ox > slop || oy > slop) continue;
+                if (hit.Cultivator != null && !hit.Cultivator.Alive) continue;
+                float rank = hit.Cultivator != null ? 0f : hit.Settlement != null || hit.Entity >= 0 ? 1000f : 2000f;
+                float score = rank + (b.center - p).sqrMagnitude;
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = k;
+                }
+            }
+            if (best < 0) return false;
+            result = _hits[best];
+            return true;
+        }
 
         // Feet at (x, y).
         void AddQuad(Unit unit, int frame, float x, float y, bool flip) => AddQuadAt(unit, frame, x, y, flip, White, false);

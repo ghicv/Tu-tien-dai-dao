@@ -10,7 +10,8 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 03 | [03-m2-thu-hoang-quan-the.md](03-m2-thu-hoang-quan-the.md) | M2.1 — Thú hoang thành quần thể, hiển thị tượng trưng | `ee83767` |
 | 04 | [04-m3-tu-tien.md](04-m3-tu-tien.md) | M3 — Tu tiên lõi, tu sĩ ra ngoài, popup nhân vật | `1ba8595` |
 | 05 | [05-m3-1-truong-hop-bien-va-hieu-ung.md](05-m3-1-truong-hop-bien-va-hieu-ung.md) | M3.1 — Nước nhấn chìm, bất biến, chaos test, hiệu ứng sét/nổ | `d1d0d8f` |
-| 06 | [06-ui-kieu-worldbox.md](06-ui-kieu-worldbox.md) | UI kiểu WorldBox — toolbar tab + icon, cửa sổ, thẻ nhân vật | (commit UI) |
+| 06 | [06-ui-kieu-worldbox.md](06-ui-kieu-worldbox.md) | UI kiểu WorldBox — toolbar tab + icon, cửa sổ, thẻ nhân vật | `b86d936` |
+| 07 | [07-xem-moi-thu-va-highlight.md](07-xem-moi-thu-va-highlight.md) | Sửa click nhân vật; Xem mọi thứ (thú, vật thể, ô đất); highlight khi rê chuột | (commit này) |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Sim/Lore.cs`).

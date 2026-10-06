@@ -130,6 +130,24 @@ namespace ThienDao.Sim
             return o > 0 && o <= All.Count ? All[o - 1] : null;
         }
 
+        // The village a house or sect hall belongs to, if any.
+        public Settlement OwnerOfObject(int objectId) =>
+            _houseOwner.TryGetValue(objectId, out int id) && id >= 0 && id < All.Count ? All[id] : null;
+
+        // Read-only view of a travelling migrant group, for the inspector.
+        public bool MigrantInfo(int entity, out Settlement from, out int people, out float food)
+        {
+            from = null;
+            people = 0;
+            food = 0f;
+            var g = _groups.Find(x => x.Entity == entity);
+            if (g == null) return false;
+            from = g.From >= 0 && g.From < All.Count ? All[g.From] : null;
+            foreach (int c in g.Cohorts) people += c;
+            food = g.Food;
+            return true;
+        }
+
         static int Stoch(float v, ref DetRandom rng)
         {
             int whole = (int)v;

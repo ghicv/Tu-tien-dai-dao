@@ -612,11 +612,23 @@ namespace ThienDao.UI
         void UpdateCard()
         {
             var sim = _game.Sim;
+            var sel = _game.Selection;
             var c = _game.Selected;
             var s = _game.SelectedSettlement;
-            bool show = c != null || s != null;
+            bool show = sel.Kind != InspectKind.None;
             if (_card.gameObject.activeSelf != show) _card.gameObject.SetActive(show);
             if (!show) return;
+
+            if (sel.Kind != InspectKind.Cultivator && sel.Kind != InspectKind.Settlement)
+            {
+                _cardTitle.text = InspectTitle(sel);
+                _cardBody.text = InspectBody(sel);
+                _cardBar1Root.gameObject.SetActive(false);
+                _cardBar2Root.gameObject.SetActive(false);
+                _followButton.Frame.gameObject.SetActive(sel.Kind == InspectKind.Migrants);
+                _followButton.SetSelected(_game.Follow);
+                return;
+            }
 
             if (c != null)
             {
@@ -684,6 +696,94 @@ namespace ThienDao.UI
             _followButton.Frame.gameObject.SetActive(false);
         }
 
+        string InspectTitle(in InspectTarget t)
+        {
+            var w = _game.World;
+            switch (t.Kind)
+            {
+                case InspectKind.Migrants: return "Đoàn di dân";
+                case InspectKind.Animal: return $"Đàn {SpeciesInfo.Names[(int)WildlifeSystem.Kinds[t.Animal]].ToLower()}";
+                case InspectKind.Object:
+                    return w.Objects.IsAlive(t.ObjectId) ? ObjectInfo.Names[(int)w.Objects.Get(t.ObjectId).Type] : "Vật thể đã mất";
+                default:
+                    return $"Ô ({t.CellX}, {t.CellY}) · {TerrainInfo.Names[(int)w.Terrain[w.Idx(t.CellX, t.CellY)]]}";
+            }
+        }
+
+        string InspectBody(in InspectTarget t)
+        {
+            var sim = _game.Sim;
+            var w = _game.World;
+            var sb = new StringBuilder();
+            switch (t.Kind)
+            {
+                case InspectKind.Migrants:
+                    if (sim.Entities.Species[t.Entity] != Species.Migrants || !sim.Settlements.MigrantInfo(t.Entity, out var from, out int people, out float food))
+                    {
+                        sb.Append("<color=#8890a8>Đoàn đã dừng chân lập làng hoặc tan rã.</color>");
+                        break;
+                    }
+                    sb.Append($"{people} người · lương thực mang theo {food / Mathf.Max(1, people):0.0} tháng\n");
+                    if (from != null) sb.Append($"Rời {from.Name} đi tìm đất lập làng mới\n");
+                    sb.Append($"Đi được {(sim.Clock.Tick - sim.Entities.BirthTick[t.Entity]) / (float)SimClock.DaysPerMonth:0} tháng");
+                    break;
+
+                case InspectKind.Animal:
+                {
+                    var wild = sim.Wildlife;
+                    var kind = WildlifeSystem.Kinds[t.Animal];
+                    int rx = t.Region % wild.RW, ry = t.Region / wild.RW;
+                    sb.Append($"<color=#ffd873>{wild.At(kind, t.Region):N0} con</color> trong vùng ({rx}, {ry}) rộng {WildlifeSystem.Region}×{WildlifeSystem.Region} ô\n");
+                    sb.Append("<color=#8890a8>Trên map chỉ vẽ vài con tượng trưng.</color>\n");
+                    sb.Append(kind == Species.Wolf ? "Săn hươu và thỏ trong vùng.\n" : "Ăn cỏ; bị sói săn và dân làng đi săn.\n");
+                    sb.Append($"Cả vùng: hươu {wild.At(Species.Deer, t.Region):N0} · thỏ {wild.At(Species.Rabbit, t.Region):N0} · sói {wild.At(Species.Wolf, t.Region):N0}\n");
+                    int b = WildlifeSystem.Region / ForageSystem.Block;
+                    float cap = sim.Forage.CapSum(rx * b, ry * b, b);
+                    sb.Append($"Cỏ trong vùng {(cap > 0f ? sim.Forage.Sum(rx * b, ry * b, b) / cap * 100f : 0f):0}% · toàn thế giới {wild.Total(kind):N0} con");
+                    break;
+                }
+
+                case InspectKind.Object:
+                    if (w.Objects.IsAlive(t.ObjectId))
+                    {
+                        var o = w.Objects.Get(t.ObjectId);
+                        sb.Append($"Chiếm {ObjectInfo.FootprintW[(int)o.Type]}×{ObjectInfo.FootprintH[(int)o.Type]} ô tại ({o.X}, {o.Y})");
+                        if (ObjectInfo.IsBuilding(o.Type)) sb.Append(" · <color=#8890a8>không thuộc làng nào</color>");
+                        sb.Append("\n\n");
+                    }
+                    AppendCell(sb, t.CellX, t.CellY);
+                    break;
+
+                default:
+                    AppendCell(sb, t.CellX, t.CellY);
+                    break;
+            }
+            return sb.ToString().TrimEnd();
+        }
+
+        void AppendCell(StringBuilder sb, int x, int y)
+        {
+            var sim = _game.Sim;
+            var w = _game.World;
+            int i = w.Idx(x, y);
+            var terrain = w.Terrain[i];
+            float tempC = -20f + (w.Temperature[i] / 255f + sim.Clock.SeasonalTemperatureOffset) * 60f;
+            sb.Append($"<color=#ffd873>Ô ({x}, {y})</color> {TerrainInfo.Names[(int)terrain]} · độ cao {w.Height[i]:0.00}\n");
+            sb.Append($"Nhiệt độ {tempC:0}°C · độ ẩm {w.Moisture[i] * 100 / 255}%");
+            if (TerrainInfo.IsLand(terrain)) sb.Append($" · màu mỡ {w.Fertility(i) * 100f:0}%");
+            sb.Append('\n');
+            sb.Append($"Linh khí {sim.Qi.SampleQi(x, y):0} / trần {w.QiCap[i]}{(w.LeyLine[i] ? " · <color=#9fe0ff>LINH MẠCH</color>" : "")}\n");
+            if (TerrainInfo.IsLand(terrain))
+                sb.Append($"Cỏ khu {ForageSystem.Block}×{ForageSystem.Block} ô quanh đây {sim.Forage.At(x, y):0} / {sim.Forage.CapAt(x, y):0}{(w.IsWalkable(x, y) ? "" : " · không đi bộ qua được")}\n");
+            else
+                sb.Append("Mặt nước: phàm nhân và Luyện Khí rơi xuống là chết đuối\n");
+            var owner = sim.Settlements.Owning(i);
+            if (owner != null && owner.Alive)
+                sb.Append(terrain == Terrain.Farmland ? $"Ruộng của {owner.Name}\n" : $"Đất của {owner.Name}\n");
+            int region = sim.Wildlife.RegionOf(x, y);
+            sb.Append($"<color=#8890a8>Vùng thú: hươu {sim.Wildlife.At(Species.Deer, region):0} · thỏ {sim.Wildlife.At(Species.Rabbit, region):0} · sói {sim.Wildlife.At(Species.Wolf, region):0}</color>");
+        }
+
         void UpdateTooltip()
         {
             string text = Tooltip.Current;
@@ -727,14 +827,19 @@ namespace ThienDao.UI
                 if (_labels[k].gameObject.activeSelf) _labels[k].gameObject.SetActive(false);
 
             string hint = null;
-            if (!PointerOverUI && _game.World.InBounds(_game.HoverX, _game.HoverY))
+            var h = _game.Hovered;
+            if (!PointerOverUI && _game.Brush.Tool == BrushTool.Inspect)
             {
-                var c = sim.Cultivation.FindShownNear(_game.HoverWorld.x, _game.HoverWorld.y, 1.5f);
-                if (c != null) hint = $"{c.Title} · {c.RealmText} · {c.Activity}";
-                else
+                switch (h.Kind)
                 {
-                    var s = sim.Settlements.Owning(_game.World.Idx(_game.HoverX, _game.HoverY));
-                    if (s != null && s.Alive) hint = $"{s.Name} · {s.Population} người";
+                    case InspectKind.Cultivator: hint = $"{h.Cultivator.Title} · {h.Cultivator.RealmText} · {h.Cultivator.Activity}"; break;
+                    case InspectKind.Settlement: hint = $"{h.Settlement.Name} · {h.Settlement.Population} người"; break;
+                    case InspectKind.Migrants: hint = "Đoàn di dân"; break;
+                    case InspectKind.Animal:
+                        hint = $"{SpeciesInfo.Names[(int)WildlifeSystem.Kinds[h.Animal]]} · {sim.Wildlife.At(WildlifeSystem.Kinds[h.Animal], h.Region):N0} con trong vùng";
+                        break;
+                    case InspectKind.Object:
+                    case InspectKind.Cell: hint = InspectTitle(h); break;
                 }
             }
             _hoverHint.gameObject.SetActive(hint != null && Mouse.current != null);
