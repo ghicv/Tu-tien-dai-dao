@@ -6,7 +6,8 @@ using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao.Sim
 {
-    public enum Calamity : byte { Earthquake, Eruption, Flood, Drought, Plague, BeastTide }
+    // What Thiên Đạo can send down on an area: calamities, the đại kiếp over the whole world, and the weather.
+    public enum Calamity : byte { Earthquake, Eruption, Flood, Drought, Plague, BeastTide, GreatCalamity, Rain, Storm, Cold }
 
     // A place the land remembers: lôi địa where a tribulation fell, a volcano that rose from the plain.
     public sealed class Landmark
@@ -28,6 +29,7 @@ namespace ThienDao.Sim
     {
         // Yearly chance of each natural calamity somewhere in the world.
         const float QuakePerYear = 0.04f, EruptionPerYear = 0.008f, FloodPerYear = 0.05f, DroughtPerYear = 0.05f, TidePerYear = 0.03f;
+        const float StormPerYear = 0.06f, ColdPerYear = 0.04f, GreatPerYear = 0.0015f; // đại kiếp: about once in seven centuries
         const int TideReach = 50;
         const int SpreadReach = 70;
         const int MaxEpidemics = 16;
@@ -54,6 +56,16 @@ namespace ThienDao.Sim
             public int StartPop;
         }
 
+        // A spell of weather over a region: rain (good harvests, ends droughts) or a cold snap (crops fail, the old freeze).
+        sealed class Weather
+        {
+            public Calamity Kind;
+            public int X, Y, R;
+            public long Start, Until;
+            public string Place;
+            public int Dead;
+        }
+
         sealed class Epidemic
         {
             public int Settlement;
@@ -69,6 +81,9 @@ namespace ThienDao.Sim
         readonly List<LavaCell> _lava = new List<LavaCell>();
         readonly List<Drought> _droughts = new List<Drought>();
         readonly List<Epidemic> _epidemics = new List<Epidemic>();
+        readonly List<Weather> _weather = new List<Weather>();
+        long _greatStart, _greatUntil = -1;
+        int _greatPop, _greatCultivators;
         readonly Dictionary<int, long> _immuneUntil = new Dictionary<int, long>(); // settlement id → no new epidemic before
         readonly List<int> _ids = new List<int>();
         readonly List<Settlement> _near = new List<Settlement>();
@@ -87,6 +102,12 @@ namespace ThienDao.Sim
         public int EpidemicCount => _epidemics.Count;
         public int FloodedCells => _flood.Count;
         public int LavaCells => _lava.Count;
+        public int WeatherCount => _weather.Count;
+
+        // Đại kiếp: while it lasts, the world's qi sinks to half.
+        public bool GreatCalamityActive => _greatUntil >= 0;
+        public float QiFactor => GreatCalamityActive ? 0.5f : 1f;
+        public int GreatCalamityYearsLeft(long tick) => GreatCalamityActive ? (int)((_greatUntil - tick) / SimClock.DaysPerYear) : 0;
 
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0xCA1Au, (int)tick, salt));
 
@@ -108,6 +129,9 @@ namespace ThienDao.Sim
                 case Calamity.Flood: return Mathf.Clamp(size * 2, 8, 40);
                 case Calamity.Drought: return Mathf.Clamp(size * 6, 40, 160);
                 case Calamity.BeastTide: return TideReach;
+                case Calamity.Rain: return Mathf.Clamp(size * 6, 40, 160);
+                case Calamity.Storm: return Mathf.Clamp(size, 4, 16); // half-width of the storm's track
+                case Calamity.Cold: return Mathf.Clamp(size * 5, 40, 120);
                 default: return 3;
             }
         }
@@ -127,7 +151,197 @@ namespace ThienDao.Sim
                 case Calamity.Drought: StartDrought(x, y, r, rng.Range(12, 31), tick, divine); break;
                 case Calamity.Plague: StartEpidemic(NearestSettlement(x, y, 24), tick, divine); break;
                 case Calamity.BeastTide: BeastTide(x, y, rng.Range(150, 301), tick, divine, ref rng); break;
+                case Calamity.GreatCalamity: StartGreatCalamity(tick, divine, ref rng); break;
+                case Calamity.Rain: Rain(x, y, r, rng.Range(4, 9), tick, divine); break;
+                case Calamity.Storm: Storm(x, y, r, tick, divine, ref rng); break;
+                case Calamity.Cold: ColdSnap(x, y, r, rng.Range(3, 6), tick, divine); break;
             }
+        }
+
+        // ---------------------------------------------------------------- đại kiếp
+
+        // Thiên địa đại kiếp: for years the world's qi runs thin and calamity follows calamity, until a new age begins.
+        void StartGreatCalamity(long tick, bool divine, ref DetRandom rng)
+        {
+            if (GreatCalamityActive) return;
+            _greatStart = tick;
+            _greatUntil = tick + rng.Range(8, 16) * (long)SimClock.DaysPerYear;
+            _greatPop = _sim.Settlements.TotalPopulation;
+            _greatCultivators = _sim.Cultivation.AliveCount;
+            _sim.Events.Add(tick, EventKind.Calamity, 3,
+                $"{(divine ? "Thiên Đạo mở ra t" : "T")}hiên địa đại kiếp! Linh khí khô kiệt, tai ương liên miên khắp thiên hạ.");
+        }
+
+        void GreatCalamityYear(long tick, ref DetRandom rng)
+        {
+            if (!GreatCalamityActive) return;
+            if (tick >= _greatUntil)
+            {
+                int years = (int)((tick - _greatStart) / SimClock.DaysPerYear);
+                _sim.Events.Add(tick, EventKind.Calamity, 3,
+                    $"Đại kiếp qua đi sau {years} năm: phàm nhân từ {_greatPop:N0} còn {_sim.Settlements.TotalPopulation:N0}, " +
+                    $"tu sĩ từ {_greatCultivators} còn {_sim.Cultivation.AliveCount}. Thiên địa bước vào thời đại mới.");
+                _greatUntil = -1;
+                return;
+            }
+            int n = rng.Range(2, 6);
+            for (int k = 0; k < n; k++)
+            {
+                var s = RandomVillage(false, ref rng);
+                switch (rng.Range(0, 6))
+                {
+                    case 0:
+                        if (RandomLand(false, ref rng, out int x, out int y)) Earthquake(x, y, rng.Range(20, 46), tick, false, ref rng);
+                        break;
+                    case 1:
+                        if (s != null) StartDrought(s.X, s.Y, rng.Range(60, 141), rng.Range(12, 30), tick, false);
+                        break;
+                    case 2:
+                        if (s != null) Flood(s.X + rng.Range(-8, 9), s.Y + rng.Range(-8, 9), rng.Range(14, 30), tick, false, ref rng);
+                        break;
+                    case 3:
+                        if (s != null) StartEpidemic(s, tick, false);
+                        break;
+                    case 4:
+                        if (s != null) BeastTide(s.X, s.Y, rng.Range(80, 200), tick, false, ref rng);
+                        break;
+                    default:
+                        if (rng.NextFloat() < 0.3f && RandomLand(true, ref rng, out x, out y)) Eruption(x, y, tick, false, ref rng);
+                        else if (s != null) ColdSnap(s.X, s.Y, rng.Range(50, 110), rng.Range(3, 6), tick, false);
+                        break;
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------- thời tiết
+
+        // Mưa thuận gió hòa: a few months of good rain; any drought it falls on is broken.
+        void Rain(int x, int y, int r, int months, long tick, bool divine)
+        {
+            bool broke = false;
+            foreach (var d in _droughts)
+            {
+                float dist = Mathf.Sqrt((d.X - x) * (d.X - x) + (d.Y - y) * (d.Y - y));
+                if (dist > r + d.R * 0.5f || d.Until <= tick) continue;
+                d.Until = tick; // ends (with its toll told) at the next month
+                broke = true;
+            }
+            _weather.Add(new Weather { Kind = Calamity.Rain, X = x, Y = y, R = r, Start = tick, Until = tick + months * (long)SimClock.DaysPerMonth, Place = PlaceName(x, y) });
+            _sim.Events.Add(tick, EventKind.Calamity, divine ? 2 : 1,
+                $"{(divine ? "Thiên Đạo ban mưa, m" : "M")}ưa thuận gió hòa {PlaceName(x, y)}{(broke ? ", đại hạn chấm dứt" : "")}.", x + 0.5f, y + 0.5f, Fx.Rain);
+        }
+
+        // A cold snap: frost kills the crops, the old and the infants die of cold, grass withers.
+        void ColdSnap(int x, int y, int r, int months, long tick, bool divine)
+        {
+            _weather.Add(new Weather { Kind = Calamity.Cold, X = x, Y = y, R = r, Start = tick, Until = tick + months * (long)SimClock.DaysPerMonth, Place = PlaceName(x, y) });
+            _sim.Events.Add(tick, EventKind.Calamity, 2,
+                $"{(divine ? "Thiên Đạo giáng hàn khí, r" : "R")}ét đậm rét hại {PlaceName(x, y)}: tuyết phủ ruộng đồng, mùa màng mất trắng.", x + 0.5f, y + 0.5f, Fx.Snow);
+        }
+
+        // A storm tears across the land along a track: trees go down, roofs come off, people are caught in the open.
+        void Storm(int x, int y, int w, long tick, bool divine, ref DetRandom rng)
+        {
+            string where = PlaceName(x, y);
+            var objs = _w.Objects;
+            float a = rng.Range(0f, Mathf.PI * 2f);
+            int len = rng.Range(60, 121), trees = 0, houses = 0, dead = 0;
+            float fx = x + 0.5f, fy = y + 0.5f;
+            _ids.Clear();
+            var hit = new List<Settlement>();
+            for (int step = 0; step < len; step += 2)
+            {
+                a += rng.Range(-0.25f, 0.25f);
+                fx += Mathf.Cos(a) * 2f;
+                fy += Mathf.Sin(a) * 2f;
+                int cx = (int)fx, cy = (int)fy;
+                if (!_w.InBounds(cx, cy)) break;
+                for (int yy = cy - w; yy <= cy + w; yy++)
+                for (int xx = cx - w; xx <= cx + w; xx++)
+                {
+                    if (!_w.InBounds(xx, yy) || (xx - cx) * (xx - cx) + (yy - cy) * (yy - cy) > w * w) continue;
+                    int id = objs.CellObject[_w.Idx(xx, yy)];
+                    if (id < 0) continue;
+                    var t = objs.Get(id).Type;
+                    if (IsPlant(t) && rng.NextFloat() < 0.08f)
+                    {
+                        objs.Remove(id);
+                        trees++;
+                    }
+                    else if (t == ObjectType.House && !_ids.Contains(id)) _ids.Add(id);
+                }
+                Within(cx, cy, w + 4);
+                foreach (var s in _near)
+                    if (!hit.Contains(s)) hit.Add(s);
+            }
+            foreach (int id in _ids)
+                if (objs.IsAlive(id) && rng.NextFloat() < 0.3f)
+                {
+                    objs.Remove(id);
+                    houses++;
+                }
+            foreach (var s in hit) dead += _sim.Settlements.Kill(s, Stoch(s.Population * 0.03f, ref rng));
+            _sim.Events.Add(tick, EventKind.Calamity, Mathf.Max(divine ? 2 : 1, dead >= 20 ? 2 : 1),
+                $"{(divine ? "Thiên Đạo nổi cuồng phong, b" : "B")}ão lớn quét qua {where}: {houses} nhà tốc mái, {dead} người chết, {trees} cây đổ.",
+                x + 0.5f, y + 0.5f, Fx.Storm);
+        }
+
+        void WeatherStep(long tick)
+        {
+            var forage = _sim.Forage;
+            for (int k = _weather.Count - 1; k >= 0; k--)
+            {
+                var w = _weather[k];
+                if (tick >= w.Until)
+                {
+                    _weather.RemoveAt(k);
+                    if (w.Kind == Calamity.Cold)
+                        _sim.Events.Add(tick, EventKind.Calamity, w.Dead >= 30 ? 2 : 1, $"Đợt rét {w.Place} qua đi, {w.Dead} người chết cóng.", w.X + 0.5f, w.Y + 0.5f);
+                    continue;
+                }
+                // Rain greens the grass; frost kills it.
+                int b = ForageSystem.Block;
+                int bx0 = Mathf.Max(0, (w.X - w.R) / b), bx1 = Mathf.Min(forage.BW - 1, (w.X + w.R) / b);
+                int by0 = Mathf.Max(0, (w.Y - w.R) / b), by1 = Mathf.Min(forage.BH - 1, (w.Y + w.R) / b);
+                float f = w.Kind == Calamity.Rain ? 1.15f : 0.5f;
+                for (int by = by0; by <= by1; by++)
+                for (int bx = bx0; bx <= bx1; bx++)
+                {
+                    int dx = bx * b + b / 2 - w.X, dy = by * b + b / 2 - w.Y;
+                    if (dx * dx + dy * dy <= w.R * w.R) forage.Scale(bx, by, 1, f);
+                }
+                if (w.Kind != Calamity.Cold) continue;
+                var rng = RngFor(tick, 0x500000 + k);
+                Within(w.X, w.Y, w.R);
+                foreach (var s in _near) w.Dead += _sim.Settlements.Kill(s, Stoch(s.Population * 0.015f, ref rng));
+            }
+        }
+
+        // ---------------------------------------------------------------- lôi địa from Thiên Đạo's wrath
+
+        public void WrathScar(int x, int y, int r, long tick, string origin)
+        {
+            var rng = RngFor(tick, 0x600000 + x * 31 + y);
+            var mark = ThunderScar(x, y, r, tick, tick + rng.Range(300, 601) * (long)SimClock.DaysPerYear, origin, out bool merged, ref rng);
+            if (!merged)
+                _sim.Events.Add(tick, EventKind.Calamity, 2, $"Nơi thiên phạt giáng xuống hóa thành lôi địa, người đời gọi là {mark.Name}.", x + 0.5f, y + 0.5f);
+        }
+
+        // What hangs over a cell right now, for the calamity overlay: 1 drought, 2 rain, 4 cold, 8 epidemic nearby.
+        public int ClimateAt(int x, int y)
+        {
+            int f = 0;
+            foreach (var d in _droughts)
+                if ((d.X - x) * (d.X - x) + (d.Y - y) * (d.Y - y) <= d.R * d.R) f |= 1;
+            foreach (var w in _weather)
+                if ((w.X - x) * (w.X - x) + (w.Y - y) * (w.Y - y) <= w.R * w.R) f |= w.Kind == Calamity.Rain ? 2 : 4;
+            var all = _sim.Settlements.All;
+            foreach (var e in _epidemics)
+            {
+                var s = all[e.Settlement];
+                if ((s.X - x) * (s.X - x) + (s.Y - y) * (s.Y - y) <= 14 * 14) f |= 8;
+            }
+            return f;
         }
 
         // ---------------------------------------------------------------- động đất
@@ -450,9 +664,26 @@ namespace ThienDao.Sim
         // Share of the usual harvest a village at (x, y) brings in this month.
         public float HarvestFactor(int x, int y)
         {
+            float f = 1f;
             foreach (var d in _droughts)
-                if ((d.X - x) * (d.X - x) + (d.Y - y) * (d.Y - y) <= d.R * d.R) return 0.25f;
-            return 1f;
+                if ((d.X - x) * (d.X - x) + (d.Y - y) * (d.Y - y) <= d.R * d.R) { f = 0.25f; break; }
+            foreach (var w in _weather)
+                if ((w.X - x) * (w.X - x) + (w.Y - y) * (w.Y - y) <= w.R * w.R) f *= w.Kind == Calamity.Rain ? 1.3f : 0.1f;
+            return f;
+        }
+
+        // Months of a weather spell (rain or cold) left over (x, y), or -1.
+        public int WeatherMonthsLeft(int x, int y, long tick, out Calamity kind)
+        {
+            kind = Calamity.Rain;
+            int best = -1;
+            foreach (var w in _weather)
+                if ((w.X - x) * (w.X - x) + (w.Y - y) * (w.Y - y) <= w.R * w.R && (w.Until - tick) / SimClock.DaysPerMonth > best)
+                {
+                    best = (int)((w.Until - tick) / SimClock.DaysPerMonth);
+                    kind = w.Kind;
+                }
+            return best;
         }
 
         // Months of drought left over (x, y), or -1.
@@ -724,6 +955,7 @@ namespace ThienDao.Sim
         {
             Recede(tick);
             DroughtStep(tick);
+            WeatherStep(tick);
             EpidemicStep(tick);
         }
 
@@ -733,21 +965,40 @@ namespace ThienDao.Sim
             FadeScars(tick);
 
             var rng = RngFor(tick, 0x400000);
-            if (rng.NextFloat() < QuakePerYear && RandomLand(false, ref rng, out int x, out int y))
+            float k = _sim.Rules[Rule.Calamities];
+            if (rng.NextFloat() < QuakePerYear * k && RandomLand(false, ref rng, out int x, out int y))
                 Earthquake(x, y, rng.Range(15, 36), tick, false, ref rng);
-            if (rng.NextFloat() < EruptionPerYear && RandomLand(true, ref rng, out x, out y))
+            if (rng.NextFloat() < EruptionPerYear * k && RandomLand(true, ref rng, out x, out y))
                 Eruption(x, y, tick, false, ref rng);
-            if (rng.NextFloat() < FloodPerYear)
+            if (rng.NextFloat() < FloodPerYear * k)
             {
                 var s = RandomVillage(true, ref rng);
                 if (s != null) Flood(s.X + rng.Range(-8, 9), s.Y + rng.Range(-8, 9), rng.Range(12, 26), tick, false, ref rng);
             }
-            if (rng.NextFloat() < DroughtPerYear)
+            if (rng.NextFloat() < DroughtPerYear * k)
             {
                 var s = RandomVillage(false, ref rng);
                 if (s != null) StartDrought(s.X, s.Y, rng.Range(60, 121), rng.Range(12, 25), tick, false);
             }
-            if (rng.NextFloat() < TidePerYear) NaturalTide(tick, ref rng);
+            if (rng.NextFloat() < TidePerYear * k) NaturalTide(tick, ref rng);
+            // Weather the world makes for itself: storms and cold snaps now and then, and rain that may break a drought.
+            if (rng.NextFloat() < StormPerYear * k)
+            {
+                var s = RandomVillage(false, ref rng);
+                if (s != null) Storm(s.X + rng.Range(-40, 41), s.Y + rng.Range(-40, 41), rng.Range(4, 11), tick, false, ref rng);
+            }
+            if (rng.NextFloat() < ColdPerYear * k)
+            {
+                var s = RandomVillage(false, ref rng);
+                if (s != null) ColdSnap(s.X, s.Y, rng.Range(50, 101), rng.Range(2, 5), tick, false);
+            }
+            if (_droughts.Count > 0 && rng.NextFloat() < 0.3f)
+            {
+                var d = _droughts[rng.Range(0, _droughts.Count)];
+                Rain(d.X, d.Y, d.R, rng.Range(3, 7), tick, false);
+            }
+            if (!GreatCalamityActive && rng.NextFloat() < GreatPerYear * k) StartGreatCalamity(tick, false, ref rng);
+            GreatCalamityYear(tick, ref rng);
         }
 
         bool RandomLand(bool highland, ref DetRandom rng, out int x, out int y)
@@ -852,6 +1103,8 @@ namespace ThienDao.Sim
             foreach (var d in _droughts) StateHash.Add(ref h, d.X | ((long)d.Y << 16) | ((long)d.R << 32) ^ (d.Until << 40));
             foreach (var e in _epidemics) StateHash.Add(ref h, e.Settlement | ((long)e.Dead << 20) ^ (e.Until << 36));
             foreach (var l in Landmarks) StateHash.Add(ref h, l.X | ((long)l.Y << 12) | ((long)l.R << 24) | (l.Alive ? 1L << 40 : 0) ^ (l.Until << 41));
+            foreach (var w in _weather) StateHash.Add(ref h, (int)w.Kind | ((long)w.X << 8) | ((long)w.Y << 20) ^ (w.Until << 32) ^ w.Dead);
+            StateHash.Add(ref h, _greatUntil);
         }
     }
 }

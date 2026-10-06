@@ -59,7 +59,8 @@ namespace ThienDao.Sim
             }
         }
 
-        public void MonthlyStep(float regenMultiplier)
+        // scale: share of the natural cap the qi settles toward (Quy luật, đại kiếp); per-cell detail keeps its shape.
+        public void MonthlyStep(float regenMultiplier, float scale = 1f)
         {
             float regen = RegenPerMonth * regenMultiplier;
             for (int by = 0; by < BH; by++)
@@ -72,7 +73,7 @@ namespace ThienDao.Sim
                 float d = by > 0 ? _qi[i - BW] : q;
                 float u = by < BH - 1 ? _qi[i + BW] : q;
                 q += Diffusion * ((l + r + d + u) * 0.25f - q);
-                q += (_cap[i] - q) * regen; // surplus decays and deficit refills toward the cap
+                q += (_cap[i] * scale - q) * regen; // surplus decays and deficit refills toward the cap
                 _tmp[i] = Mathf.Clamp(q, 0f, MaxStored);
             }
             var swap = _qi;

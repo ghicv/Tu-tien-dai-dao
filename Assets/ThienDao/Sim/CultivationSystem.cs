@@ -357,7 +357,7 @@ namespace ThienDao.Sim
             var next = c.Realm + 1;
             string who = $"{c.Title} ({SectName(c)})";
             // Talent helps in proportion to how hard the gate is.
-            float baseChance = Realms.BreakChance[(int)next];
+            float baseChance = Realms.BreakChance[(int)next] * _sim.Rules[Rule.Breakthrough];
             float chance = baseChance * (1f + c.Comprehension * 0.8f + c.DaoHeart * 0.4f + c.Luck * 0.4f);
             // The sect buys Trúc Cơ Đan with its linh thạch; a poor sect's disciples go without.
             bool pill = next == Realm.TrucCo && c.SectId >= 0 && _sim.Factions != null && _sim.Factions.TrySpend(c.SectId, FactionSystem.PillCost);
@@ -397,7 +397,7 @@ namespace ThienDao.Sim
             {
                 Die(c, tick, $"{who} tẩu hỏa nhập ma, kinh mạch đứt đoạn mà chết.", c.Realm >= Realm.TrucCo ? 2 : 1, Fx.DemonBlast);
             }
-            else if (outcome < 0.7f || c.Demonic)
+            else if (outcome < 0.7f || c.Demonic || !_sim.Rules.DemonicAllowed)
             {
                 if (c.Realm > Realm.LuyenKhi) SetRealm(c, c.Realm - 1, Realms.Stages[(int)c.Realm - 1] - 1);
                 else c.Stage = Mathf.Max(0, c.Stage - 3);
@@ -423,15 +423,91 @@ namespace ThienDao.Sim
             if (divine) survive += 0.06f * ((int)c.Realm - (int)Realm.KetDan);
             bool shielded = c.SectId >= 0 && IsAtHome(c); // hộ sơn đại trận
             if (shielded) survive += 0.05f;
+            survive = 1f - Mathf.Clamp01((1f - survive) * _sim.Rules[Rule.TribulationHarshness]); // Quy luật
             _sim.Events.Add(tick, EventKind.Tribulation, 3,
                 divine ? $"Thiên Đạo giáng {(great ? "đại thiên kiếp" : "thiên kiếp")} xuống {who}!"
                        : $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!",
                 px, py, Fx.Tribulation, c.Index, -1, c.SectId);
+            bool ambushed = Ambush(c, who, tick, ref rng);
             int radius = Mathf.Clamp(4 + 2 * (int)next, 6, 16);
             _sim.Disasters.TribulationStrikes(c, px, py, radius, divine, shielded, tick, ref rng);
+            if (ambushed) return false;
             if (rng.NextFloat() < survive) return true;
             Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3, Fx.Lightning);
             return false;
+        }
+
+        // Thừa nước đục thả câu: a blood enemy, or a ma tu coveting the storage bag, falls on someone in the middle of their
+        // tribulation, when all their strength goes into holding off the sky. Returns true if the one in tribulation died.
+        bool Ambush(Cultivator c, string who, long tick, ref DetRandom rng)
+        {
+            const float Reach = 250f;
+            float px = _e.X[c.Entity], py = _e.Y[c.Entity];
+            Cultivator foe = null;
+            float best = 0f;
+            foreach (var o in All)
+            {
+                if (!o.Alive || o == c || o.AtWar || (int)o.Realm < (int)c.Realm - 1) continue;
+                bool grudge = o.Nemesis == c.Index;
+                bool greed = o.Demonic && !c.Demonic && (o.SectId < 0 || o.SectId != c.SectId);
+                if (!grudge && !greed) continue;
+                float dx = _e.X[o.Entity] - px, dy = _e.Y[o.Entity] - py;
+                if (dx * dx + dy * dy > Reach * Reach) continue;
+                float s = CombatSystem.Strength(o) * (grudge ? 2f : 1f);
+                if (s > best) { best = s; foe = o; }
+            }
+            if (foe == null || rng.NextFloat() >= (foe.Nemesis == c.Index ? 0.6f : 0.15f)) return false;
+            string them = $"{foe.Title} ({SectName(foe)})";
+            float a = CombatSystem.Strength(foe) * rng.Range(0.6f, 1.4f);
+            float d = CombatSystem.Strength(c) * 0.5f * rng.Range(0.6f, 1.4f);
+            if (a > d)
+            {
+                _sim.Combat.Kill(foe, c, tick, $"{them} đánh lén {who} giữa lúc độ kiếp, khiến {c.Name} thân tử đạo tiêu.", 3);
+                return true;
+            }
+            _sim.Combat.Kill(c, foe, tick, $"{them} định đánh lén {who} lúc độ kiếp, bị phản sát, thân xác tan dưới lôi kiếp.", 3);
+            return false;
+        }
+
+        // Thiên Đạo reverses life and death: the fallen walk again with a fresh span of years, and whoever killed them,
+        // if still alive, now owes them a blood debt.
+        public bool Revive(Cultivator c, long tick)
+        {
+            if (c == null || c.Alive) return false;
+            float x = c.HomeX, y = c.HomeY;
+            if (!_w.IsWalkable(x, y) && FindDryGround(x, y, out float dx, out float dy)) { x = dx; y = dy; }
+            if (c.SectId >= 0 && !_sim.Settlements.All[c.SectId].Alive) c.SectId = -1;
+            int years = Mathf.Max(0, (int)((tick - c.DeathTick) / SimClock.DaysPerYear));
+            c.HomeX = x;
+            c.HomeY = y;
+            c.Alive = true;
+            c.DeathTick = -1;
+            c.AtWar = c.Travelling = c.Away = false;
+            c.Trip = Trip.None;
+            c.HuntTarget = -1;
+            c.Goal = Goal.None;
+            c.GoalText = null;
+            float left = c.LifespanYears - c.AgeYears(tick);
+            if (left < 100f) c.BonusYears += Mathf.CeilToInt(100f - left);
+            c.DaoHeart = Mathf.Min(1f, c.DaoHeart + 0.2f);
+            c.Blessed = true;
+            c.Entity = _e.Spawn(Species.Cultivator, x, y, c.BirthTick);
+            _e.Payload[c.Entity] = c.Index;
+            AliveCount++;
+            CountByRealm[(int)c.Realm]++;
+            var killer = c.KilledBy >= 0 && c.KilledBy != c.Index ? All[c.KilledBy] : null;
+            c.KilledBy = -1;
+            bool grudge = killer != null && killer.Alive;
+            if (grudge)
+            {
+                c.Nemesis = killer.Index;
+                c.NemesisFor = -1; // their own death
+                c.NemesisTick = tick;
+            }
+            _sim.Events.Add(tick, EventKind.Divine, 3,
+                $"Thiên Đạo nghịch chuyển sinh tử: {c.Title} ({SectName(c)}) sống lại sau {years} năm vẫn lạc" +
+                (grudge ? $", lòng mang huyết thù với {killer.Title}." : "."), x, y, Fx.Blessing, c.Index, grudge ? killer.Index : -1, c.SectId);
+            return true;
         }
 
         // Thiên Đạo calls down a tribulation on the chosen one. Stuck at a bottleneck, heaven opens the gate for whoever
@@ -519,7 +595,7 @@ namespace ThienDao.Sim
                 if (!s.Alive) continue;
                 var rng = RngFor(tick, 500000 + s.Id);
                 float qi = _sim.Qi.SampleQi(s.X, s.Y);
-                float expected = s.Cohorts[2] / 5f * AwakenChance * (1f + qi / 3000f);
+                float expected = s.Cohorts[2] / 5f * AwakenChance * (1f + qi / 3000f) * _sim.Rules[Rule.SpiritRoots];
                 int awakened = Mathf.FloorToInt(expected) + (rng.NextFloat() < expected - Mathf.Floor(expected) ? 1 : 0);
                 for (int k = 0; k < awakened; k++)
                 {

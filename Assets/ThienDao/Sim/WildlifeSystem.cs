@@ -180,7 +180,7 @@ namespace ThienDao.Sim
             return deer * SpeciesInfo.HuntFood[(int)Species.Deer] + rabbits * SpeciesInfo.HuntFood[(int)Species.Rabbit];
         }
 
-        public void MonthlyStep(Season season)
+        public void MonthlyStep(Season season, float birthScale = 1f)
         {
             const int blocks = Region / ForageSystem.Block;
             bool breeding = season == Season.Xuan || season == Season.Ha;
@@ -209,8 +209,8 @@ namespace ThienDao.Sim
                 rabbits *= 1f - DeathRate[1] - StarveRate[1] * (1f - fedRabbit);
                 if (breeding)
                 {
-                    deer += deer * BirthRate[0] * fedDeer;
-                    rabbits += rabbits * BirthRate[1] * fedRabbit;
+                    deer += deer * BirthRate[0] * fedDeer * birthScale;
+                    rabbits += rabbits * BirthRate[1] * fedRabbit * birthScale;
                 }
 
                 float prey = deer + rabbits;
@@ -222,7 +222,7 @@ namespace ThienDao.Sim
                 }
                 float wolfFed = wolves > 0f ? Mathf.Clamp01(kills / (wolves * KillsWolfNeeds)) : 0f;
                 wolves *= 1f - DeathRate[2] - StarveRate[2] * (1f - wolfFed);
-                if (breeding) wolves += wolves * BirthRate[2] * wolfFed;
+                if (breeding) wolves += wolves * BirthRate[2] * wolfFed * birthScale;
 
                 _pop[0][r] = deer < 0.3f ? 0f : deer;
                 _pop[1][r] = rabbits < 0.3f ? 0f : rabbits;

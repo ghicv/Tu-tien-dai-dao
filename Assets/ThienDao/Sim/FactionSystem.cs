@@ -410,6 +410,30 @@ namespace ThienDao.Sim
             TerritoryChanged?.Invoke();
         }
 
+        // Thiên phạt on a whole sect: everyone in the mountain gate perishes, the hall burns, the land is freed and
+        // the sky over it stays charged (lôi địa). Members out on the road live on as tán tu.
+        public bool Annihilate(int id, long tick)
+        {
+            var f = Get(id);
+            if (f == null || !f.Alive) return false;
+            var s = _sim.Settlements.All[id];
+            string name = NameOf(id);
+            int dead = 0;
+            foreach (var c in _sim.Cultivation.All)
+            {
+                if (!c.Alive || c.SectId != id || !_sim.Cultivation.IsAtHome(c)) continue;
+                _sim.Cultivation.Perish(c, tick, $"{c.Title} vẫn lạc khi thiên phạt san bằng {name}.", c.Realm >= Realm.KetDan ? 2 : 1, Fx.Lightning);
+                dead++;
+            }
+            _sim.Events.Add(tick, EventKind.Divine, 3, $"Thiên Đạo giáng thiên phạt xuống {name}: {dead} tu sĩ vẫn lạc, sơn môn hóa tro tàn.",
+                s.X + 0.5f, s.Y + 0.5f, Fx.Tribulation, -1, -1, id);
+            _sim.Settlements.Strike(s.X, s.Y, tick);
+            var rng = new DetRandom(Hash.U32(_w.Seed ^ 0xA77Au, (int)tick, id));
+            Destroy(f, null, tick, ref rng);
+            _sim.Disasters.WrathScar(s.X, s.Y, 8, tick, $"thiên phạt diệt {name} năm {tick / SimClock.DaysPerYear + 1}");
+            return true;
+        }
+
         // Diệt môn: some lesser disciples bow to the victor, the rest scatter, the hall burns.
         void Destroy(Faction loser, Faction winner, long tick, ref DetRandom rng)
         {
@@ -983,7 +1007,7 @@ namespace ThienDao.Sim
                 var master = _sim.Cultivation.MasterOf(f.Id);
 
                 // A master gone demonic may drag the whole sect onto the demonic path.
-                if (master != null && master.Demonic && !f.Demonic && rng.NextFloat() < 0.2f)
+                if (master != null && master.Demonic && !f.Demonic && rng.NextFloat() < 0.2f && _sim.Rules.DemonicAllowed)
                 {
                     f.Demonic = true;
                     _sim.Events.Add(tick, EventKind.Schism, 2, $"Dưới tay {master.Title}, {NameOf(f.Id)} sa vào ma đạo.", -1f, -1f, Fx.None, master.Index, -1, f.Id);

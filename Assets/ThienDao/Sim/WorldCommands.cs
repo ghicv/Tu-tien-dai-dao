@@ -232,7 +232,7 @@ namespace ThienDao.Sim
         }
     }
 
-    public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation }
+    public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation, Revive, Annihilate }
 
     // Thiên Đạo acting on one being: the chosen cultivator (Target, an index into Cultivation.All) or a mortal of
     // the chosen village (Village, a settlement id). Without a target, Bless / Smite fall back to whoever is nearby.
@@ -256,6 +256,11 @@ namespace ThienDao.Sim
         {
             long tick = sim.Clock.Tick;
             var all = sim.Cultivation.All;
+            if (Act == DivineAct.Revive) // the one act aimed at the dead
+            {
+                if (Target >= 0 && Target < all.Count) sim.Cultivation.Revive(all[Target], tick);
+                return;
+            }
             var chosen = Target >= 0 && Target < all.Count && all[Target].Alive ? all[Target] : null;
             var village = Village >= 0 && Village < sim.Settlements.All.Count && sim.Settlements.All[Village].Alive ? sim.Settlements.All[Village] : null;
             if (Act == DivineAct.GrantRoot)
@@ -263,6 +268,11 @@ namespace ThienDao.Sim
                 if (chosen != null) sim.Cultivation.GrantRootTo(chosen, tick);
                 else if (village != null) sim.Cultivation.AwakenMortal(village, tick);
                 return; // a spirit root is given to someone, never to empty ground
+            }
+            if (Act == DivineAct.Annihilate)
+            {
+                if (village != null && village.Sect) sim.Factions.Annihilate(village.Id, tick); // only a sect can be wiped out
+                return;
             }
             if (Act == DivineAct.Tribulation)
             {

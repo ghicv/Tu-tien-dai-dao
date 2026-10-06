@@ -34,7 +34,14 @@ namespace ThienDao.Tests
             sim.Enqueue(new CalamityCommand(Calamity.BeastTide, 600, 600, 1));
             var hero = sim.Cultivation.All.Find(c => c.Alive && c.Realm == Realm.TrucCo);
             if (hero != null) sim.Enqueue(new DivineActCommand(DivineAct.Tribulation, (int)hero.HomeX, (int)hero.HomeY, hero.Index));
+            sim.Enqueue(new SetRuleCommand(Rule.WorldQi, 1.5f));
+            sim.Enqueue(new CalamityCommand(Calamity.Storm, v.X, v.Y + 30, 8));
+            sim.Enqueue(new CalamityCommand(Calamity.Cold, 300, 600, 10));
+            sim.Enqueue(new CalamityCommand(Calamity.Rain, 500, 500, 10));
+            sim.Enqueue(new CalamityCommand(Calamity.GreatCalamity, 0, 0, 1));
             Run(sim, 100);
+            var fallen = sim.Cultivation.All.Find(c => !c.Alive);
+            if (fallen != null) sim.Enqueue(new DivineActCommand(DivineAct.Revive, 0, 0, fallen.Index));
             var land = FindOpenLand(sim, 400, 400);
             sim.Enqueue(new CalamityCommand(Calamity.Eruption, land.x, land.y, 6));
             Run(sim, 200);
@@ -232,8 +239,21 @@ namespace ThienDao.Tests
                     if (s.Alive) alive.Add(s);
                 var target = alive.Count > 0 ? alive[rng.Range(0, alive.Count)] : null;
                 int tx = target?.X ?? rng.Range(50, 970), ty = target?.Y ?? rng.Range(50, 970);
-                switch (rng.Range(0, 15))
+                switch (rng.Range(0, 19))
                 {
+                    case 15: sim.Enqueue(new CalamityCommand(rng.NextFloat() < 0.5f ? Calamity.Storm : Calamity.Cold, tx, ty, rng.Range(4, 16))); break;
+                    case 16: sim.Enqueue(new CalamityCommand(rng.NextFloat() < 0.1f ? Calamity.GreatCalamity : Calamity.Rain, tx, ty, 10)); break;
+                    case 17:
+                    {
+                        var all = sim.Cultivation.All;
+                        var c = all[rng.Range(0, all.Count)];
+                        sim.Enqueue(new DivineActCommand(c.Alive ? DivineAct.Smite : DivineAct.Revive, (int)c.HomeX, (int)c.HomeY, c.Index));
+                        break;
+                    }
+                    case 18:
+                        if (target != null) sim.Enqueue(new DivineActCommand(DivineAct.Annihilate, target.X, target.Y, -1, target.Id));
+                        sim.Enqueue(new SetRuleCommand((Rule)rng.Range(0, (int)Rule.Count), rng.Range(0f, 3f)));
+                        break;
                     case 9: sim.Enqueue(new CalamityCommand(Calamity.Earthquake, tx, ty, rng.Range(5, 30))); break;
                     case 10: sim.Enqueue(new CalamityCommand(Calamity.Eruption, tx + rng.Range(-6, 7), ty + rng.Range(-6, 7), 6)); break;
                     case 11: sim.Enqueue(new CalamityCommand(Calamity.Flood, tx, ty, rng.Range(4, 20))); break;
@@ -615,6 +635,146 @@ namespace ThienDao.Tests
             sim.ApplyPending();
             Assert.Greater(sim.Wildlife.Total(Species.Wolf), wolves + 100f);
             Assert.Less(village.Population, control.Settlements.All[village.Id].Population);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        // ---------------------------------------------------------------- M6 phần 2: quy luật, sinh tử, đại kiếp, thời tiết
+
+        [Test]
+        public void RulesRewriteTheWorld()
+        {
+            var control = new Simulation(MapGenerator.Generate("ThienDao"));
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            sim.Enqueue(new SetRuleCommand(Rule.SpiritRoots, 0f));
+            sim.Enqueue(new SetRuleCommand(Rule.WorldQi, 0.3f));
+            sim.Enqueue(new SetRuleCommand(Rule.Breakthrough, 99f)); // clamped to the maximum
+            Run(control, SimClock.DaysPerYear * 10);
+            Run(sim, SimClock.DaysPerYear * 10);
+            Assert.AreEqual(4f, sim.Rules[Rule.Breakthrough], 1e-4f);
+            Assert.AreEqual(0, sim.Events.CountByKind[(int)EventKind.Awakening], "no spirit roots: nobody awakens");
+            Assert.Greater(control.Events.CountByKind[(int)EventKind.Awakening], 0);
+            Assert.Less(sim.Qi.TotalQi(), control.Qi.TotalQi() * 0.6f, "a world of thin qi");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void RevivedCultivatorReturnsWithAGrudge()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var all = sim.Cultivation.All;
+            var victim = all.Find(c => c.Alive && c.Realm == Realm.TrucCo);
+            var killer = all.Find(c => c.Alive && c.Realm >= Realm.KetDan && c.SectId != victim.SectId);
+            int alive = sim.Cultivation.AliveCount;
+            sim.Combat.Kill(killer, victim, sim.Clock.Tick, "test kill", 2);
+            Assert.IsFalse(victim.Alive);
+            Run(sim, SimClock.DaysPerYear * 3);
+
+            sim.Enqueue(new DivineActCommand(DivineAct.Revive, 0, 0, victim.Index));
+            sim.ApplyPending();
+            Assert.IsTrue(victim.Alive);
+            Assert.AreEqual(killer.Alive ? killer.Index : -1, victim.Nemesis, "the killer is now their nemesis");
+            Assert.Greater(victim.LifespanYears - victim.AgeYears(sim.Clock.Tick), 99f, "a fresh span of years");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+
+            sim.Enqueue(new DivineActCommand(DivineAct.Revive, 0, 0, victim.Index)); // the living cannot be revived
+            sim.ApplyPending();
+            Run(sim, SimClock.DaysPerYear * 5);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void AnnihilatedSectLeavesThunderLand()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var sect = sim.Settlements.All.Find(s => s.Alive && s.Sect);
+            sim.Enqueue(new DivineActCommand(DivineAct.Annihilate, sect.X, sect.Y, -1, sect.Id));
+            sim.ApplyPending();
+            Assert.IsFalse(sim.Factions.Get(sect.Id).Alive);
+            Assert.IsFalse(sect.Sect, "the sect town lives on as an ordinary village");
+            Assert.IsFalse(sim.Cultivation.All.Exists(c => c.Alive && c.SectId == sect.Id));
+            Assert.AreNotEqual(0, sim.World.Zone[sim.World.Idx(sect.X, sect.Y)] & ZoneFlags.Thunder);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+            Run(sim, SimClock.DaysPerYear * 2);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void GreatCalamityDimsTheWorldThenPasses()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            sim.Enqueue(new CalamityCommand(Calamity.GreatCalamity, 0, 0, 1));
+            sim.ApplyPending();
+            Assert.IsTrue(sim.Disasters.GreatCalamityActive);
+            Assert.AreEqual(0.5f, sim.QiScale, 1e-4f);
+            int before = sim.Events.CountByKind[(int)EventKind.Calamity];
+            Run(sim, SimClock.DaysPerYear * 17);
+            Assert.IsFalse(sim.Disasters.GreatCalamityActive, "the đại kiếp ends and a new age begins");
+            Assert.Greater(sim.Events.CountByKind[(int)EventKind.Calamity] - before, 10, "calamity followed calamity");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void RainBreaksDroughtAndColdKills()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var control = new Simulation(MapGenerator.Generate("ThienDao"));
+            var v = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population >= 30);
+            sim.Enqueue(new CalamityCommand(Calamity.Drought, v.X, v.Y, 10));
+            sim.ApplyPending();
+            Assert.Less(sim.Disasters.HarvestFactor(v.X, v.Y), 0.5f);
+            sim.Enqueue(new CalamityCommand(Calamity.Rain, v.X, v.Y, 10));
+            Run(sim, SimClock.DaysPerMonth + 1);
+            Assert.AreEqual(-1, sim.Disasters.DroughtMonthsLeft(v.X, v.Y, sim.Clock.Tick), "the rain broke the drought");
+            Assert.Greater(sim.Disasters.HarvestFactor(v.X, v.Y), 1f);
+
+            var w = control.Settlements.All[v.Id];
+            control.Enqueue(new CalamityCommand(Calamity.Cold, w.X, w.Y, 10));
+            var twin = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(control, SimClock.DaysPerMonth * 5);
+            Run(twin, SimClock.DaysPerMonth * 5);
+            Assert.Less(w.Population, twin.Settlements.All[v.Id].Population, "the cold takes lives");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(control));
+        }
+
+        [Test]
+        public void StormTearsDownTrees()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            int objects = sim.World.Objects.AliveCount;
+            var v = sim.Settlements.All.Find(s => s.Alive && !s.Sect);
+            sim.Enqueue(new CalamityCommand(Calamity.Storm, v.X, v.Y, 12));
+            sim.ApplyPending();
+            Assert.Less(sim.World.Objects.AliveCount, objects);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void EnemiesStrikeDuringTribulation()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var all = sim.Cultivation.All;
+            // Ten cultivators at their bottleneck, each with a strong enemy nearby who swore to kill them.
+            var targets = all.FindAll(c => c.Alive && c.Realm == Realm.TrucCo);
+            var foes = all.FindAll(c => c.Alive && c.Realm >= Realm.KetDan);
+            int tried = 0;
+            for (int k = 0; k < targets.Count && tried < 10; k++)
+            {
+                var t = targets[k];
+                var foe = foes.Find(f => f.Alive && f.SectId != t.SectId && f.Nemesis < 0);
+                if (foe == null) break;
+                foe.Nemesis = t.Index;
+                foe.NemesisTick = sim.Clock.Tick;
+                sim.Entities.X[foe.Entity] = sim.Entities.X[t.Entity] + 5f;
+                sim.Entities.Y[foe.Entity] = sim.Entities.Y[t.Entity];
+                t.Stage = Realms.Stages[(int)t.Realm] - 1;
+                sim.Enqueue(new DivineActCommand(DivineAct.Tribulation, 0, 0, t.Index));
+                sim.ApplyPending();
+                tried++;
+            }
+            bool ambush = false;
+            foreach (var ev in sim.Events.Recent)
+                if (ev.Text.Contains("đánh lén")) ambush = true;
+            Assert.IsTrue(ambush, "someone should be struck in the middle of their tribulation");
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 

@@ -209,9 +209,9 @@ namespace ThienDao.Sim
             c.HuntTarget = t.Index;
             var e = _sim.Entities;
             _sim.Cultivation.SendToHunt(c, e.X[t.Entity], e.Y[t.Entity], tick + 2L * SimClock.DaysPerYear);
-            string whom = c.NemesisFor >= 0 ? all[c.NemesisFor].Name : "người thân";
+            string why = c.NemesisFor >= 0 ? $"báo thù cho {all[c.NemesisFor].Name}" : "đòi lại món nợ máu đã lấy mạng mình"; // revived by Thiên Đạo
             _sim.Events.Add(tick, EventKind.Vendetta, 2,
-                $"{c.Title} lên đường truy sát {t.Title}, báo thù cho {whom}.", e.X[c.Entity], e.Y[c.Entity], Fx.None, c.Index, t.Index, c.SectId, t.SectId);
+                $"{c.Title} lên đường truy sát {t.Title}, {why}.", e.X[c.Entity], e.Y[c.Entity], Fx.None, c.Index, t.Index, c.SectId, t.SectId);
         }
 
         public void HashInto(ref ulong h)

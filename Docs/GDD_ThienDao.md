@@ -439,8 +439,15 @@ Mọi quyền năng → `Command` → áp dụng ở tick kế tiếp → ghi v�
 - **Tab Thiên Đạo:** thêm Thiên kiếp lên một tu sĩ.
 - **Tab Thiên tai:** động đất (đứt linh mạch), núi lửa (dung nham nguội dần, mở mạch địa hỏa), lũ lụt (ngập ruộng rồi rút), hạn hán (mất mùa theo vùng), ôn dịch (lây sang làng lân cận), thú triều.
 - Thế giới cũng tự sinh các thiên tai này với tỉ lệ thấp.
-- Chưa làm: đại kiếp toàn cầu, thời tiết, tab Quy luật, hồi sinh / diệt thế lực.
 - Chi tiết: `Docs/Devlog/12-m6-thien-kiep-thien-tai.md`.
+
+**Đã cài (M6 phần 2):**
+- **Tab Quy luật:** 7 luật toàn thế giới, gồm linh khí, linh căn, đột phá, độ khắc nghiệt thiên kiếp, sinh sản, thiên tai và bật/tắt ma đạo.
+- **Sinh/Tử:** hồi sinh (người sống lại mang huyết thù với kẻ đã giết mình) và diệt môn.
+- **Đại kiếp toàn cầu:** linh khí còn một nửa, thiên tai liên miên trong 8–15 năm.
+- **Thời tiết:** mưa (cắt hạn hán), bão, rét.
+- Kẻ thù có thể đánh lén người đang độ kiếp.
+- Chi tiết: `Docs/Devlog/13-m6-quy-luat-sinh-tu-dai-kiep.md`.
 
 ---
 
@@ -499,7 +506,7 @@ Tham khảo 3 ảnh: địa hình là khối ô vuông (viền bờ biển bậc
 | **M3 — Tu tiên lõi** ✅ | linh căn, Luyện Khí → Nguyên Anh, tu luyện hút linh khí, đột phá, tẩu hỏa, thọ nguyên | tu sĩ tự tìm phúc địa, có người đột phá/chết già |
 | **M4 — Thế lực** ✅ | Faction chung, làng → thành, tông môn lập/tuyển đệ tử, ngoại giao opinion | tông môn tự sinh & tranh linh mạch |
 | **M5 — Xung đột & lịch sử** ✅ | chiến đấu cá nhân, trận trừu tượng, HistoryLog, biên niên sử UI, StoryDetector v1 | đọc được "câu chuyện" sau 1.000 năm |
-| **M6 — Thiên Đạo** (đang làm: thiên kiếp, thiên tai ✅) | đủ các tab quyền năng, thiên kiếp, thiên tai | vòng CREATE → INTERVENE → CONSEQUENCE hoàn chỉnh |
+| **M6 — Thiên Đạo** ✅ | đủ các tab quyền năng, thiên kiếp, thiên tai | vòng CREATE → INTERVENE → CONSEQUENCE hoàn chỉnh |
 | **M7 — Chiều sâu** | kinh tế/chợ/thương lộ, yêu thú tiến hóa & yêu tộc, bí cảnh từ lịch sử, thời đại & mạt pháp | hai seed khác nhau → lịch sử khác hẳn |
 
 **M0–M3 là "vertical slice":** nếu xem tu sĩ tự tu luyện, tranh linh khí và chết già đã thấy thú vị, thiết kế đúng hướng.

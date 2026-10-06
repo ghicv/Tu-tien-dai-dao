@@ -30,7 +30,7 @@ namespace ThienDao.Sim
     }
 
     // Visual effect the renderer should play at the event's position.
-    public enum Fx : byte { None, Lightning, Tribulation, Explosion, DemonBlast, Splash, LightPillar, Blessing, Quake, Eruption, Miasma, Stampede }
+    public enum Fx : byte { None, Lightning, Tribulation, Explosion, DemonBlast, Splash, LightPillar, Blessing, Quake, Eruption, Miasma, Stampede, Rain, Snow, Storm }
 
     public readonly struct WorldEvent
     {

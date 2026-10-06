@@ -71,6 +71,10 @@ namespace ThienDao.Sim
                     $"Ôm hận {Years(killer.NemesisTick, tick)} năm, nay {killer.Title} tự tay chém kẻ thù.",
                     killer.Index, victim.Index, killer.SectId, victim.SectId, x, y);
             }
+            if (killer.Nemesis == victim.Index && killer.NemesisFor < 0) // brought back by Thiên Đạo, settled their own death
+                Tell($"reborn:{killer.Index}:{victim.Index}", tick, "Trùng sinh báo thù",
+                    $"{killer.Name} từng chết dưới tay {victim.Name}; năm {YearOf(killer.NemesisTick)} được Thiên Đạo cho sống lại, " +
+                    $"nay tự tay đòi lại mạng mình.", killer.Index, victim.Index, killer.SectId, victim.SectId, x, y);
             if (victim.Index == killer.MasterIdx)
                 Tell($"betray:{killer.Index}", tick, "Khi sư diệt tổ",
                     $"{killer.Title} ra tay giết chính sư phụ mình là {victim.Title}.", killer.Index, victim.Index, killer.SectId, victim.SectId, x, y);

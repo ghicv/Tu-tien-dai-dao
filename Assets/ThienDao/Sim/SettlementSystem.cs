@@ -403,12 +403,12 @@ namespace ThienDao.Sim
                 }
 
                 // Ôn dịch lingers for months and can spread along the roads (DisasterSystem).
-                if (rng.NextFloat() < PlagueChancePerYear && pop >= 20) _sim.Disasters.StartEpidemic(s, tick, false);
+                if (rng.NextFloat() < PlagueChancePerYear * _sim.Rules[Rule.Calamities] && pop >= 20) _sim.Disasters.StartEpidemic(s, tick, false);
 
                 float foodFactor = Mathf.Clamp(s.Food / pop / 4f, 0.25f, 1.2f);
                 float crowding = pop > s.HousingCapacity ? 0.4f : 1f;
                 float saturation = Mathf.Clamp01(1f - pop / (float)CrowdedPopulation);
-                int births = Stoch(s.FertileAdults * 0.5f * 0.3f * foodFactor * crowding * saturation, ref rng);
+                int births = Stoch(s.FertileAdults * 0.5f * 0.3f * foodFactor * crowding * saturation * _sim.Rules[Rule.Births], ref rng);
                 s.Cohorts[0] += births;
                 s.BirthsLastYear = births;
                 pop += births;

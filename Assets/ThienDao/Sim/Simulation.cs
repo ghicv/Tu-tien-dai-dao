@@ -39,7 +39,11 @@ namespace ThienDao.Sim
         public readonly StoryDetector Stories;
         public readonly ProtagonistAI Protagonists;
         public readonly DisasterSystem Disasters;
+        public readonly WorldRules Rules = new WorldRules();
         public readonly EventLog Events = new EventLog();
+
+        // Share of its natural ceiling the world's qi settles toward: the Quy luật slider times any đại kiếp.
+        public float QiScale => Rules[Rule.WorldQi] * Disasters.QiFactor;
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
         readonly Queue<IWorldCommand> _pending = new Queue<IWorldCommand>();
@@ -89,10 +93,10 @@ namespace ThienDao.Sim
             Creatures.Tick(tick);
             if (Clock.IsMonthStart)
             {
-                Qi.MonthlyStep(RegenMultiplier(Clock.Season));
+                Qi.MonthlyStep(RegenMultiplier(Clock.Season), QiScale);
                 Forage.MonthlyStep(Clock.Season);
                 Disasters.MonthlyStep(tick); // floods recede, droughts wither the grass, epidemics run their course
-                Wildlife.MonthlyStep(Clock.Season);
+                Wildlife.MonthlyStep(Clock.Season, Rules[Rule.Births]);
                 Settlements.MonthlyStep(tick);
                 Cultivation.MonthlyStep(tick);
                 Combat.MonthlyStep(tick);
@@ -179,6 +183,7 @@ namespace ThienDao.Sim
             History.HashInto(ref h);
             Stories.HashInto(ref h);
             Disasters.HashInto(ref h);
+            Rules.HashInto(ref h);
             return h;
         }
     }
