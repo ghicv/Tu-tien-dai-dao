@@ -303,6 +303,23 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Bound history book: the Biên niên sử window.
+        public static Sprite Book => Glyph("book", new[]
+        {
+            "............",
+            ".kkkkkkkkkk.",
+            ".knnnnnnnnk.",
+            ".knyyyyyynk.",
+            ".knykkkkynk.",
+            ".knyyyyyynk.",
+            ".knnnnnnnnk.",
+            ".knnnyynnnk.",
+            ".knnnnnnnnk.",
+            ".kwwwwwwwwk.",
+            ".kkkkkkkkkk.",
+            "............",
+        }, P);
+
         // Sect banner on a pole: the Thế lực window.
         public static Sprite Banner => Glyph("banner", new[]
         {

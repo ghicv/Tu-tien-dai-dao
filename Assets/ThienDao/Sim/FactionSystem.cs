@@ -37,6 +37,7 @@ namespace ThienDao.Sim
         public long TruceUntil;
         public int Battles;
         public int Contested;         // border tiles fought over this year
+        public int Wars;              // wars fought between the two, ever
         public int Other(int id) => id == A ? B : A;
     }
 
@@ -355,7 +356,7 @@ namespace ThienDao.Sim
             if (tile >= 0 && _tileLey[tile] && r.Contested == 1 && r.Stance != Stance.War)
             {
                 float x = tile % TW * Tile + Tile * 0.5f, y = tile / TW * Tile + Tile * 0.5f;
-                _sim.Events.Add(tick, EventKind.War, 1, $"{NameOf(a)} và {NameOf(b)} tranh đoạt linh mạch.", x, y);
+                _sim.Events.Add(tick, EventKind.War, 1, $"{NameOf(a)} và {NameOf(b)} tranh đoạt linh mạch.", x, y, Fx.None, -1, -1, a, b);
             }
         }
 
@@ -433,7 +434,8 @@ namespace ThienDao.Sim
 
             _sim.Events.Add(tick, EventKind.Destruction, 3,
                 $"{(winner != null ? NameOf(winner.Id) + " công phá sơn môn, " : "")}{NameOf(loser.Id)} bị diệt môn!" +
-                (surrendered > 0 ? $" {surrendered} đệ tử quy hàng." : ""), hx, hy, Fx.Explosion);
+                (surrendered > 0 ? $" {surrendered} đệ tử quy hàng." : ""), hx, hy, Fx.Explosion, -1, -1, winner?.Id ?? -1, loser.Id);
+            _sim.Stories?.OnFactionDestroyed(winner, loser, tick);
             SectGone(loser.Id, tick);
             _sim.Settlements.ConvertSectToVillage(s, tick);
             // The victor takes what lies within its reach.
@@ -503,7 +505,7 @@ namespace ThienDao.Sim
                 var f = All[k];
                 if (!f.Alive || f.Members > 0) continue;
                 var s = _sim.Settlements.All[f.Id];
-                _sim.Events.Add(tick, EventKind.Destruction, 2, $"{NameOf(f.Id)} không còn truyền nhân, tông môn suy tàn.", s.X + 0.5f, s.Y + 0.5f);
+                _sim.Events.Add(tick, EventKind.Destruction, 2, $"{NameOf(f.Id)} không còn truyền nhân, tông môn suy tàn.", s.X + 0.5f, s.Y + 0.5f, Fx.None, -1, -1, f.Id);
                 SectGone(f.Id, tick);
                 _sim.Settlements.ConvertSectToVillage(s, tick);
             }
@@ -550,7 +552,7 @@ namespace ThienDao.Sim
                 f.Treasury -= cost;
                 _sim.Cultivation.JoinSect(best, seat, tick);
                 _sim.Events.Add(tick, EventKind.Patronage, best.Realm >= Realm.KetDan ? 2 : 0,
-                    $"{best.Title} được {NameOf(f.Id)} chiêu mộ làm khách khanh ({cost:0} linh thạch).");
+                    $"{best.Title} được {NameOf(f.Id)} chiêu mộ làm khách khanh ({cost:0} linh thạch).", -1f, -1f, Fx.None, best.Index, -1, f.Id);
             }
         }
 
@@ -658,7 +660,7 @@ namespace ThienDao.Sim
                         r.TruceUntil = tick + 20L * SimClock.DaysPerYear;
                         r.Opinion = -25f;
                         if (announce)
-                            _sim.Events.Add(tick, EventKind.Peace, 2, $"{NameOf(r.A)} và {NameOf(r.B)} giảng hòa sau {years:0} năm chinh chiến.");
+                            _sim.Events.Add(tick, EventKind.Peace, 2, $"{NameOf(r.A)} và {NameOf(r.B)} giảng hòa sau {years:0} năm chinh chiến.", -1f, -1f, Fx.None, -1, -1, r.A, r.B);
                     }
                     return;
                 }
@@ -675,7 +677,7 @@ namespace ThienDao.Sim
             if (next != r.Stance)
             {
                 if (announce && next == Stance.Allied)
-                    _sim.Events.Add(tick, EventKind.Alliance, 1, $"{NameOf(r.A)} và {NameOf(r.B)} kết minh.");
+                    _sim.Events.Add(tick, EventKind.Alliance, 1, $"{NameOf(r.A)} và {NameOf(r.B)} kết minh.", -1f, -1f, Fx.None, -1, -1, r.A, r.B);
                 SetStance(r, next, tick);
             }
 
@@ -689,7 +691,9 @@ namespace ThienDao.Sim
                 a.Wars++;
                 b.Wars++;
                 var sd = _sim.Settlements.All[defender.Id];
-                _sim.Events.Add(tick, EventKind.War, 3, $"{NameOf(attacker.Id)} tuyên chiến với {NameOf(defender.Id)}!", sd.X + 0.5f, sd.Y + 0.5f);
+                _sim.Events.Add(tick, EventKind.War, 3, $"{NameOf(attacker.Id)} tuyên chiến với {NameOf(defender.Id)}!", sd.X + 0.5f, sd.Y + 0.5f, Fx.None, -1, -1, attacker.Id, defender.Id);
+                r.Wars++;
+                _sim.Stories?.OnWarDeclared(attacker, defender, r, tick);
             }
         }
 
@@ -727,7 +731,8 @@ namespace ThienDao.Sim
             r.Battles = 0;
             RecountWars();
             var sd = _sim.Settlements.All[b];
-            _sim.Events.Add(tick, EventKind.War, 3, $"{NameOf(a)} tuyên chiến với {NameOf(b)}!", sd.X + 0.5f, sd.Y + 0.5f);
+            _sim.Events.Add(tick, EventKind.War, 3, $"{NameOf(a)} tuyên chiến với {NameOf(b)}!", sd.X + 0.5f, sd.Y + 0.5f, Fx.None, -1, -1, a, b);
+            r.Wars++;
             return true;
         }
 
@@ -862,8 +867,26 @@ namespace ThienDao.Sim
                 foreach (var c in b.D) _sim.Cultivation.ReturnHome(c);
                 return;
             }
-            float sa = SideStrength(att, b.A, false, b.Siege, out var topA) * rng.Range(0.7f, 1.3f);
-            float sd = SideStrength(def, b.D, true, b.Siege, out var topD) * rng.Range(0.7f, 1.3f);
+            string place = _tileLey[b.Tile] ? "linh mạch" : "vùng đất";
+
+            // The battle is a set of đấu pháp: fighters pair off, strongest against strongest; the fallen and the
+            // routed no longer count for their side.
+            var fa = Present(att, b.A);
+            var fd = Present(def, b.D);
+            int dead = 0;
+            bool greatLoss = false;
+            for (int k = 0; k < Mathf.Min(fa.Count, fd.Count); k++)
+            {
+                var w = _sim.Combat.Duel(fa[k], fd[k], tick, 0.3f, $"giao chiến trong trận tranh {place}", ref rng);
+                var l = w == fa[k] ? fd[k] : fa[k];
+                if (l.Alive) continue;
+                dead++;
+                (l == fa[k] ? att : def).Fallen++;
+                if (l.Realm >= Realm.KetDan) greatLoss = true;
+            }
+
+            float sa = SideStrength(att, b.A, false, b.Siege, out _) * rng.Range(0.7f, 1.3f);
+            float sd = SideStrength(def, b.D, true, b.Siege, out _) * rng.Range(0.7f, 1.3f);
             bool attackerWins = sa > sd;
             var winner = attackerWins ? att : def;
             var loser = attackerWins ? def : att;
@@ -871,16 +894,11 @@ namespace ThienDao.Sim
             r.Battles++;
             winner.BattlesWon++;
             loser.BattlesLost++;
-
-            int dead = 0;
-            bool greatLoss = false;
-            dead += Casualties(attackerWins ? b.D : b.A, loser, winner, attackerWins ? topA : topD, 0.3f, tick, ref rng, ref greatLoss);
-            dead += Casualties(attackerWins ? b.A : b.D, winner, loser, attackerWins ? topD : topA, 0.06f, tick, ref rng, ref greatLoss);
             r.Opinion = Mathf.Max(-100f, r.Opinion - 8f * dead);
 
-            string place = _tileLey[b.Tile] ? "linh mạch" : "vùng đất";
             _sim.Events.Add(tick, EventKind.Battle, b.Siege ? 3 : greatLoss ? 2 : 1,
-                $"{NameOf(winner.Id)} đánh bại {NameOf(loser.Id)} trong trận tranh {place}{(dead > 0 ? $", {dead} tu sĩ vẫn lạc" : "")}.", b.X, b.Y, Fx.Explosion);
+                $"{NameOf(winner.Id)} đánh bại {NameOf(loser.Id)} trong trận tranh {place}{(dead > 0 ? $", {dead} tu sĩ vẫn lạc" : "")}.",
+                b.X, b.Y, Fx.Explosion, -1, -1, winner.Id, loser.Id);
 
             foreach (var c in b.A) _sim.Cultivation.ReturnHome(c);
             foreach (var c in b.D) _sim.Cultivation.ReturnHome(c);
@@ -897,22 +915,14 @@ namespace ThienDao.Sim
             CountTiles();
         }
 
-        // Each fighter of a side may fall; far more likely facing someone of a higher realm.
-        int Casualties(List<Cultivator> side, Faction own, Faction enemy, Realm enemyTop, float baseRate, long tick, ref DetRandom rng, ref bool greatLoss)
+        // Fighters of a side who actually made it to the field, strongest first.
+        static List<Cultivator> Present(Faction f, List<Cultivator> fighters)
         {
-            int dead = 0;
-            foreach (var c in side)
-            {
-                if (!c.Alive || c.SectId != own.Id || !c.AtWar) continue;
-                float p = Mathf.Clamp(baseRate * Mathf.Pow(2f, (int)enemyTop - (int)c.Realm), 0.02f, 0.9f);
-                if (rng.NextFloat() >= p) continue;
-                int imp = c.Realm >= Realm.NguyenAnh ? 3 : c.Realm >= Realm.KetDan ? 2 : 1;
-                if (c.Realm >= Realm.KetDan) greatLoss = true;
-                _sim.Cultivation.KillInBattle(c, tick, $"{c.Title} ({NameOf(own.Id)}) tử trận dưới tay tu sĩ {NameOf(enemy.Id)}.", imp);
-                own.Fallen++;
-                dead++;
-            }
-            return dead;
+            var list = new List<Cultivator>();
+            foreach (var c in fighters)
+                if (c.Alive && c.SectId == f.Id && c.AtWar) list.Add(c);
+            list.Sort((x, y) => y.Rank != x.Rank ? y.Rank.CompareTo(x.Rank) : x.Index.CompareTo(y.Index));
+            return list;
         }
 
         // ---------------------------------------------------------------- new sects
@@ -943,7 +953,7 @@ namespace ThienDao.Sim
                 }
                 _sim.Events.Add(tick, EventKind.Founding, c.Realm >= Realm.KetDan ? 3 : 2,
                     $"{c.Title} khai tông lập phái, sáng lập {NameOf(f.Id)}{(f.Demonic ? " (ma đạo)" : "")}" +
-                    (followers > 0 ? $", {followers} tán tu theo về." : "."), x + 0.5f, y + 0.5f, Fx.LightPillar);
+                    (followers > 0 ? $", {followers} tán tu theo về." : "."), x + 0.5f, y + 0.5f, Fx.LightPillar, c.Index, -1, f.Id);
             }
         }
 
@@ -960,7 +970,7 @@ namespace ThienDao.Sim
                 if (master != null && master.Demonic && !f.Demonic && rng.NextFloat() < 0.2f)
                 {
                     f.Demonic = true;
-                    _sim.Events.Add(tick, EventKind.Schism, 2, $"Dưới tay {master.Title}, {NameOf(f.Id)} sa vào ma đạo.");
+                    _sim.Events.Add(tick, EventKind.Schism, 2, $"Dưới tay {master.Title}, {NameOf(f.Id)} sa vào ma đạo.", -1f, -1f, Fx.None, master.Index, -1, f.Id);
                 }
 
                 bool freshSuccession = tick - _sim.Cultivation.LastSuccession(f.Id) < 2L * SimClock.DaysPerYear;
@@ -968,8 +978,9 @@ namespace ThienDao.Sim
                 {
                     if (!c.Alive || c.SectId != f.Id || c == master || c.Realm < Realm.KetDan || !_sim.Cultivation.IsAtHome(c)) continue;
                     bool misfit = c.Demonic != f.Demonic;
-                    float chance = misfit ? 0.25f : 0.004f * (0.3f + c.Ambition) * (1f + f.Members / 40f);
+                    float chance = misfit ? 0.12f : 0.004f * (0.3f + c.Ambition) * (1f + f.Members / 40f);
                     if (!misfit && freshSuccession && master != null && c.Rank >= master.Rank - 12f) chance += 0.08f; // the succession was contested
+                    if (AliveCount >= MaxFactions) chance *= 0.3f; // no room for a new sect: fewer leave
                     if (rng.NextFloat() >= chance) continue;
                     BreakAway(f, c, misfit, tick, ref rng);
                     break; // one schism per sect per year
@@ -988,7 +999,7 @@ namespace ThienDao.Sim
             {
                 _sim.Cultivation.LeaveSect(leader);
                 _sim.Events.Add(tick, EventKind.Schism, 2,
-                    misfit ? $"{leader.Title} bị trục xuất khỏi {NameOf(from.Id)}, trở thành tán tu." : $"{leader.Title} rời bỏ {NameOf(from.Id)}, trở thành tán tu.");
+                    misfit ? $"{leader.Title} bị trục xuất khỏi {NameOf(from.Id)}, trở thành tán tu." : $"{leader.Title} rời bỏ {NameOf(from.Id)}, trở thành tán tu.", -1f, -1f, Fx.None, leader.Index, -1, from.Id);
                 return;
             }
 
@@ -1009,7 +1020,7 @@ namespace ThienDao.Sim
             SetStance(r, Stance.Hostile, tick);
             _sim.Events.Add(tick, EventKind.Schism, 3,
                 $"{leader.Title} phản xuất {NameOf(from.Id)}, dẫn {followers} đệ tử lập ra {NameOf(f.Id)}{(f.Demonic ? " (ma đạo)" : "")}.",
-                x + 0.5f, y + 0.5f, misfit ? Fx.DemonBlast : Fx.LightPillar);
+                x + 0.5f, y + 0.5f, misfit ? Fx.DemonBlast : Fx.LightPillar, leader.Index, -1, from.Id, f.Id);
         }
 
         Faction Found(Cultivator leader, int x, int y, Faction parent, long tick, ref DetRandom rng)

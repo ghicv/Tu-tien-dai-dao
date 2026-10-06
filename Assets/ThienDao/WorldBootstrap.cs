@@ -264,6 +264,26 @@ namespace ThienDao
             Sim.Enqueue(new DivineActCommand(act, x, y, target, village));
         }
 
+        // From the ranking: select that expert; if they are out on the map, the camera follows them there.
+        // Returns false when they are in seclusion (nothing on the map to follow).
+        public bool FocusCultivator(Cultivator c)
+        {
+            if (c == null || !c.Alive) return false;
+            var e = Sim.Entities;
+            Select(new InspectTarget
+            {
+                Kind = InspectKind.Cultivator, Cultivator = c, Entity = -1, Region = -1, Animal = -1, ObjectId = -1,
+                CellX = (int)e.X[c.Entity], CellY = (int)e.Y[c.Entity]
+            });
+            if (!Sim.Cultivation.IsShownOnMap(c)) return false;
+            Follow = true;
+            // Jump straight there, close enough to see them, then keep following.
+            var t = _cam.transform;
+            t.position = new Vector3(e.X[c.Entity], e.Y[c.Entity], t.position.z);
+            if (_cam.PixelsPerCell < 6f) _cam.Focus(new Vector2(e.X[c.Entity], e.Y[c.Entity]), Screen.height / (2f * 8f));
+            return true;
+        }
+
         public void ActOnSelected(DivineAct act)
         {
             if (Selection.Kind != InspectKind.None) ActOn(act, Selection);
@@ -364,6 +384,7 @@ namespace ThienDao
             var kb = Keyboard.current;
             if (kb == null) return;
             if (kb.f1Key.wasPressedThisFrame) _ui?.ToggleVisible();
+            if (kb.hKey.wasPressedThisFrame && !(_ui != null && _ui.KeyboardBlocked)) _ui?.ToggleChronicle();
             if (_ui != null && _ui.KeyboardBlocked) return;
             if (kb.leftBracketKey.wasPressedThisFrame) Brush.Size = Mathf.Max(1, Brush.Size - 1);
             if (kb.rightBracketKey.wasPressedThisFrame) Brush.Size = Mathf.Min(40, Brush.Size + 1);

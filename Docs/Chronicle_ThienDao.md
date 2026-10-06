@@ -1,0 +1,831 @@
+# Biên niên sử — thế giới "ThienDao"
+
+Mô phỏng 1000 năm trong 126 giây. Cuối cùng: 36,550 phàm nhân, 1302 tu sĩ (Kết Đan 156, Nguyên Anh 20, Hóa Thần 0), 24 thế lực. Sử sách ghi 23,311 sự kiện, 124 truyền kỳ.
+
+## Truyền kỳ
+
+- **Năm 61 — Đồng môn tương tàn.** Thiên Sát Tông và Kim Cương Tự vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 73 — Đồng môn tương tàn.** Cửu Tiên Cung và Quỷ Linh Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 73 — Thanh lý môn hộ.** Linh Thú Sơn diệt phân tông phản đồ Bách Xảo Viện, rửa nhục năm xưa.
+- **Năm 75 — Đồng môn tương tàn.** Thiên Sát Tông và Bích Vân Cốc vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 81 — Đồng môn tương tàn.** Âm La Tông và Cổ Kiếm Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 83 — Thanh lý môn hộ.** Âm La Tông diệt phân tông phản đồ Cổ Kiếm Môn, rửa nhục năm xưa.
+- **Năm 94 — Báo thù rửa hận.** Năm 34, Phùng Tử Linh giết Hàn Lập, sư phụ của Tô Phi Vũ. Ôm hận 60 năm, nay Tô Phi Vũ chân nhân tự tay chém kẻ thù.
+- **Năm 95 — Huyết hải thâm thù.** Cửu Tiên Cung và Quỷ Linh Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 124 — Đồng môn tương tàn.** Linh Thú Sơn và Huyền Thiên Tông vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 149 — Huyết hải thâm thù.** Thanh Hư Môn và Âm La Tông đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 149 — Đồng môn tương tàn.** Thái Nhất Môn và Tinh Cung vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 161 — Báo thù rửa hận.** Năm 126, Triệu Uyển giết Lăng Dao, sư phụ của Diệp Diệu. Ôm hận 34 năm, nay Diệp Diệu tự tay chém kẻ thù.
+- **Năm 166 — Sát tinh giáng thế.** Trong tay Vương Thanh Phong (Quỷ Linh Môn) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 167 — Báo thù rửa hận.** Năm 96, Vương Thanh Phong giết Khúc Khuyết, sư phụ của Hạ Hầu Thần. Ôm hận 71 năm, nay Hạ Hầu Thần tự tay chém kẻ thù.
+- **Năm 168 — Báo thù rửa hận.** Năm 167, Hạ Hầu Thần giết Vương Thanh Phong, sư phụ của Mộ Dung Ngọc. Ôm hận 1 năm, nay Mộ Dung Ngọc tự tay chém kẻ thù.
+- **Năm 172 — Báo thù rửa hận.** Năm 168, Mộ Dung Ngọc giết Hạ Hầu Thần, sư phụ của Ôn Tịch. Ôm hận 4 năm, nay Ôn Tịch tự tay chém kẻ thù.
+- **Năm 177 — Huyết hải thâm thù.** Linh Thú Sơn và Huyền Thiên Tông đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 186 — Sát tinh giáng thế.** Trong tay Tần Diệu chân nhân (Thanh Hư Môn) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 195 — Báo thù rửa hận.** Năm 183, Lâm Khuyết giết Bạch Lãnh, đệ tử của Hoàng Phủ Long. Ôm hận 11 năm, nay Hoàng Phủ Long chân nhân tự tay chém kẻ thù.
+- **Năm 212 — Huyết hải thâm thù.** Thái Nhất Môn và Tinh Cung đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 216 — Đồng môn tương tàn.** Thái Nhất Môn và Vạn Độc Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 225 — Đồng môn tương tàn.** Quỷ Linh Môn và Thiên Khuyết Bảo vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 231 — Đồng môn tương tàn.** Thanh Hư Môn và Tử Tiêu Cung vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 237 — Báo thù rửa hận.** Năm 236, Lạc Yên giết Bạch Phi Vũ, sư phụ của Liễu Ly. Ôm hận 1 năm, nay Liễu Ly tự tay chém kẻ thù.
+- **Năm 238 — Thanh lý môn hộ.** Thái Nhất Môn diệt phân tông phản đồ Tinh Cung, rửa nhục năm xưa.
+- **Năm 238 — Huyết hải thâm thù.** Linh Thú Sơn và Độc Thánh Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 240 — Huyết hải thâm thù.** Linh Thú Sơn và Tử Tiêu Cung đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 240 — Thanh lý môn hộ.** Thái Nhất Môn diệt phân tông phản đồ Vạn Độc Môn, rửa nhục năm xưa.
+- **Năm 243 — Đồng môn tương tàn.** Cửu Tiên Cung và Bách Xảo Viện vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 273 — Huyết hải thâm thù.** Quỷ Linh Môn và Thiên Khuyết Bảo đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 273 — Thanh lý môn hộ.** Quỷ Linh Môn diệt phân tông phản đồ Thiên Khuyết Bảo, rửa nhục năm xưa.
+- **Năm 274 — Danh chấn thiên hạ.** Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) được người đời tôn xưng là "Huyết Sát Tổ Sư".
+- **Năm 277 — Sát tinh giáng thế.** Trong tay Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 280 — Báo thù rửa hận.** Năm 218, Chu Vô Kỵ giết Tô Phi Vũ, sư phụ của Lâm Thanh Phong. Ôm hận 62 năm, nay Lâm Thanh Phong chân nhân tự tay chém kẻ thù.
+- **Năm 282 — Huyết hải thâm thù.** Bách Xảo Viện và Quỷ Linh Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 290 — Báo thù rửa hận.** Năm 280, Lâm Thanh Phong giết Chu Vô Kỵ, sư phụ của Thượng Quan Ngọc. Ôm hận 10 năm, nay Thượng Quan Ngọc chân nhân tự tay chém kẻ thù.
+- **Năm 291 — Huyết hải thâm thù.** Cửu Tiên Cung và Bách Xảo Viện đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 301 — Huyết hải thâm thù.** Thanh Hư Môn và Tử Tiêu Cung đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 310 — Đồng môn tương tàn.** Hợp Hoan Tông và Vạn Pháp Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 314 — Huyết hải thâm thù.** Hóa Đao Ổ và Quỷ Linh Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 314 — Đồng môn tương tàn.** Hóa Đao Ổ và Quỷ Linh Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 322 — Phế vật nghịch thiên.** Lạc Diệu mang Ngụy linh căn (Kim·Mộc·Thủy·Hỏa·Thổ), từng bị coi là phế vật, nay đã đạt Kết Đan ở tuổi 205.
+- **Năm 339 — Báo thù rửa hận.** Năm 337, Lạc Diệu giết Tôn Nguyệt, sư phụ của Hạ Hầu Huyền. Ôm hận 2 năm, nay Hạ Hầu Huyền chân nhân tự tay chém kẻ thù.
+- **Năm 349 — Danh chấn thiên hạ.** Mặc Thiên Đô chân nhân (Hắc Khê Phái) được người đời tôn xưng là "Huyết Kiếm Tổ Sư".
+- **Năm 350 — Huyết hải thâm thù.** Hợp Hoan Tông và Vạn Pháp Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 356 — Sát tinh giáng thế.** Trong tay Nam Cung Mộng chân nhân (Quỷ Linh Môn) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 370 — Sát tinh giáng thế.** Trong tay Âu Dương Mộng lão tổ (Linh Thú Sơn) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 371 — Danh chấn thiên hạ.** Âu Dương Mộng lão tổ (Linh Thú Sơn) được người đời tôn xưng là "Huyết Sát Chân Quân".
+- **Năm 396 — Sát tinh giáng thế.** Trong tay Lâm Kiếm chân nhân (tán tu) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 403 — Báo thù rửa hận.** Năm 397, Mặc Thiên Đô giết Lâm Trần, đệ tử của Nam Cung Khuyết. Ôm hận 6 năm, nay Nam Cung Khuyết chân nhân tự tay chém kẻ thù.
+- **Năm 411 — Sát tinh giáng thế.** Trong tay Thượng Quan Diệu chân nhân (Độc Thánh Môn) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 418 — Huyết hải thâm thù.** Hóa Đao Ổ và Hợp Hoan Tông đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 423 — Báo thù rửa hận.** Năm 364, Lục Nhược Hy giết Bạch Sương, sư phụ của Đoan Mộc Nguyệt. Ôm hận 58 năm, nay Đoan Mộc Nguyệt tự tay chém kẻ thù.
+- **Năm 426 — Báo thù rửa hận.** Năm 403, Nam Cung Khuyết giết Mặc Thiên Đô, sư phụ của Tề Huyền. Ôm hận 23 năm, nay Tề Huyền chân nhân tự tay chém kẻ thù.
+- **Năm 440 — Báo thù rửa hận.** Năm 439, Vương Thiên Nam giết Thượng Quan Thiên Nam, sư phụ của Hàn Mộng. Ôm hận 1 năm, nay Hàn Mộng tự tay chém kẻ thù.
+- **Năm 442 — Cổ tông diệt vong.** Hợp Hoan Tông truyền thừa 344 năm, nay bị Hóa Đao Ổ diệt môn.
+- **Năm 455 — Sát tinh giáng thế.** Trong tay Triệu Diệu chân nhân (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 461 — Huyết hải thâm thù.** Hoàng Phong Cốc và Âm La Tông đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 474 — Báo thù rửa hận.** Năm 465, Tiêu Kiếm giết Hàn Lập, sư phụ của Lý Long. Ôm hận 9 năm, nay Lý Long tự tay chém kẻ thù.
+- **Năm 475 — Báo thù rửa hận.** Năm 474, Lý Long giết Tiêu Kiếm, sư phụ của Lý Bá. Ôm hận 1 năm, nay Lý Bá tự tay chém kẻ thù.
+- **Năm 487 — Báo thù rửa hận.** Năm 427, Mặc Phi Vũ giết Chu Vân, sư phụ của Tiêu Sương. Ôm hận 59 năm, nay Tiêu Sương tự tay chém kẻ thù.
+- **Năm 498 — Danh chấn thiên hạ.** Triệu Diệu chân nhân (Hóa Đao Ổ) được người đời tôn xưng là "Huyết Sát Chân Nhân".
+- **Năm 539 — Báo thù rửa hận.** Năm 495, Đổng Long giết Vạn Hồng Phất, sư phụ của Bạch Mộng. Ôm hận 44 năm, nay Bạch Mộng chân nhân tự tay chém kẻ thù.
+- **Năm 586 — Sát tinh giáng thế.** Trong tay Mộ Dung Sương chân nhân (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 588 — Sát tinh giáng thế.** Trong tay Mặc Sương chân nhân (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 619 — Huyết hải thâm thù.** Hóa Đao Ổ và Vạn Pháp Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 632 — Đồng môn tương tàn.** Thái Nhất Môn và Thanh Vân Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 644 — Báo thù rửa hận.** Năm 620, Tô Tiêu Dao giết Phùng Thiên Nam, đệ tử của Tề Huyền. Ôm hận 24 năm, nay Tề Huyền chân nhân tự tay chém kẻ thù.
+- **Năm 644 — Báo thù rửa hận.** Năm 643, Lục Thiên Đô giết Trương Dao, sư phụ của Phùng Yên. Ôm hận 1 năm, nay Phùng Yên chân nhân tự tay chém kẻ thù.
+- **Năm 653 — Báo thù rửa hận.** Năm 629, Tề Nguyệt giết Ôn Mộng, sư phụ của Phùng Hồng Phất. Ôm hận 24 năm, nay Phùng Hồng Phất chân nhân tự tay chém kẻ thù.
+- **Năm 655 — Huyết hải thâm thù.** Bách Xảo Viện và Tinh Cung đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 657 — Đồng môn tương tàn.** Hoàng Phong Cốc và Thanh Hư Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 661 — Báo thù rửa hận.** Năm 659, Tề Mộng giết Chu Mộng, sư phụ của Thượng Quan Lập. Ôm hận 1 năm, nay Thượng Quan Lập chân nhân tự tay chém kẻ thù.
+- **Năm 675 — Huyết hải thâm thù.** Hoàng Phong Cốc và Cổ Kiếm Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 679 — Sát tinh giáng thế.** Trong tay Lục Phong chân nhân (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 690 — Huyết hải thâm thù.** Hóa Đao Ổ và Tinh Cung đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 690 — Sát tinh giáng thế.** Trong tay Vương Bá chân nhân (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 690 — Sát tinh giáng thế.** Trong tay Phùng Ly chân nhân (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 713 — Sát tinh giáng thế.** Trong tay Thạch Tử Linh chân nhân (Quỷ Linh Môn) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 714 — Danh chấn thiên hạ.** Thạch Tử Linh chân nhân (Quỷ Linh Môn) được người đời tôn xưng là "Huyết Sát Ma Tôn".
+- **Năm 715 — Danh chấn thiên hạ.** Lục Phong chân nhân (Hóa Đao Ổ) được người đời tôn xưng là "Nhân Đồ Chân Nhân".
+- **Năm 721 — Báo thù rửa hận.** Năm 627, Lục Phong giết Đổng Long, sư phụ của Lăng Tịch. Ôm hận 94 năm, nay Lăng Tịch chân nhân tự tay chém kẻ thù.
+- **Năm 722 — Huyết hải thâm thù.** Hoàng Phong Cốc và Thanh Hư Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 725 — Báo thù rửa hận.** Năm 714, Từ Bá giết Thạch Tử Linh, sư phụ của Bạch Yên. Ôm hận 11 năm, nay Bạch Yên tự tay chém kẻ thù.
+- **Năm 726 — Danh chấn thiên hạ.** Tôn Bá lão tổ (Huyền Thiên Tông) được người đời tôn xưng là "Huyết Kiếm Ma Tổ".
+- **Năm 726 — Báo thù rửa hận.** Năm 718, Tô Thần giết Mặc Viêm, đệ tử của Trương Tuyết. Ôm hận 8 năm, nay Trương Tuyết chân nhân tự tay chém kẻ thù.
+- **Năm 736 — Phế vật nghịch thiên.** Mộ Dung Uyển mang Ngụy linh căn (Kim·Mộc·Thủy·Hỏa·Thổ), từng bị coi là phế vật, nay đã đạt Kết Đan ở tuổi 202.
+- **Năm 740 — Huyết hải thâm thù.** Thái Nhất Môn và Thanh Vân Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 762 — Báo thù rửa hận.** Năm 636, Vạn Bá giết Lâm Uyển, sư phụ của Liễu Mộng. Ôm hận 126 năm, nay Liễu Mộng chân nhân tự tay chém kẻ thù.
+- **Năm 767 — Đồng môn tương tàn.** Diệu Âm Môn và Thanh Vân Môn vốn cùng một gốc, nay giương kiếm với nhau.
+- **Năm 772 — Danh chấn thiên hạ.** Vương Bá chân nhân (Hóa Đao Ổ) được người đời tôn xưng là "Tu La Chân Nhân".
+- **Năm 798 — Báo thù rửa hận.** Năm 793, Tần Tuyết giết Lục Long, sư phụ của Mộ Dung Yên. Ôm hận 5 năm, nay Mộ Dung Yên chân nhân tự tay chém kẻ thù.
+- **Năm 807 — Huyết hải thâm thù.** Cửu Tiên Cung và Hóa Đao Ổ đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 809 — Danh chấn thiên hạ.** Phùng Ly chân nhân (Hóa Đao Ổ) được người đời tôn xưng là "Huyết Sát Chân Nhân đời thứ 2".
+- **Năm 809 — Sát tinh giáng thế.** Trong tay Tiêu Nhược Hy lão tổ (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 818 — Danh chấn thiên hạ.** Tiêu Nhược Hy lão tổ (Hóa Đao Ổ) được người đời tôn xưng là "Nhân Đồ Chân Quân".
+- **Năm 826 — Sát tinh giáng thế.** Trong tay Lý Viêm chân nhân (Hoàng Phong Cốc) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 831 — Cổ tông diệt vong.** Tinh Cung truyền thừa 567 năm, nay bị Hóa Đao Ổ diệt môn.
+- **Năm 833 — Huyết hải thâm thù.** Diệu Âm Môn và Thanh Vân Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 835 — Huyết hải thâm thù.** Thạch Dương Các và Thanh Hư Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 841 — Cổ tông diệt vong.** Bách Xảo Viện truyền thừa 659 năm, nay bị Hóa Đao Ổ diệt môn.
+- **Năm 857 — Sát tinh giáng thế.** Trong tay Triệu Trần chân nhân (Hoàng Phong Cốc) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 868 — Phế vật nghịch thiên.** Cổ Vân mang Ngụy linh căn (Kim·Mộc·Thủy·Hỏa), từng bị coi là phế vật, nay đã đạt Nguyên Anh ở tuổi 483.
+- **Năm 871 — Sát tinh giáng thế.** Trong tay Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 879 — Phế vật nghịch thiên.** Lạc Thanh Phong mang Ngụy linh căn (Kim·Mộc·Thủy·Hỏa·Thổ), từng bị coi là phế vật, nay đã đạt Kết Đan ở tuổi 201.
+- **Năm 881 — Cổ tông diệt vong.** Thanh Hư Môn truyền thừa 854 năm, nay bị Thạch Dương Các diệt môn.
+- **Năm 891 — Sát tinh giáng thế.** Trong tay Tề Băng chân nhân (Hóa Đao Ổ) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 893 — Báo thù rửa hận.** Năm 892, Thạch Kiếm giết Nam Cung Nguyệt, sư phụ của Tần Thanh Phong. Ôm hận 1 năm, nay Tần Thanh Phong chân nhân tự tay chém kẻ thù.
+- **Năm 911 — Báo thù rửa hận.** Năm 904, Cổ Vân giết Thạch Thần, đệ tử của Tôn Bá. Ôm hận 7 năm, nay Huyết Kiếm Ma Tổ Tôn Bá tự tay chém kẻ thù.
+- **Năm 914 — Báo thù rửa hận.** Năm 909, Tần Kiếm giết Ngô Băng, đệ tử của Chu Sương. Ôm hận 5 năm, nay Chu Sương chân nhân tự tay chém kẻ thù.
+- **Năm 915 — Báo thù rửa hận.** Năm 798, Mộ Dung Yên giết Tần Tuyết, sư phụ của Lăng Tịch. Ôm hận 116 năm, nay Lăng Tịch chân nhân tự tay chém kẻ thù.
+- **Năm 928 — Báo thù rửa hận.** Năm 836, Tề Băng giết Vương Lãnh, sư phụ của Lục Tịch. Ôm hận 91 năm, nay Lục Tịch chân nhân tự tay chém kẻ thù.
+- **Năm 929 — Báo thù rửa hận.** Năm 928, Lục Tịch giết Tề Băng, sư phụ của Lý Phong. Ôm hận 1 năm, nay Lý Phong chân nhân tự tay chém kẻ thù.
+- **Năm 935 — Báo thù rửa hận.** Năm 927, Lâm Phong giết Phùng Viêm, đệ tử của Tôn Bá. Ôm hận 7 năm, nay Huyết Kiếm Ma Tổ Tôn Bá tự tay chém kẻ thù.
+- **Năm 939 — Cổ tông diệt vong.** Hạc Tùng Phái truyền thừa 617 năm, nay bị Cự Kiếm Môn diệt môn.
+- **Năm 949 — Tiểu tông thành bá chủ.** Hóa Đao Ổ do Lệ Kiếm lập năm 246, sau 703 năm đã đứng đầu thiên hạ.
+- **Năm 954 — Báo thù rửa hận.** Năm 915, Đoan Mộc Huyền giết Cổ Long, đệ tử của Trương Uyển. Ôm hận 38 năm, nay Trương Uyển chân nhân tự tay chém kẻ thù.
+- **Năm 957 — Huyết hải thâm thù.** Huyền Thiên Tông và Tinh Cung đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 960 — Phế vật nghịch thiên.** Tô Tiêu Dao mang Ngụy linh căn (Kim·Thủy·Hỏa·Thổ), từng bị coi là phế vật, nay đã đạt Nguyên Anh ở tuổi 453.
+- **Năm 961 — Sát tinh giáng thế.** Trong tay Khúc Nhược Hy chân nhân (Hoàng Phong Cốc) đã có mười mạng tu sĩ; người đời nghe tên mà biến sắc.
+- **Năm 988 — Huyết hải thâm thù.** Quỷ Linh Môn và Thanh Hư Môn đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+- **Năm 990 — Danh chấn thiên hạ.** Mộ Dung Thiên Nam lão tổ (Linh Thú Sơn) được người đời tôn xưng là "Kim Kiếm Chân Quân".
+- **Năm 994 — Báo thù rửa hận.** Năm 945, Liễu Lập giết Chu Viêm, đệ tử của Hoàng Phủ Lãnh. Ôm hận 49 năm, nay Hoàng Phủ Lãnh chân nhân tự tay chém kẻ thù.
+- **Năm 997 — Huyết hải thâm thù.** Cự Kiếm Môn và Yểm Nguyệt Tông đã 4 lần binh đao, mối thù truyền qua bao đời tông chủ.
+
+## Danh nhân
+
+- **Huyết Kiếm Ma Tổ** — Tôn Bá, Nguyên Anh đại viên mãn, Huyền Thiên Tông; Chân linh căn; 20 mạng; còn tại thế, 890 tuổi.
+- **Huyết Sát Tổ Sư** — Thượng Quan Nhược Hy, Nguyên Anh đại viên mãn, Thiên Lan Thánh Điện; Chân linh căn; 27 mạng; vẫn lạc năm 755.
+- **Huyết Sát Chân Quân** — Âu Dương Mộng, Nguyên Anh đại viên mãn, Linh Thú Sơn; Chân linh căn; 21 mạng; vẫn lạc năm 984.
+- **Nhân Đồ Chân Quân** — Tiêu Nhược Hy, Nguyên Anh hậu kỳ, Hóa Đao Ổ; Chân linh căn; 26 mạng; còn tại thế, 575 tuổi.
+- **Tu La Chân Nhân** — Vương Bá, Kết Đan đại viên mãn, Hóa Đao Ổ; Chân linh căn; 20 mạng; vẫn lạc năm 818.
+- **Nhân Đồ Chân Nhân** — Lục Phong, Kết Đan đại viên mãn, Hóa Đao Ổ; Chân linh căn; 24 mạng; vẫn lạc năm 721 dưới tay Lăng Tịch.
+- **Huyết Sát Chân Nhân đời thứ 2** — Phùng Ly, Trúc Cơ đại viên mãn, Hóa Đao Ổ; Chân linh căn; 21 mạng; vẫn lạc năm 831.
+- **Huyết Kiếm Tổ Sư** — Mặc Thiên Đô, Kết Đan đại viên mãn, tán tu; Chân linh căn; 7 mạng; vẫn lạc năm 403 dưới tay Nam Cung Khuyết.
+- **Huyết Sát Ma Tôn** — Thạch Tử Linh, Kết Đan đại viên mãn, Quỷ Linh Môn; Ngụy linh căn; 10 mạng; vẫn lạc năm 714 dưới tay Từ Bá.
+- **Huyết Sát Chân Nhân** — Triệu Diệu, Kết Đan đại viên mãn, Hóa Đao Ổ; Chân linh căn; 10 mạng; vẫn lạc năm 498 dưới tay Đổng Long.
+- **Kim Kiếm Chân Quân** — Mộ Dung Thiên Nam, Nguyên Anh đại viên mãn, Linh Thú Sơn; Chân linh căn; 1 mạng; còn tại thế, 872 tuổi.
+
+## Biên niên theo thế kỷ
+
+### Thế kỷ 1
+
+Lập tông 2 · ly khai 22 · trận đánh 226 · diệt môn 2 · đấu pháp 90 · đột phá 225 · thiên kiếp 1
+
+- Năm 7: Âu Dương Băng chân nhân phản xuất Quỷ Linh Môn, dẫn 8 đệ tử lập ra Cửu Tiên Cung.
+- Năm 9: Quỷ Linh Môn tuyên chiến với Cửu Tiên Cung!
+- Năm 10: Nam Cung Lãnh chân nhân phản xuất Thiên Sát Tông, dẫn 8 đệ tử lập ra Kim Cương Tự.
+- Năm 13: Thiên Sát Tông tuyên chiến với Kim Cương Tự!
+- Năm 21: Cổ Uyển chân nhân phản xuất Thiên Sát Tông, dẫn 5 đệ tử lập ra Bích Vân Cốc.
+- Năm 22: Thiên Sát Tông tuyên chiến với Bích Vân Cốc!
+- Năm 26: Lâm Thiên Nam chân nhân phản xuất Âm La Tông, dẫn 8 đệ tử lập ra Cổ Kiếm Môn.
+- Năm 27: Âm La Tông tuyên chiến với Cổ Kiếm Môn!
+- Năm 27: Tần Diệu chân nhân phản xuất Hoàng Phong Cốc, dẫn 4 đệ tử lập ra Thanh Hư Môn.
+- Năm 28: Cổ Kiếm Môn đánh bại Âm La Tông trong trận tranh vùng đất, 3 tu sĩ vẫn lạc.
+- Năm 28: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 31: Âm La Tông tuyên chiến với Thanh Hư Môn!
+- Năm 34: Thiên Sát Tông tuyên chiến với Kim Cương Tự!
+- Năm 38: Phùng Tử Linh chân nhân phản xuất Thanh Hư Môn, dẫn 0 đệ tử lập ra Tử Tiêu Cung.
+- Năm 41: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 41: Thượng Quan Nhược Hy chân nhân phản xuất Cự Kiếm Môn, dẫn 4 đệ tử lập ra Thiên Lan Thánh Điện.
+- Năm 49: Cửu Tiên Cung tuyên chiến với Quỷ Linh Môn!
+- Năm 53: Tề Tịch chân nhân phản xuất Thái Nhất Môn, dẫn 7 đệ tử lập ra Thanh Vân Môn.
+- Năm 56: Âm La Tông tuyên chiến với Cổ Kiếm Môn!
+- Năm 56: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 60: Âu Dương Long chân nhân phản xuất Linh Thú Sơn, dẫn 4 đệ tử lập ra Huyền Thiên Tông.
+- Năm 61: Thiên Sát Tông tuyên chiến với Kim Cương Tự!
+- Năm 63: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 70: Ngô Tịch chân nhân phản xuất Linh Thú Sơn, dẫn 2 đệ tử lập ra Bách Xảo Viện.
+- Năm 72: Linh Thú Sơn tuyên chiến với Bách Xảo Viện!
+- Năm 72: Tần Ngọc chân nhân phản xuất Thái Nhất Môn, dẫn 2 đệ tử lập ra Tinh Cung.
+- Năm 73: Cửu Tiên Cung tuyên chiến với Quỷ Linh Môn!
+- Năm 73: Linh Thú Sơn đánh bại Bách Xảo Viện trong trận tranh vùng đất.
+- Năm 73: Linh Thú Sơn công phá sơn môn, Bách Xảo Viện bị diệt môn!
+- Năm 75: Thiên Sát Tông tuyên chiến với Bích Vân Cốc!
+- Năm 75: Thái Nhất Môn tuyên chiến với Tinh Cung!
+- Năm 76: Lâm Sương chân nhân khai tông lập phái, sáng lập Yểm Nguyệt Tông.
+- Năm 81: Âm La Tông tuyên chiến với Cổ Kiếm Môn!
+- Năm 83: Âm La Tông đánh bại Cổ Kiếm Môn trong trận tranh vùng đất.
+- Năm 83: Âm La Tông công phá sơn môn, Cổ Kiếm Môn bị diệt môn!
+- Năm 92: Thiên kiếp giáng xuống Khúc Phi Vũ chân nhân (Thái Nhất Môn) khi đột phá Nguyên Anh!
+- Năm 92: Khúc Phi Vũ (Thái Nhất Môn) đột phá Nguyên Anh.
+- Năm 95: Cửu Tiên Cung tuyên chiến với Quỷ Linh Môn!
+- Năm 98: Tô Phi Vũ chân nhân phản xuất Hoàng Phong Cốc, dẫn 7 đệ tử lập ra Hợp Hoan Tông (ma đạo).
+
+### Thế kỷ 2
+
+Lập tông 4 · ly khai 26 · trận đánh 218 · diệt môn 0 · đấu pháp 141 · đột phá 482 · thiên kiếp 2
+
+- Năm 103: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 121: Thượng Quan Diệu chân nhân khai tông lập phái, sáng lập Độc Thánh Môn (ma đạo).
+- Năm 122: Ôn Yên chân nhân khai tông lập phái, sáng lập Cổ Kiếm Môn, 1 tán tu theo về.
+- Năm 123: Thiên kiếp giáng xuống Thượng Quan Nhược Hy chân nhân (Thiên Lan Thánh Điện) khi đột phá Nguyên Anh!
+- Năm 123: Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) đột phá Nguyên Anh.
+- Năm 124: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 126: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 127: Thái Nhất Môn tuyên chiến với Thiên Lan Thánh Điện!
+- Năm 129: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) báo thù cho Lý Sương, chém giết Diệp Dao chân nhân (Thái Nhất Môn).
+- Năm 129: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) giao chiến trong trận tranh vùng đất, chém giết Hoàng Phủ Thần (Thái Nhất Môn).
+- Năm 130: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) giao chiến trong trận tranh vùng đất, chém giết Triệu Phong (Thái Nhất Môn).
+- Năm 130: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) giao chiến trong trận tranh vùng đất, chém giết Từ Trần (Thái Nhất Môn).
+- Năm 133: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) báo thù cho Diệp Dao, chém giết Khúc Phi Vũ lão tổ (Thái Nhất Môn).
+- Năm 135: Khúc Phi Vũ chân nhân phản xuất Quỷ Linh Môn, dẫn 12 đệ tử lập ra Thiên Khuyết Bảo.
+- Năm 136: Quỷ Linh Môn tuyên chiến với Thiên Khuyết Bảo!
+- Năm 149: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 149: Thái Nhất Môn tuyên chiến với Tinh Cung!
+- Năm 153: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 156: Diệp Phi Vũ chân nhân phản xuất Thái Nhất Môn, dẫn 3 đệ tử lập ra Vạn Độc Môn (ma đạo).
+- Năm 159: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) báo thù cho Diệp Dao, chém giết Ngô Tử Linh (Thái Nhất Môn).
+- Năm 160: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) báo thù cho Hoàng Phủ Thần, chém giết Hoàng Phủ Băng chân nhân (Thái Nhất Môn).
+- Năm 161: Cự Kiếm Môn tuyên chiến với Vạn Độc Môn!
+- Năm 165: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 165: Mặc Thiên Đô chân nhân khai tông lập phái, sáng lập Thất Huyền Môn, 12 tán tu theo về.
+- Năm 167: Thái Nhất Môn tuyên chiến với Vạn Độc Môn!
+- Năm 168: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 169: Vạn Độc Môn đánh bại Thái Nhất Môn trong trận tranh vùng đất.
+- Năm 170: Lâm Bá chân nhân phản xuất Thanh Vân Môn, dẫn 11 đệ tử lập ra Diệu Âm Môn.
+- Năm 171: Thanh Vân Môn tuyên chiến với Diệu Âm Môn!
+- Năm 171: Diệu Âm Môn đánh bại Thanh Vân Môn trong trận tranh vùng đất.
+- Năm 172: Thái Nhất Môn tuyên chiến với Tinh Cung!
+- Năm 172: Thất Huyền Môn tuyên chiến với Ngự Linh Tông!
+- Năm 177: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 180: Cổ Bá chân nhân phản xuất Huyền Thiên Tông, dẫn 4 đệ tử lập ra Huyết Sát Tông (ma đạo).
+- Năm 181: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 182: Huyền Thiên Tông tuyên chiến với Huyết Sát Tông!
+- Năm 182: Hoàng Phủ Long chân nhân phản xuất Cửu Tiên Cung, dẫn 16 đệ tử lập ra Bách Xảo Viện.
+- Năm 183: Cửu Tiên Cung tuyên chiến với Bách Xảo Viện!
+- Năm 188: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 188: Thiên kiếp giáng xuống Âu Dương Mộng chân nhân (Linh Thú Sơn) khi đột phá Nguyên Anh!
+- Năm 188: Âu Dương Mộng (Linh Thú Sơn) đột phá Nguyên Anh.
+- Năm 190: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 193: Quỷ Linh Môn tuyên chiến với Bách Xảo Viện!
+- Năm 193: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 195: Cửu Tiên Cung tuyên chiến với Thiên Khuyết Bảo!
+- Năm 198: Cự Kiếm Môn tuyên chiến với Vạn Độc Môn!
+- Năm 200: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Ngô Mộng, chém giết Lăng Mộng chân nhân (Huyền Thiên Tông).
+
+### Thế kỷ 3
+
+Lập tông 5 · ly khai 40 · trận đánh 359 · diệt môn 4 · đấu pháp 179 · đột phá 545 · thiên kiếp 0
+
+- Năm 201: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 203: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 208: Nam Cung Khuyết chân nhân khai tông lập phái, sáng lập Lạc Vân Tông, 13 tán tu theo về.
+- Năm 212: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 212: Thái Nhất Môn tuyên chiến với Tinh Cung!
+- Năm 212: Hợp Hoan Tông tuyên chiến với Cửu Tiên Cung!
+- Năm 216: Thái Nhất Môn tuyên chiến với Vạn Độc Môn!
+- Năm 218: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 222: Cự Kiếm Môn tuyên chiến với Vạn Độc Môn!
+- Năm 224: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 225: Quỷ Linh Môn tuyên chiến với Thiên Khuyết Bảo!
+- Năm 226: Thiên Khuyết Bảo đánh bại Quỷ Linh Môn trong trận tranh vùng đất.
+- Năm 231: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 232: Quỷ Linh Môn tuyên chiến với Bách Xảo Viện!
+- Năm 235: Âm La Tông tuyên chiến với Cổ Kiếm Môn!
+- Năm 235: Âm La Tông đánh bại Cổ Kiếm Môn trong trận tranh linh mạch, 1 tu sĩ vẫn lạc.
+- Năm 236: Thái Nhất Môn tuyên chiến với Tinh Cung!
+- Năm 238: Thái Nhất Môn đánh bại Tinh Cung trong trận tranh vùng đất.
+- Năm 238: Thái Nhất Môn công phá sơn môn, Tinh Cung bị diệt môn! 2 đệ tử quy hàng.
+- Năm 238: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 239: Thái Nhất Môn tuyên chiến với Vạn Độc Môn!
+- Năm 240: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 240: Vương Trần chân nhân phản xuất Thanh Hư Môn, dẫn 13 đệ tử lập ra Thiên Ma Tông (ma đạo).
+- Năm 240: Thái Nhất Môn đánh bại Vạn Độc Môn trong trận tranh vùng đất.
+- Năm 240: Thái Nhất Môn công phá sơn môn, Vạn Độc Môn bị diệt môn! 2 đệ tử quy hàng.
+- Năm 241: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 243: Cửu Tiên Cung tuyên chiến với Bách Xảo Viện!
+- Năm 244: Hoàng Phong Cốc tuyên chiến với Thiên Ma Tông!
+- Năm 244: Thanh Hư Môn tuyên chiến với Thiên Ma Tông!
+- Năm 246: Lệ Kiếm chân nhân phản xuất Quỷ Linh Môn, dẫn 15 đệ tử lập ra Hóa Đao Ổ.
+- Năm 247: Quỷ Linh Môn tuyên chiến với Thiên Khuyết Bảo!
+- Năm 247: Quỷ Linh Môn tuyên chiến với Hóa Đao Ổ!
+- Năm 248: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 249: Cửu Tiên Cung tuyên chiến với Thiên Khuyết Bảo!
+- Năm 250: Tô Phi Vũ chân nhân phản xuất Hợp Hoan Tông, dẫn 10 đệ tử lập ra Vạn Pháp Môn.
+- Năm 252: Hợp Hoan Tông tuyên chiến với Vạn Pháp Môn!
+- Năm 254: Quỷ Linh Môn tuyên chiến với Vạn Pháp Môn!
+- Năm 257: Quỷ Linh Môn tuyên chiến với Bách Xảo Viện!
+- Năm 257: Âm La Tông tuyên chiến với Cổ Kiếm Môn!
+- Năm 257: Thượng Quan Nhược Hy lão tổ (Thiên Lan Thánh Điện) báo thù cho Triệu Phong, chém giết Tề Tịch chân nhân (Thanh Vân Môn).
+- Năm 258: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Ngô Tịch, chém giết Vương Yên (Cự Kiếm Môn).
+- Năm 260: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 264: Chu Vô Kỵ chân nhân khai tông lập phái, sáng lập Tinh Cung, 2 tán tu theo về.
+- Năm 265: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 266: Cửu Tiên Cung tuyên chiến với Bách Xảo Viện!
+- Năm 267: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 268: Quỷ Linh Môn tuyên chiến với Hóa Đao Ổ!
+- Năm 269: Thanh Hư Môn tuyên chiến với Thiên Ma Tông!
+- Năm 270: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 270: Hoàng Phong Cốc tuyên chiến với Thiên Ma Tông!
+- Năm 271: Tinh Cung tuyên chiến với Quỷ Linh Môn!
+- Năm 271: Hoàng Phong Cốc đánh bại Thiên Ma Tông trong trận tranh vùng đất.
+- Năm 271: Hoàng Phong Cốc công phá sơn môn, Thiên Ma Tông bị diệt môn! 4 đệ tử quy hàng.
+- Năm 272: Mặc Thiên Đô chân nhân khai tông lập phái, sáng lập Nguyệt Thủy Môn, 30 tán tu theo về.
+- Năm 273: Quỷ Linh Môn tuyên chiến với Thiên Khuyết Bảo!
+- Năm 273: Quỷ Linh Môn đánh bại Thiên Khuyết Bảo trong trận tranh vùng đất.
+- Năm 273: Quỷ Linh Môn công phá sơn môn, Thiên Khuyết Bảo bị diệt môn!
+- Năm 274: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Tề Tịch, chém giết Tần Băng (Thanh Vân Môn).
+- Năm 277: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 277: Tề Thiên Nam chân nhân khai tông lập phái, sáng lập Thiên Khuyết Bảo, 29 tán tu theo về.
+- Năm 277: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Khúc Phi Vũ, chém giết Khúc Phi Vũ (Thái Nhất Môn).
+- Năm 278: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 278: Hợp Hoan Tông tuyên chiến với Vạn Pháp Môn!
+- Năm 282: Bách Xảo Viện tuyên chiến với Quỷ Linh Môn!
+- Năm 282: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 291: Cửu Tiên Cung tuyên chiến với Bách Xảo Viện!
+- Năm 292: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 292: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Hoàng Phủ Băng, chém giết Vạn Vô Kỵ (Thái Nhất Môn).
+- Năm 293: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 293: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 294: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Lạc Tịch (Huyền Thiên Tông).
+- Năm 297: Thạch Hạo chân nhân khai tông lập phái, sáng lập Thạch Mai Sơn, 24 tán tu theo về.
+
+### Thế kỷ 4
+
+Lập tông 3 · ly khai 65 · trận đánh 107 · diệt môn 0 · đấu pháp 83 · đột phá 646 · thiên kiếp 3
+
+- Năm 301: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 303: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Khúc Phi Vũ, chém giết Lý Long (Thái Nhất Môn).
+- Năm 304: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 308: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Tề Viêm (Huyền Thiên Tông).
+- Năm 308: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Tề Tịch, chém giết Nam Cung Nguyệt (Thanh Vân Môn).
+- Năm 308: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Tề Tịch, chém giết Lục Minh (Thanh Vân Môn).
+- Năm 308: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Diệp Dao, chém giết Trương Dao (Thái Nhất Môn).
+- Năm 310: Hợp Hoan Tông tuyên chiến với Vạn Pháp Môn!
+- Năm 312: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Tề Tịch, chém giết Lạc Mộng (Thanh Vân Môn).
+- Năm 314: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 314: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 316: Hợp Hoan Tông tuyên chiến với Hóa Đao Ổ!
+- Năm 317: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 321: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Khúc Phi Vũ, chém giết Lạc Bá (Thái Nhất Môn).
+- Năm 322: Lệ Diệu chân nhân khai tông lập phái, sáng lập Hạc Tùng Phái, 1 tán tu theo về.
+- Năm 325: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 326: Thiên kiếp giáng xuống Đổng Hạo chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 326: Đổng Hạo chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 332: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Âu Dương Hồng Phất (Huyền Thiên Tông).
+- Năm 333: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 334: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Tần Thần (Huyền Thiên Tông).
+- Năm 338: Quỷ Linh Môn tuyên chiến với Hóa Đao Ổ!
+- Năm 338: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 340: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Hoàng Phủ Băng, chém giết Nam Cung Yên (Thái Nhất Môn).
+- Năm 344: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 345: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 345: Hợp Hoan Tông tuyên chiến với Hóa Đao Ổ!
+- Năm 345: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Hoàng Phủ Băng, chém giết Tiêu Nguyệt (Thái Nhất Môn).
+- Năm 349: Mặc Thiên Đô chân nhân khai tông lập phái, sáng lập Hắc Khê Phái, 42 tán tu theo về.
+- Năm 350: Hợp Hoan Tông tuyên chiến với Vạn Pháp Môn!
+- Năm 352: Tinh Cung tuyên chiến với Quỷ Linh Môn!
+- Năm 353: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 355: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Bạch Bá (Huyền Thiên Tông).
+- Năm 356: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 364: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 368: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 370: Âu Dương Mộng lão tổ (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Tôn Thanh Phong (Huyền Thiên Tông).
+- Năm 374: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 377: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Đoan Mộc Phi Vũ (Huyền Thiên Tông).
+- Năm 378: Hợp Hoan Tông tuyên chiến với Vạn Pháp Môn!
+- Năm 380: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Vương Sương (Huyền Thiên Tông).
+- Năm 382: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 382: Khúc Mộng chân nhân khai tông lập phái, sáng lập Bạch Trúc Các, 3 tán tu theo về.
+- Năm 385: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Tôn Vân (Huyền Thiên Tông).
+- Năm 386: Huyền Thiên Tông tuyên chiến với Bạch Trúc Các!
+- Năm 386: Hóa Đao Ổ tuyên chiến với Hợp Hoan Tông!
+- Năm 389: Thiên kiếp giáng xuống Diệp Tịch chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 389: Diệp Tịch (tán tu) đột phá Nguyên Anh.
+- Năm 390: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 390: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 392: Thiên kiếp giáng xuống Thạch Tiêu Dao chân nhân (Linh Thú Sơn) khi đột phá Nguyên Anh!
+- Năm 392: Thạch Tiêu Dao (Linh Thú Sơn) đột phá Nguyên Anh.
+- Năm 399: Hợp Hoan Tông tuyên chiến với Vạn Pháp Môn!
+
+### Thế kỷ 5
+
+Lập tông 2 · ly khai 68 · trận đánh 163 · diệt môn 2 · đấu pháp 127 · đột phá 656 · thiên kiếp 4
+
+- Năm 403: Nam Cung Khuyết chân nhân (tán tu) báo thù cho Lâm Trần, chém giết Huyết Kiếm Tổ Sư Mặc Thiên Đô (tán tu).
+- Năm 405: Thiên kiếp giáng xuống Ôn Phong chân nhân (Hoàng Phong Cốc) khi đột phá Nguyên Anh!
+- Năm 405: Ôn Phong (Hoàng Phong Cốc) đột phá Nguyên Anh.
+- Năm 409: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 410: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 411: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 413: Thạch Tiêu Dao lão tổ (Linh Thú Sơn) giao chiến trong trận tranh linh mạch, chém giết Triệu Dao (Tử Tiêu Cung).
+- Năm 414: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 418: Hóa Đao Ổ tuyên chiến với Hợp Hoan Tông!
+- Năm 427: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 430: Bách Xảo Viện tuyên chiến với Tinh Cung!
+- Năm 435: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 435: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 436: Hợp Hoan Tông tuyên chiến với Vạn Pháp Môn!
+- Năm 437: Thạch Tiêu Dao lão tổ (Linh Thú Sơn) giao chiến trong trận tranh linh mạch, chém giết Chu Thanh Phong (Tử Tiêu Cung).
+- Năm 439: Quỷ Linh Môn tuyên chiến với Tinh Cung!
+- Năm 440: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 440: Hóa Đao Ổ tuyên chiến với Hợp Hoan Tông!
+- Năm 440: Thiên kiếp giáng xuống Phùng Sương chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 440: Phùng Sương (tán tu) đột phá Nguyên Anh.
+- Năm 440: Quỷ Linh Môn đánh bại Tinh Cung trong trận tranh linh mạch.
+- Năm 442: Hóa Đao Ổ đánh bại Hợp Hoan Tông trong trận tranh vùng đất, 1 tu sĩ vẫn lạc.
+- Năm 442: Hóa Đao Ổ công phá sơn môn, Hợp Hoan Tông bị diệt môn! 12 đệ tử quy hàng.
+- Năm 443: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 452: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 452: Thiên kiếp giáng xuống Mộ Dung Thiên Nam chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 452: Mộ Dung Thiên Nam (tán tu) đột phá Nguyên Anh.
+- Năm 461: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 462: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 463: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 464: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 469: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 470: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 485: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 486: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 487: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 487: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 488: Bách Xảo Viện tuyên chiến với Tinh Cung!
+- Năm 490: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 493: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 495: Huyền Thiên Tông tuyên chiến với Bạch Trúc Các!
+- Năm 495: Huyền Thiên Tông đánh bại Bạch Trúc Các trong trận tranh vùng đất.
+- Năm 495: Huyền Thiên Tông công phá sơn môn, Bạch Trúc Các bị diệt môn!
+- Năm 496: Cửu Tiên Cung tuyên chiến với Hóa Đao Ổ!
+- Năm 496: Trương Tiêu Dao chân nhân khai tông lập phái, sáng lập Mai Tinh Sơn, 8 tán tu theo về.
+- Năm 498: Đổng Long chân nhân (Quỷ Linh Môn) báo thù cho Đoan Mộc Dao, chém giết Huyết Sát Chân Nhân Triệu Diệu (Hóa Đao Ổ).
+- Năm 500: Hoa Bạch Các tuyên chiến với Mai Tinh Sơn!
+- Năm 500: Thiên kiếp giáng xuống Lâm Mộng chân nhân (Cự Kiếm Môn) khi đột phá Nguyên Anh!
+- Năm 500: Lâm Mộng chân nhân (Cự Kiếm Môn) vẫn lạc dưới thiên kiếp.
+
+### Thế kỷ 6
+
+Lập tông 2 · ly khai 93 · trận đánh 137 · diệt môn 0 · đấu pháp 107 · đột phá 694 · thiên kiếp 3
+
+- Năm 501: Thiên kiếp giáng xuống Tôn Bá chân nhân (Huyền Thiên Tông) khi đột phá Nguyên Anh!
+- Năm 501: Tôn Bá (Huyền Thiên Tông) đột phá Nguyên Anh.
+- Năm 506: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 508: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 508: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 511: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 514: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 522: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 524: Thiên kiếp giáng xuống Lâm Lập chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 524: Lâm Lập (tán tu) đột phá Nguyên Anh.
+- Năm 527: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 527: Hoa Bạch Các tuyên chiến với Mai Tinh Sơn!
+- Năm 528: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 530: Hóa Đao Ổ tuyên chiến với Bách Xảo Viện!
+- Năm 532: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 532: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) báo thù cho Lăng Mộng, chém giết Thạch Ngọc chân nhân (Linh Thú Sơn).
+- Năm 532: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Tề Tịch, chém giết Đoan Mộc Ly chân nhân (Thanh Vân Môn).
+- Năm 533: Thạch Tiêu Dao lão tổ (Linh Thú Sơn) giao chiến trong trận tranh linh mạch, chém giết Nam Cung Mộng (Tử Tiêu Cung).
+- Năm 535: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Đoan Mộc Ly, chém giết Ôn Viêm (Thanh Vân Môn).
+- Năm 538: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 538: Hóa Đao Ổ tuyên chiến với Tinh Cung!
+- Năm 539: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 540: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 543: Bách Xảo Viện tuyên chiến với Tinh Cung!
+- Năm 544: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 546: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 546: Triệu Sương chân nhân khai tông lập phái, sáng lập Thạch Kim Sơn, 10 tán tu theo về.
+- Năm 548: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 553: Cửu Tiên Cung tuyên chiến với Hóa Đao Ổ!
+- Năm 555: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 560: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 564: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 567: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 568: Thanh Hư Môn tuyên chiến với Âm La Tông!
+- Năm 570: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 571: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 571: Hóa Đao Ổ tuyên chiến với Tinh Cung!
+- Năm 573: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 573: Thiên kiếp giáng xuống Hoàng Phủ Trần chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 573: Hoàng Phủ Trần chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 580: Thanh Hư Môn tuyên chiến với Tử Tiêu Cung!
+- Năm 582: Thanh Hư Môn tuyên chiến với Cổ Kiếm Môn!
+- Năm 583: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 585: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 586: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 591: Huyền Thiên Tông tuyên chiến với Hạc Tùng Phái!
+- Năm 594: Tôn Bá lão tổ (Huyền Thiên Tông) báo thù cho Vạn Lãnh, chém giết Lệ Diệu chân nhân (Hạc Tùng Phái).
+- Năm 595: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 596: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 596: Tiêu Thanh Phong chân nhân khai tông lập phái, sáng lập Trúc Long Sơn, 33 tán tu theo về.
+- Năm 598: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+
+### Thế kỷ 7
+
+Lập tông 2 · ly khai 76 · trận đánh 136 · diệt môn 0 · đấu pháp 82 · đột phá 646 · thiên kiếp 2
+
+- Năm 616: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 617: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 619: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 620: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 623: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 624: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) giao chiến trong trận tranh linh mạch, chém giết Tiêu Huyền (Tử Tiêu Cung).
+- Năm 629: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Tề Tịch, chém giết Từ Băng chân nhân (tán tu).
+- Năm 632: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 632: Hoàng Phủ Lập chân nhân khai tông lập phái, sáng lập Thạch Dương Các, 5 tán tu theo về.
+- Năm 641: Tôn Tiêu Dao chân nhân khai tông lập phái, sáng lập Đào Hắc Phái.
+- Năm 642: Thanh Hư Môn tuyên chiến với Thạch Dương Các!
+- Năm 645: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 646: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 650: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 650: Hóa Đao Ổ tuyên chiến với Tinh Cung!
+- Năm 653: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 655: Bách Xảo Viện tuyên chiến với Tinh Cung!
+- Năm 656: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 656: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Tề Nguyệt, chém giết Phùng Hồng Phất chân nhân (Thái Nhất Môn).
+- Năm 657: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 665: Thiên kiếp giáng xuống Bạch Thần chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 665: Bạch Thần (tán tu) đột phá Nguyên Anh.
+- Năm 666: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 667: Tôn Bá lão tổ (Huyền Thiên Tông) báo thù cho Trương Tử Linh, chém giết Ngô Thanh Phong chân nhân (Diệu Âm Môn).
+- Năm 670: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 674: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 675: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 676: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 676: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) giao chiến trong trận tranh linh mạch, chém giết Ôn Trần (Tử Tiêu Cung).
+- Năm 677: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 681: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 689: Thiên kiếp giáng xuống Phùng Lãnh chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 689: Phùng Lãnh (tán tu) đột phá Nguyên Anh.
+- Năm 690: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 690: Hóa Đao Ổ tuyên chiến với Cửu Tiên Cung!
+- Năm 690: Hóa Đao Ổ tuyên chiến với Tinh Cung!
+- Năm 692: Phùng Lãnh lão tổ (tán tu) báo thù cho Thạch Kiếm, chém giết Lý Phi Vũ chân nhân (Hoàng Phong Cốc).
+- Năm 694: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 700: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) báo thù cho Thạch Ngọc, chém giết Lăng Thiên Nam chân nhân (tán tu).
+
+### Thế kỷ 8
+
+Lập tông 0 · ly khai 82 · trận đánh 156 · diệt môn 0 · đấu pháp 86 · đột phá 645 · thiên kiếp 5
+
+- Năm 701: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) báo thù cho Lăng Thiên Nam, chém giết Thượng Quan Sương (Linh Thú Sơn).
+- Năm 703: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 704: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 706: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 709: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Đoan Mộc Ly, chém giết Cổ Lập chân nhân (Thanh Vân Môn).
+- Năm 709: Tôn Bá lão tổ (Huyền Thiên Tông) báo thù cho Ngô Thanh Phong, chém giết Âu Dương Phi Vũ chân nhân (Diệu Âm Môn).
+- Năm 709: Tôn Bá lão tổ (Huyền Thiên Tông) báo thù cho Lệ Diệu, chém giết Nam Cung Ngọc (Hạc Tùng Phái).
+- Năm 711: Cửu Tiên Cung tuyên chiến với Quỷ Linh Môn!
+- Năm 712: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 712: Thiên kiếp giáng xuống Trương Trần chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 712: Trương Trần (tán tu) đột phá Nguyên Anh.
+- Năm 713: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 713: Hóa Đao Ổ tuyên chiến với Tinh Cung!
+- Năm 714: Thiên kiếp giáng xuống Lạc Tử Linh chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 714: Lạc Tử Linh chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 714: Từ Bá chân nhân (Hóa Đao Ổ) báo thù cho Tôn Bá, chém giết Huyết Sát Ma Tôn Thạch Tử Linh (Quỷ Linh Môn).
+- Năm 716: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 717: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 719: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 719: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Đoan Mộc Ly, chém giết Lạc Trần chân nhân (tán tu).
+- Năm 721: Lăng Tịch chân nhân (Cửu Tiên Cung) báo thù cho Đổng Long, chém giết Nhân Đồ Chân Nhân Lục Phong (Hóa Đao Ổ).
+- Năm 722: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 726: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Âu Dương Phi Vũ, chém giết Tề Tiêu Dao (Diệu Âm Môn).
+- Năm 728: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 728: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 734: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Cổ Lập, chém giết Bạch Mộng (Thanh Vân Môn).
+- Năm 737: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) báo thù cho Cổ Lập, chém giết Đổng Minh (Thanh Vân Môn).
+- Năm 740: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 742: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 746: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 748: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 748: Thiên kiếp giáng xuống Lâm Phong chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 748: Lâm Phong (tán tu) đột phá Nguyên Anh.
+- Năm 749: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 750: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 750: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Lệ Diệu, chém giết Thượng Quan Huyền (Hạc Tùng Phái).
+- Năm 752: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Âu Dương Phi Vũ, chém giết Vạn Trần (Diệu Âm Môn).
+- Năm 753: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 755: Huyết Sát Tổ Sư Thượng Quan Nhược Hy (Thiên Lan Thánh Điện) thọ nguyên đã tận, tọa hóa ở cảnh giới Nguyên Anh đại viên mãn.
+- Năm 764: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 765: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Lệ Diệu, chém giết Lý Long (Hạc Tùng Phái).
+- Năm 766: Thiên kiếp giáng xuống Hoàng Phủ Kiếm chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 766: Hoàng Phủ Kiếm chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 766: Thiên kiếp giáng xuống Nam Cung Thần chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 766: Nam Cung Thần chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 767: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 767: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 771: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 773: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 773: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 773: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 774: Thạch Dương Các tuyên chiến với Thanh Hư Môn!
+- Năm 775: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 775: Ôn Phong lão tổ (Hoàng Phong Cốc) giao chiến trong trận tranh linh mạch, chém giết Liễu Nguyệt chân nhân (Âm La Tông).
+- Năm 784: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 789: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 789: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 793: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 794: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 800: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 800: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+
+### Thế kỷ 9
+
+Lập tông 4 · ly khai 54 · trận đánh 205 · diệt môn 4 · đấu pháp 130 · đột phá 643 · thiên kiếp 11
+
+- Năm 803: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 804: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 807: Cửu Tiên Cung tuyên chiến với Hóa Đao Ổ!
+- Năm 808: Hóa Đao Ổ tuyên chiến với Tinh Cung!
+- Năm 809: Thiên kiếp giáng xuống Tiêu Nhược Hy chân nhân (Hóa Đao Ổ) khi đột phá Nguyên Anh!
+- Năm 809: Tiêu Nhược Hy (Hóa Đao Ổ) đột phá Nguyên Anh.
+- Năm 809: Tiêu Nhược Hy lão tổ (Hóa Đao Ổ) giao chiến trong trận tranh vùng đất, chém giết Tần Thiên Nam (Tinh Cung).
+- Năm 811: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 814: Thạch Dương Các tuyên chiến với Thanh Hư Môn!
+- Năm 816: Hóa Đao Ổ tuyên chiến với Bách Xảo Viện!
+- Năm 817: Tiêu Nhược Hy lão tổ (Hóa Đao Ổ) giao chiến trong trận tranh vùng đất, chém giết Từ Long (Bách Xảo Viện).
+- Năm 818: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 818: Thiên kiếp giáng xuống Tu La Chân Nhân Vương Bá (Hóa Đao Ổ) khi đột phá Nguyên Anh!
+- Năm 818: Tu La Chân Nhân Vương Bá (Hóa Đao Ổ) vẫn lạc dưới thiên kiếp.
+- Năm 819: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 822: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 824: Thiên kiếp giáng xuống Tề Kiếm chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 824: Tề Kiếm chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 825: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 825: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 825: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 828: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 828: Thiên kiếp giáng xuống Tề Diệu chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 828: Tề Diệu chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 831: Hóa Đao Ổ tuyên chiến với Tinh Cung!
+- Năm 831: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Thượng Quan Huyền (Tinh Cung).
+- Năm 831: Hóa Đao Ổ đánh bại Tinh Cung trong trận tranh vùng đất, 2 tu sĩ vẫn lạc.
+- Năm 831: Hóa Đao Ổ công phá sơn môn, Tinh Cung bị diệt môn! 7 đệ tử quy hàng.
+- Năm 831: Huyết Sát Chân Nhân đời thứ 2 Phùng Ly (Hóa Đao Ổ) thọ nguyên đã tận, tọa hóa ở cảnh giới Trúc Cơ đại viên mãn.
+- Năm 832: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 832: Lâm Phong lão tổ khai tông lập phái, sáng lập Tinh Cung, 12 tán tu theo về.
+- Năm 833: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 835: Thạch Dương Các tuyên chiến với Thanh Hư Môn!
+- Năm 836: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 837: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Tần Yên (Vạn Pháp Môn).
+- Năm 837: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Lạc Nguyệt (Vạn Pháp Môn).
+- Năm 838: Tinh Cung tuyên chiến với Yểm Nguyệt Tông!
+- Năm 840: Hóa Đao Ổ tuyên chiến với Bách Xảo Viện!
+- Năm 841: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 841: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh vùng đất, chém giết Trương Hồng Phất (Bách Xảo Viện).
+- Năm 841: Hóa Đao Ổ đánh bại Bách Xảo Viện trong trận tranh vùng đất, 2 tu sĩ vẫn lạc.
+- Năm 841: Hóa Đao Ổ công phá sơn môn, Bách Xảo Viện bị diệt môn! 13 đệ tử quy hàng.
+- Năm 842: Bạch Hồng Phất chân nhân khai tông lập phái, sáng lập Bách Xảo Viện, 10 tán tu theo về.
+- Năm 842: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Lạc Hồng Phất chân nhân (Quỷ Linh Môn).
+- Năm 844: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 848: Thiên kiếp giáng xuống Đoan Mộc Yên chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 848: Đoan Mộc Yên (tán tu) đột phá Nguyên Anh.
+- Năm 851: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 851: Ôn Phong lão tổ (Hoàng Phong Cốc) báo thù cho Liễu Diệu, chém giết Mộ Dung Uyển chân nhân (tán tu).
+- Năm 852: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 853: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 854: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 857: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 857: Ôn Phong lão tổ (Hoàng Phong Cốc) giao chiến trong trận tranh vùng đất, chém giết Hạ Hầu Viêm (Thanh Hư Môn).
+- Năm 862: Thiên kiếp giáng xuống Trương Tuyết chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 862: Trương Tuyết chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 862: Thiên kiếp giáng xuống Tiêu Minh chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 862: Tiêu Minh (tán tu) đột phá Nguyên Anh.
+- Năm 862: Thiên kiếp giáng xuống Cổ Phong chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 862: Cổ Phong (tán tu) đột phá Nguyên Anh.
+- Năm 863: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) báo thù cho Lạc Hồng Phất, chém giết Nam Cung Ngọc (Cửu Tiên Cung).
+- Năm 864: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 865: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 865: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) giao chiến trong trận tranh linh mạch, chém giết Thạch Diệu (Tử Tiêu Cung).
+- Năm 866: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 868: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) báo thù cho Lạc Hồng Phất, chém giết Lục Lãnh (Cửu Tiên Cung).
+- Năm 868: Thiên kiếp giáng xuống Cổ Vân chân nhân (Tinh Cung) khi đột phá Nguyên Anh!
+- Năm 868: Cổ Vân (Tinh Cung) đột phá Nguyên Anh.
+- Năm 869: Tinh Cung tuyên chiến với Huyền Thiên Tông!
+- Năm 869: Cổ Vân lão tổ (Tinh Cung) giao chiến trong trận tranh vùng đất, chém giết Chu Trần (Huyền Thiên Tông).
+- Năm 869: Cổ Vân lão tổ (Tinh Cung) giao chiến trong trận tranh vùng đất, chém giết Diệp Ly (Huyền Thiên Tông).
+- Năm 871: Lâm Phong lão tổ (Tinh Cung) giao chiến trong trận tranh vùng đất, chém giết Mộ Dung Minh (Huyền Thiên Tông).
+- Năm 871: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 871: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Ôn Vân, chém giết Liễu Thiên Đô chân nhân (Tinh Cung).
+- Năm 874: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 874: Thiên kiếp giáng xuống Lạc Khuyết chân nhân (Linh Thú Sơn) khi đột phá Nguyên Anh!
+- Năm 874: Lạc Khuyết (Linh Thú Sơn) đột phá Nguyên Anh.
+- Năm 875: Hóa Đao Ổ tuyên chiến với Cửu Tiên Cung!
+- Năm 877: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 878: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 878: Hoàng Phong Cốc tuyên chiến với Thanh Hư Môn!
+- Năm 879: Ôn Phong lão tổ (Hoàng Phong Cốc) giao chiến trong trận tranh vùng đất, chém giết Thượng Quan Ly (Thanh Hư Môn).
+- Năm 880: Thạch Dương Các tuyên chiến với Thanh Hư Môn!
+- Năm 881: Thạch Dương Các đánh bại Thanh Hư Môn trong trận tranh vùng đất.
+- Năm 881: Thạch Dương Các công phá sơn môn, Thanh Hư Môn bị diệt môn! 4 đệ tử quy hàng.
+- Năm 881: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 881: Liễu Ly chân nhân khai tông lập phái, sáng lập Hợp Hoan Tông (ma đạo), 1 tán tu theo về.
+- Năm 884: Linh Thú Sơn tuyên chiến với Hợp Hoan Tông!
+- Năm 884: Lạc Khuyết lão tổ (Linh Thú Sơn) giao chiến trong trận tranh vùng đất, chém giết Khúc Huyền chân nhân (Hợp Hoan Tông).
+- Năm 884: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) giao chiến trong trận tranh vùng đất, chém giết Liễu Ly chân nhân (Hợp Hoan Tông).
+- Năm 884: Linh Thú Sơn đánh bại Hợp Hoan Tông trong trận tranh vùng đất, 1 tu sĩ vẫn lạc.
+- Năm 884: Linh Thú Sơn công phá sơn môn, Hợp Hoan Tông bị diệt môn!
+- Năm 886: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 886: Triệu Lãnh chân nhân khai tông lập phái, sáng lập Thiên Ma Tông (ma đạo), 3 tán tu theo về.
+- Năm 887: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 887: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) báo thù cho Lạc Hồng Phất, chém giết Hàn Diệu (Cửu Tiên Cung).
+- Năm 889: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 889: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 892: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Âu Dương Phi Vũ, chém giết Mộ Dung Minh (Diệu Âm Môn).
+- Năm 893: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 893: Lạc Khuyết lão tổ (tán tu) báo thù cho Thượng Quan Viêm, chém giết Mộ Dung Phi Vũ chân nhân (Tử Tiêu Cung).
+- Năm 895: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) báo thù cho Ôn Băng, chém giết Thượng Quan Long chân nhân (Quỷ Linh Môn).
+- Năm 895: Thiên kiếp giáng xuống Hạ Hầu Ngọc chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 895: Hạ Hầu Ngọc (tán tu) đột phá Nguyên Anh.
+- Năm 896: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 896: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) báo thù cho Lạc Hồng Phất, chém giết Triệu Hồng Phất (Cửu Tiên Cung).
+- Năm 899: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+
+### Thế kỷ 10
+
+Lập tông 4 · ly khai 56 · trận đánh 218 · diệt môn 3 · đấu pháp 174 · đột phá 632 · thiên kiếp 7
+
+- Năm 902: Tinh Cung tuyên chiến với Huyền Thiên Tông!
+- Năm 904: Cự Kiếm Môn tuyên chiến với Yểm Nguyệt Tông!
+- Năm 904: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Diệp Phong, chém giết Lâm Nhược Hy chân nhân (Tinh Cung).
+- Năm 904: Cổ Vân lão tổ (tán tu) báo thù cho Lâm Diệu, chém giết Thạch Thần (Huyền Thiên Tông).
+- Năm 905: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 905: Thạch Tiêu Dao lão tổ (Cự Kiếm Môn) giao chiến trong trận tranh linh mạch, chém giết Chu Tử Linh (Yểm Nguyệt Tông).
+- Năm 907: Thiên kiếp giáng xuống Tề Mộng chân nhân (Hạc Tùng Phái) khi đột phá Nguyên Anh!
+- Năm 907: Tề Mộng chân nhân (Hạc Tùng Phái) vẫn lạc dưới thiên kiếp.
+- Năm 908: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) báo thù cho Lạc Hồng Phất, chém giết Triệu Lãnh (Cửu Tiên Cung).
+- Năm 910: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 910: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 911: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Thạch Thần, chém giết Cổ Vân lão tổ (tán tu).
+- Năm 911: Lạc Khuyết lão tổ (tán tu) báo thù cho Lục Thiên Nam, chém giết Bạch Viêm (Tử Tiêu Cung).
+- Năm 913: Thiên kiếp giáng xuống Vạn Minh chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 913: Vạn Minh chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 914: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 914: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 914: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 917: Mộ Dung Thiên Nam lão tổ (tán tu) báo thù cho Tần Kiếm, chém giết Chu Sương chân nhân (tán tu).
+- Năm 918: Thiên kiếp giáng xuống Diệp Thiên Nam chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 918: Diệp Thiên Nam chân nhân (tán tu) vẫn lạc dưới thiên kiếp.
+- Năm 919: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 920: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 920: Tôn Mộng chân nhân khai tông lập phái, sáng lập Thanh Hư Môn, 3 tán tu theo về.
+- Năm 924: Quỷ Linh Môn tuyên chiến với Thanh Hư Môn!
+- Năm 925: Thanh Hư Môn đánh bại Quỷ Linh Môn trong trận tranh vùng đất.
+- Năm 926: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 926: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) báo thù cho Lạc Hồng Phất, chém giết Lạc Hạo (Cửu Tiên Cung).
+- Năm 927: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 927: Tinh Cung tuyên chiến với Huyền Thiên Tông!
+- Năm 927: Thiên kiếp giáng xuống Tề Phi Vũ chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 927: Tề Phi Vũ (tán tu) đột phá Nguyên Anh.
+- Năm 927: Lâm Phong lão tổ (Tinh Cung) giao chiến trong trận tranh vùng đất, chém giết Phùng Viêm (Huyền Thiên Tông).
+- Năm 928: Cự Kiếm Môn tuyên chiến với Yểm Nguyệt Tông!
+- Năm 930: Thạch Tiêu Dao lão tổ (Cự Kiếm Môn) giao chiến trong trận tranh linh mạch, chém giết Cổ Tuyết (Yểm Nguyệt Tông).
+- Năm 931: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 931: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) giao chiến trong trận tranh linh mạch, chém giết Âu Dương Tịch (Tử Tiêu Cung).
+- Năm 932: Tinh Cung tuyên chiến với Yểm Nguyệt Tông!
+- Năm 932: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 935: Hóa Đao Ổ tuyên chiến với Cửu Tiên Cung!
+- Năm 935: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Phùng Viêm, chém giết Lâm Phong lão tổ (Tinh Cung).
+- Năm 936: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Lâm Phong, chém giết Lý Dao chân nhân (Tinh Cung).
+- Năm 938: Cự Kiếm Môn tuyên chiến với Hạc Tùng Phái!
+- Năm 938: Lâm Lập lão tổ (Cự Kiếm Môn) giao chiến trong trận tranh vùng đất, chém giết Chu Hạo (Hạc Tùng Phái).
+- Năm 939: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 939: Lâm Lập lão tổ (Cự Kiếm Môn) giao chiến trong trận tranh vùng đất, chém giết Khúc Tiêu Dao (Hạc Tùng Phái).
+- Năm 939: Cự Kiếm Môn đánh bại Hạc Tùng Phái trong trận tranh vùng đất, 1 tu sĩ vẫn lạc.
+- Năm 939: Cự Kiếm Môn công phá sơn môn, Hạc Tùng Phái bị diệt môn!
+- Năm 940: Lâm Viêm chân nhân phản xuất Diệu Âm Môn, dẫn 10 đệ tử lập ra Hoa Lâm Cung.
+- Năm 940: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Âu Dương Phi Vũ, chém giết Tần Tịch chân nhân (tán tu).
+- Năm 941: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 943: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 943: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 944: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 944: Ngô Diệu chân nhân khai tông lập phái, sáng lập Ma Diễm Môn (ma đạo), 1 tán tu theo về.
+- Năm 945: Huyết Sát Tông tuyên chiến với Hoa Lâm Cung!
+- Năm 946: Quỷ Linh Môn tuyên chiến với Thanh Hư Môn!
+- Năm 946: Hoa Lâm Cung đánh bại Huyết Sát Tông trong trận tranh vùng đất.
+- Năm 946: Huyết Sát Tông đánh bại Hoa Lâm Cung trong trận tranh vùng đất, 1 tu sĩ vẫn lạc.
+- Năm 946: Huyết Sát Tông công phá sơn môn, Hoa Lâm Cung bị diệt môn!
+- Năm 947: Triệu Trần chân nhân khai tông lập phái, sáng lập Phong Trúc Sơn, 8 tán tu theo về.
+- Năm 948: Thiên kiếp giáng xuống Từ Mộng chân nhân (Hóa Đao Ổ) khi đột phá Nguyên Anh!
+- Năm 948: Từ Mộng (Hóa Đao Ổ) đột phá Nguyên Anh.
+- Năm 951: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 951: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 955: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 957: Huyền Thiên Tông tuyên chiến với Tinh Cung!
+- Năm 960: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Tần Khuyết, chém giết Thượng Quan Dao (Tinh Cung).
+- Năm 960: Thiên kiếp giáng xuống Tô Tiêu Dao chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 960: Tô Tiêu Dao (tán tu) đột phá Nguyên Anh.
+- Năm 961: Hoàng Phong Cốc tuyên chiến với Phong Trúc Sơn!
+- Năm 961: Hoàng Phong Cốc đánh bại Phong Trúc Sơn trong trận tranh vùng đất, 1 tu sĩ vẫn lạc.
+- Năm 961: Hoàng Phong Cốc công phá sơn môn, Phong Trúc Sơn bị diệt môn!
+- Năm 962: Đoan Mộc Diệu chân nhân phản xuất Cửu Tiên Cung, dẫn 31 đệ tử lập ra Long Hắc Tông.
+- Năm 962: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Lâm Phong, chém giết Đổng Mộng chân nhân (tán tu).
+- Năm 965: Hoàng Phong Cốc tuyên chiến với Cổ Kiếm Môn!
+- Năm 966: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 966: Diệp Kiếm chân nhân khai tông lập phái, sáng lập Hợp Hoan Tông (ma đạo).
+- Năm 967: Quỷ Linh Môn tuyên chiến với Thanh Hư Môn!
+- Năm 967: Cửu Tiên Cung tuyên chiến với Long Hắc Tông!
+- Năm 967: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Phùng Uyển (Vạn Pháp Môn).
+- Năm 968: Cự Kiếm Môn tuyên chiến với Yểm Nguyệt Tông!
+- Năm 968: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 968: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 968: Lâm Lập lão tổ (Cự Kiếm Môn) giao chiến trong trận tranh linh mạch, chém giết Vương Yên (Yểm Nguyệt Tông).
+- Năm 971: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 972: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 972: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Ngô Long (Quỷ Linh Môn).
+- Năm 972: Từ Mộng lão tổ (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Tiêu Ngọc (Quỷ Linh Môn).
+- Năm 974: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 978: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+- Năm 978: Tinh Cung tuyên chiến với Yểm Nguyệt Tông!
+- Năm 980: Linh Thú Sơn tuyên chiến với Huyền Thiên Tông!
+- Năm 984: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Lâm Phong, chém giết Hàn Yên chân nhân (tán tu).
+- Năm 984: Huyết Sát Chân Quân Âu Dương Mộng (Linh Thú Sơn) thọ nguyên đã tận, tọa hóa ở cảnh giới Nguyên Anh đại viên mãn.
+- Năm 986: Huyết Kiếm Ma Tổ Tôn Bá (Huyền Thiên Tông) báo thù cho Lệ Diệu, chém giết Tiêu Tiêu Dao chân nhân (tán tu).
+- Năm 988: Quỷ Linh Môn tuyên chiến với Thanh Hư Môn!
+- Năm 990: Long Hắc Tông tuyên chiến với Quỷ Linh Môn!
+- Năm 991: Cửu Tiên Cung tuyên chiến với Long Hắc Tông!
+- Năm 992: Hoàng Phong Cốc tuyên chiến với Âm La Tông!
+- Năm 992: Thái Nhất Môn tuyên chiến với Thanh Vân Môn!
+- Năm 994: Thiên kiếp giáng xuống Hoàng Phủ Ngọc chân nhân (tán tu) khi đột phá Nguyên Anh!
+- Năm 994: Hoàng Phủ Ngọc (tán tu) đột phá Nguyên Anh.
+- Năm 997: Cự Kiếm Môn tuyên chiến với Yểm Nguyệt Tông!
+- Năm 997: Diệu Âm Môn tuyên chiến với Thanh Vân Môn!
+- Năm 998: Linh Thú Sơn tuyên chiến với Độc Thánh Môn!
+- Năm 998: Huyền Thiên Tông tuyên chiến với Tinh Cung!
+- Năm 999: Hóa Đao Ổ tuyên chiến với Quỷ Linh Môn!
+- Năm 999: Hóa Đao Ổ tuyên chiến với Vạn Pháp Môn!
+- Năm 999: Nhân Đồ Chân Quân Tiêu Nhược Hy (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Tề Thiên Nam (Vạn Pháp Môn).
+- Năm 999: Từ Mộng lão tổ (Hóa Đao Ổ) giao chiến trong trận tranh linh mạch, chém giết Tiêu Long (Vạn Pháp Môn).
+- Năm 1000: Linh Thú Sơn tuyên chiến với Tử Tiêu Cung!
+
+### Thế kỷ 11
+
+Lập tông 0 · ly khai 1 · trận đánh 0 · diệt môn 0 · đấu pháp 0 · đột phá 1 · thiên kiếp 0
+

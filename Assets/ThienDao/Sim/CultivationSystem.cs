@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ThienDao.Sim
 {
-    public enum Trip : byte { None, Relocate, Excursion, Return, Battle }
+    public enum Trip : byte { None, Relocate, Excursion, Return, Battle, Hunt }
     public enum Outing : byte { Sightseeing, Training, HerbHunting }
 
     public sealed class Cultivator
@@ -41,8 +41,25 @@ namespace ThienDao.Sim
 
         public bool AtWar;          // flying to or standing on a battlefield
 
+        // Lịch sử cá nhân (M5): who taught them, who they owe blood, what they have done.
+        public int MasterIdx = -1;   // sư phụ (index into Cultivation.All)
+        public int Nemesis = -1;     // the one who killed their master or disciple
+        public int NemesisFor = -1;  // whose death that was
+        public long NemesisTick;
+        public int HuntTarget = -1;  // on the road to settle it
+        public int Kills;
+        public int KilledBy = -1;
+        public long DeathTick = -1;
+        public long LastDuelTick = -100000;
+        public float Fame;           // sum of the importance of what they took part in
+        public bool Legend;
+        public string Epithet;       // danh hiệu, given when they become a legend
+        public bool Blessed;         // Thiên Đạo has touched them
+        public int OriginRoots;      // the root they were born with
+
         public string Activity =>
             AtWar ? "đang xuất chiến" :
+            Trip == Trip.Hunt || HuntTarget >= 0 ? "đang truy sát kẻ thù" :
             Trip == Trip.Relocate ? "đang đi tìm động phủ mới" :
             Trip == Trip.Return ? "đang trở về" :
             Trip == Trip.Excursion || Away ? OutingNames[(int)Outing] : "đang bế quan";
@@ -53,6 +70,7 @@ namespace ThienDao.Sim
         {
             get
             {
+                if (Epithet != null) return $"{Epithet} {Name}";
                 string t = Realms.Titles[(int)Realm];
                 return t.Length > 0 ? $"{Name} {t}" : Name;
             }
@@ -129,7 +147,7 @@ namespace ThienDao.Sim
                 if (old != null) _successionTick[kv.Key] = tick;
                 if (old != null || tick > 0)
                     _sim.Events.Add(tick, EventKind.Succession, kv.Value.Realm >= Realm.KetDan ? 2 : 1,
-                        $"{kv.Value.Title} trở thành tông chủ {SectName(kv.Value)}.");
+                        $"{kv.Value.Title} trở thành tông chủ {SectName(kv.Value)}.", -1f, -1f, Fx.None, kv.Value.Index, old?.Index ?? -1, kv.Key);
             }
         }
 
@@ -184,6 +202,7 @@ namespace ThienDao.Sim
                 Stage = stage,
                 SectId = sectId
             };
+            c.OriginRoots = c.Roots;
             c.Progress = rng.Range(0f, 0.8f) * Realms.Need(realm, stage);
             ageYears = Mathf.Min(ageYears, c.LifespanYears * 0.8f);
             c.BirthTick = tick - (long)(ageYears * SimClock.DaysPerYear);
@@ -238,6 +257,9 @@ namespace ThienDao.Sim
                 made++;
             }
             UpdateMasters(0);
+            // Every sect member below the top has a sư phụ among the elders.
+            foreach (var c in All)
+                if (c.SectId >= 0 && MasterOf(c.SectId) != c) AssignMaster(c, c.SectId, ref rng);
         }
 
         // ---------------------------------------------------------------- monthly
@@ -324,27 +346,28 @@ namespace ThienDao.Sim
             if (desperate) chance *= 0.6f;
 
             float px = _e.X[c.Entity], py = _e.Y[c.Entity];
-            if (next >= Realm.NguyenAnh)
-            {
-                bool great = next == Realm.HoaThan;
-                float survive = (great ? 0.3f : 0.5f) + 0.3f * c.DaoHeart + 0.2f * c.Luck;
-                _sim.Events.Add(tick, EventKind.Tribulation, 3,
-                    $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!", px, py, Fx.Tribulation);
-                if (rng.NextFloat() >= survive)
-                {
-                    Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3, Fx.Lightning);
-                    return;
-                }
-            }
-
             if (rng.NextFloat() < chance)
             {
+                // Breaking open the gate to Nguyên Anh and beyond calls down heaven's tribulation; survive it or perish.
+                if (next >= Realm.NguyenAnh)
+                {
+                    bool great = next == Realm.HoaThan;
+                    float survive = (great ? 0.3f : 0.5f) + 0.3f * c.DaoHeart + 0.2f * c.Luck;
+                    _sim.Events.Add(tick, EventKind.Tribulation, 3,
+                        $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!", px, py, Fx.Tribulation, c.Index, -1, c.SectId);
+                    if (rng.NextFloat() >= survive)
+                    {
+                        Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3, Fx.Lightning);
+                        return;
+                    }
+                }
                 SetRealm(c, next, 0);
                 c.Progress = 0f;
                 c.FailedAttempts = 0;
                 int importance = next >= Realm.NguyenAnh ? 3 : next == Realm.KetDan ? 2 : 1;
                 _sim.Events.Add(tick, EventKind.Breakthrough, importance,
-                    $"{c.Name} ({SectName(c)}) đột phá {Realms.Names[(int)next]}{(pill ? " nhờ Trúc Cơ Đan" : "")}.", px, py, Fx.LightPillar);
+                    $"{c.Name} ({SectName(c)}) đột phá {Realms.Names[(int)next]}{(pill ? " nhờ Trúc Cơ Đan" : "")}.", px, py, Fx.LightPillar, c.Index, -1, c.SectId);
+                _sim.Stories?.OnBreakthrough(c, tick);
                 return;
             }
 
@@ -368,12 +391,12 @@ namespace ThienDao.Sim
                 if (c.Realm > Realm.LuyenKhi) SetRealm(c, c.Realm - 1, Realms.Stages[(int)c.Realm - 1] - 1);
                 else c.Stage = Mathf.Max(0, c.Stage - 3);
                 c.Progress = 0f;
-                _sim.Events.Add(tick, EventKind.Deviation, 1, $"{who} tẩu hỏa nhập ma, tu vi tụt xuống {c.RealmText}.", px, py, Fx.DemonBlast);
+                _sim.Events.Add(tick, EventKind.Deviation, 1, $"{who} tẩu hỏa nhập ma, tu vi tụt xuống {c.RealmText}.", px, py, Fx.DemonBlast, c.Index, -1, c.SectId);
             }
             else
             {
                 c.Demonic = true;
-                _sim.Events.Add(tick, EventKind.Deviation, 2, $"{who} tẩu hỏa nhập ma, sa vào ma đạo.", px, py, Fx.DemonBlast);
+                _sim.Events.Add(tick, EventKind.Deviation, 2, $"{who} tẩu hỏa nhập ma, sa vào ma đạo.", px, py, Fx.DemonBlast, c.Index, -1, c.SectId);
             }
         }
 
@@ -385,15 +408,25 @@ namespace ThienDao.Sim
             CountByRealm[(int)realm]++;
         }
 
-        void Die(Cultivator c, long tick, string text, int importance, Fx fx = Fx.None)
+        void Die(Cultivator c, long tick, string text, int importance, Fx fx = Fx.None, Cultivator killer = null)
         {
             float x = _e.X[c.Entity], y = _e.Y[c.Entity];
             c.Alive = false;
+            c.DeathTick = tick;
+            c.AtWar = false;
+            c.HuntTarget = -1;
+            if (killer != null) c.KilledBy = killer.Index;
             AliveCount--;
             CountByRealm[(int)c.Realm]--;
             _e.Kill(c.Entity, DeathCause.Natural);
-            _sim.Events.Add(tick, EventKind.Death, importance, text, x, y, fx);
+            // A legend's death is remembered at full weight.
+            if (c.Legend) importance = Mathf.Max(importance, 3);
+            _sim.Events.Add(tick, EventKind.Death, importance, text, x, y, fx, c.Index, killer?.Index ?? -1, c.SectId, killer?.SectId ?? -1);
         }
+
+        // Killed by another cultivator (duel, battle, vendetta): the killer is remembered.
+        public void Slay(Cultivator victim, Cultivator killer, long tick, string text, int importance) =>
+            Die(victim, tick, text, importance, Fx.Explosion, killer);
 
         // ---------------------------------------------------------------- yearly
 
@@ -428,7 +461,7 @@ namespace ThienDao.Sim
                     if (sect != null) Recruit(c, sect, ref rng);
                     bool gifted = SpiritRoots.Count(c.Roots) == 1;
                     _sim.Events.Add(tick, EventKind.Awakening, gifted ? 2 : 0,
-                        $"Đứa trẻ {c.Name} ở {s.Name} lộ {SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}){(sect != null ? $", được {sect.BaseName} thu nhận" : ", trở thành tán tu")}.");
+                        $"Đứa trẻ {c.Name} ở {s.Name} lộ {SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}){(sect != null ? $", được {sect.BaseName} thu nhận" : ", trở thành tán tu")}.", s.X + 0.5f, s.Y + 0.5f, Fx.None, c.Index, -1, c.SectId);
                 }
             }
         }
@@ -439,7 +472,32 @@ namespace ThienDao.Sim
             c.HomeX = sect.X + 0.5f + rng.Range(-2f, 2f);
             c.HomeY = sect.Y + 0.5f + rng.Range(-2f, 2f);
             SendTo(c, c.HomeX, c.HomeY, Trip.Return);
+            AssignMaster(c, sect.Id, ref rng);
         }
+
+        // Bái sư: a Kết Đan+ elder of the sect if there is one, otherwise someone of a higher realm.
+        void AssignMaster(Cultivator c, int sectId, ref DetRandom rng)
+        {
+            c.MasterIdx = -1;
+            int elders = 0, seniors = 0;
+            foreach (var m in All)
+            {
+                if (!m.Alive || m == c || m.SectId != sectId || m.Realm <= c.Realm) continue;
+                if (m.Realm >= Realm.KetDan) elders++;
+                else if (m.Realm >= Realm.TrucCo) seniors++;
+            }
+            bool fromElders = elders > 0;
+            int pick = rng.Range(0, Mathf.Max(1, fromElders ? elders : seniors));
+            if (!fromElders && seniors == 0) return;
+            foreach (var m in All)
+            {
+                if (!m.Alive || m == c || m.SectId != sectId || m.Realm <= c.Realm) continue;
+                if (fromElders ? m.Realm < Realm.KetDan : m.Realm < Realm.TrucCo || m.Realm >= Realm.KetDan) continue;
+                if (pick-- == 0) { c.MasterIdx = m.Index; return; }
+            }
+        }
+
+        public Cultivator MasterOfDisciple(Cultivator c) => c.MasterIdx >= 0 ? All[c.MasterIdx] : null;
 
         Settlement NearestSect(int x, int y)
         {
@@ -478,7 +536,7 @@ namespace ThienDao.Sim
             if (bx < 0f) return;
             SendTo(c, bx, by, Trip.Relocate);
             if (c.Realm >= Realm.KetDan)
-                _sim.Events.Add(tick, EventKind.Relocation, 1, $"{c.Title} rời đi tìm động phủ có linh khí dồi dào hơn.");
+                _sim.Events.Add(tick, EventKind.Relocation, 1, $"{c.Title} rời đi tìm động phủ có linh khí dồi dào hơn.", -1f, -1f, Fx.None, c.Index);
         }
 
         void SendTo(Cultivator c, float x, float y, Trip trip)
@@ -529,6 +587,9 @@ namespace ThienDao.Sim
                 case Trip.Battle:
                     c.Away = true; // holds the field until the battle is decided (StayUntil is a safety net)
                     break;
+                case Trip.Hunt:
+                    c.Away = true; // CombatSystem settles it or sends them on after the target (StayUntil = deadline)
+                    break;
                 default:
                     c.Away = false;
                     // Walkers can be blocked by water short of home; they find another way round.
@@ -576,7 +637,7 @@ namespace ThienDao.Sim
                             if (atHome) { c.HomeX = dx; c.HomeY = dy; }
                         }
                         if (c.Realm >= Realm.KetDan)
-                            _sim.Events.Add(tick, EventKind.Fortune, 1, $"{c.Title} ngự kiếm thoát khỏi biển nước.", x, y);
+                            _sim.Events.Add(tick, EventKind.Fortune, 1, $"{c.Title} ngự kiếm thoát khỏi biển nước.", x, y, Fx.None, c.Index);
                     }
                     else
                     {
@@ -634,7 +695,7 @@ namespace ThienDao.Sim
                 n++;
             }
             _masters.Remove(sectId);
-            if (n > 0) _sim.Events.Add(tick, EventKind.Disaster, 2, $"{name} tan rã, {n} tu sĩ trở thành tán tu.");
+            if (n > 0) _sim.Events.Add(tick, EventKind.Disaster, 2, $"{name} tan rã, {n} tu sĩ trở thành tán tu.", -1f, -1f, Fx.None, -1, -1, sectId);
         }
 
         void OutingReward(Cultivator c, long tick, ref DetRandom rng)
@@ -652,7 +713,7 @@ namespace ThienDao.Sim
                     {
                         c.Progress += Realms.Need(c.Realm, c.Stage) * 0.15f;
                         string herb = Lore.Herbs[rng.Range(0, Lore.Herbs.Length)];
-                        _sim.Events.Add(tick, EventKind.Fortune, c.Realm >= Realm.KetDan ? 1 : 0, $"{c.Title} tìm được {herb}, tu vi tăng tiến.");
+                        _sim.Events.Add(tick, EventKind.Fortune, c.Realm >= Realm.KetDan ? 1 : 0, $"{c.Title} tìm được {herb}, tu vi tăng tiến.", -1f, -1f, Fx.None, c.Index);
                     }
                     break;
             }
@@ -666,6 +727,19 @@ namespace ThienDao.Sim
             SendTo(c, x, y, Trip.Battle);
         }
 
+        // Truy sát: flies after the target until `deadline`, retargeted each month by CombatSystem.
+        public void SendToHunt(Cultivator c, float x, float y, long deadline)
+        {
+            c.StayUntil = deadline;
+            SendTo(c, x, y, Trip.Hunt);
+        }
+
+        public void Retarget(Cultivator c, float x, float y)
+        {
+            _e.TX[c.Entity] = x;
+            _e.TY[c.Entity] = y;
+        }
+
         public void ReturnHome(Cultivator c)
         {
             if (!c.Alive) return;
@@ -673,7 +747,6 @@ namespace ThienDao.Sim
             c.AtWar = false;
         }
 
-        public void KillInBattle(Cultivator c, long tick, string text, int importance) => Die(c, tick, text, importance, Fx.Explosion);
 
         // Joins (or changes to) a sect; the sect becomes home and they head there.
         public void JoinSect(Cultivator c, Settlement sect, long tick)
@@ -714,7 +787,8 @@ namespace ThienDao.Sim
             _sim.Events.Add(tick, EventKind.Divine, 2,
                 variant ? $"Thiên Đạo điểm hóa {c.Title}: linh căn vốn đã cực phẩm, ngộ tính và khí vận tăng vọt."
                         : $"Thiên Đạo tẩy luyện linh căn của {c.Title}: {before} hóa thành {after}.",
-                _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing);
+                _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing, c.Index, -1, c.SectId);
+            c.Blessed = true;
             return true;
         }
 
@@ -728,13 +802,14 @@ namespace ThienDao.Sim
             var c = Create(ref rng, Realm.LuyenKhi, 0, age, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick, roots);
             c.Progress = 0f;
             c.Comprehension = Mathf.Max(c.Comprehension, 0.85f);
+            c.Blessed = true;
             c.Luck = Mathf.Max(c.Luck, 0.8f);
             // Either way they set out at once, so the player sees who was chosen.
             if (sect != null) Recruit(c, sect, ref rng);
             else StartOuting(c, ref rng);
             _sim.Events.Add(tick, EventKind.Divine, 2,
                 $"Thiên Đạo điểm hóa {c.Name} ({age:0} tuổi) ở {s.Name}, thức tỉnh {SpiritRoots.Kind(roots)} ({SpiritRoots.Elements(roots)})" +
-                (sect != null ? $", lên đường bái nhập {sect.BaseName}." : ", trở thành tán tu."), s.X + 0.5f, s.Y + 0.5f, Fx.Blessing);
+                (sect != null ? $", lên đường bái nhập {sect.BaseName}." : ", trở thành tán tu."), s.X + 0.5f, s.Y + 0.5f, Fx.Blessing, c.Index, -1, c.SectId);
             return c;
         }
 
@@ -745,7 +820,8 @@ namespace ThienDao.Sim
             c.Luck = 1f;
             c.DaoHeart = Mathf.Min(1f, c.DaoHeart + 0.2f);
             c.BonusYears += 20;
-            _sim.Events.Add(tick, EventKind.Divine, 1, $"{c.Title} gặp cơ duyên, tu vi tăng mạnh.", _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing);
+            c.Blessed = true;
+            _sim.Events.Add(tick, EventKind.Divine, 1, $"{c.Title} gặp cơ duyên, tu vi tăng mạnh.", _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing, c.Index);
         }
 
         public void Smite(Cultivator c, long tick)

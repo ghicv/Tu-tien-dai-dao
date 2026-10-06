@@ -323,6 +323,71 @@ namespace ThienDao.Tests
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
+        // ---------------------------------------------------------------- M5: xung đột & lịch sử
+
+        [Test]
+        public void HistoryRemembersBeyondTheTicker()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 80);
+            var h = sim.History;
+            Assert.Greater(h.All.Count, 0);
+            foreach (var r in h.All)
+            {
+                Assert.GreaterOrEqual(r.Importance, 1);
+                Assert.Less(r.A, sim.Cultivation.All.Count);
+            }
+            // Every remembered deed of a person can be found again through them.
+            var some = h.All.Find(r => r.A >= 0);
+            var bio = new System.Collections.Generic.List<HistoryRecord>();
+            h.OfCultivator(some.A, bio);
+            Assert.IsTrue(bio.Exists(r => r.Tick == some.Tick && r.Text == some.Text));
+            Assert.Greater(h.CountIn(0, EventKind.Breakthrough), 0);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void KillingAMasterSwornRevengeBecomesAStory()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var all = sim.Cultivation.All;
+            var disciple = all.Find(c => c.Alive && c.MasterIdx >= 0);
+            Assert.IsNotNull(disciple, "sect members should have masters");
+            var master = all[disciple.MasterIdx];
+            var killer = all.Find(c => c.Alive && c.SectId != disciple.SectId && c != master);
+            long tick = sim.Clock.Tick;
+
+            sim.Combat.Kill(killer, master, tick, "test kill", 2);
+            Assert.IsFalse(master.Alive);
+            Assert.AreEqual(killer.Index, master.KilledBy);
+            Assert.AreEqual(killer.Index, disciple.Nemesis, "the disciple swears revenge");
+            Assert.AreEqual(master.Index, disciple.NemesisFor);
+
+            sim.Combat.Kill(disciple, killer, tick + 3000, "test revenge", 2);
+            Assert.IsTrue(sim.Stories.All.Exists(s => s.Title == "Báo thù rửa hận" && s.A == disciple.Index), "revenge for a master is a story");
+            Assert.AreEqual(-1, disciple.Nemesis, "the debt is settled");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void HigherRealmUsuallyWinsADuel()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var all = sim.Cultivation.All;
+            var strong = all.Find(c => c.Realm >= Realm.KetDan);
+            var weak = all.Find(c => c.Realm == Realm.LuyenKhi);
+            Assert.Greater(CombatSystem.Strength(strong), CombatSystem.Strength(weak) * 5f);
+            int wins = 0;
+            var rng = new DetRandom(42u);
+            for (int k = 0; k < 50; k++)
+            {
+                // Strength only: no one dies in this check.
+                float a = CombatSystem.Strength(strong) * rng.Range(0.6f, 1.4f), b = CombatSystem.Strength(weak) * rng.Range(0.6f, 1.4f);
+                if (a >= b) wins++;
+            }
+            Assert.AreEqual(50, wins);
+        }
+
         // ---------------------------------------------------------------- M4: thế lực
 
         [Test]

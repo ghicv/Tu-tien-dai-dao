@@ -113,6 +113,23 @@ namespace ThienDao.Sim
             foreach (var c in cs.All)
                 if (c.Alive && c.SectId >= 0 && (fs.Get(c.SectId) == null || !fs.Get(c.SectId).Alive))
                     errors.Add($"cultivator {c.Name} belongs to a dead faction");
+
+            // Lịch sử: links between people point at real people; pursuits only after the living.
+            int n = cs.All.Count;
+            foreach (var c in cs.All)
+            {
+                if (c.MasterIdx >= n || c.Nemesis >= n || c.NemesisFor >= n || c.KilledBy >= n || c.HuntTarget >= n)
+                    errors.Add($"cultivator {c.Name} links to an unknown person");
+                if (c.MasterIdx == c.Index || c.Nemesis == c.Index) errors.Add($"cultivator {c.Name} is their own master/nemesis");
+                if (c.Alive && c.HuntTarget >= 0 && !cs.All[c.HuntTarget].Alive) errors.Add($"cultivator {c.Name} hunts the dead");
+                if (!c.Alive && (c.AtWar || c.HuntTarget >= 0)) errors.Add($"dead cultivator {c.Name} still at war / hunting");
+            }
+            long last = -1;
+            foreach (var r in sim.History.All)
+            {
+                if (r.Tick < last) { errors.Add("history out of order"); break; }
+                last = r.Tick;
+            }
             return errors;
         }
     }

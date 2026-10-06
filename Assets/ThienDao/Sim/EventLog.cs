@@ -23,6 +23,9 @@ namespace ThienDao.Sim
         Alliance,       // kết minh
         Destruction,    // diệt môn
         Patronage,      // a sect buys a tán tu as khách khanh
+        Duel,           // đấu pháp between two cultivators
+        Vendetta,       // setting out to avenge a master or disciple
+        Legend,         // StoryDetector: a story worth telling
     }
 
     // Visual effect the renderer should play at the event's position.
@@ -49,22 +52,30 @@ namespace ThienDao.Sim
         }
     }
 
-    // Recent notable events for the player; M5's HistoryLog will build on this.
+    // Recent events for the ticker and the events window; everything that matters also goes to the HistoryLog.
+    // Actors: cultivator indices a (subject) / b (other party), faction ids fa / fb.
     public sealed class EventLog
     {
         const int Capacity = 400;
         readonly List<WorldEvent> _events = new List<WorldEvent>();
         public readonly int[] CountByKind = new int[32];
+        public HistoryLog History;
 
         public IReadOnlyList<WorldEvent> Recent => _events;
         public long TotalAdded { get; private set; } // lets presentation pick up only what is new
 
-        public void Add(long tick, EventKind kind, int importance, string text, float x = -1f, float y = -1f, Fx fx = Fx.None)
+        public void Add(long tick, EventKind kind, int importance, string text, float x = -1f, float y = -1f, Fx fx = Fx.None,
+                        int a = -1, int b = -1, int fa = -1, int fb = -1)
         {
             CountByKind[(int)kind]++;
             TotalAdded++;
             if (_events.Count == Capacity) _events.RemoveAt(0);
             _events.Add(new WorldEvent(tick, kind, importance, text, x, y, fx));
+            if (History == null) return;
+            History.Count(tick, kind);
+            // Lesser deeds of named people are kept too (a first kill, a Trúc Cơ breakthrough): stories and biographies need them.
+            if (importance >= HistoryLog.MinImportance || (importance >= 1 && a >= 0))
+                History.Record(new HistoryRecord(tick, kind, importance, text, x, y, a, b, fa, fb));
         }
     }
 }

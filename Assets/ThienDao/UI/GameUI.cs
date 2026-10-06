@@ -46,6 +46,7 @@ namespace ThienDao.UI
         // windows
         RectTransform _windowStack;
         Window _ranking, _events, _stats, _powers;
+        ChronicleWindow _chronicle;
         float _slowRefresh;
         readonly List<Cultivator> _rank = new List<Cultivator>();
 
@@ -92,6 +93,8 @@ namespace ThienDao.UI
                 return field != null && field.isFocused;
             }
         }
+
+        public void ToggleChronicle() => _chronicle?.Toggle();
 
         public void ToggleVisible()
         {
@@ -384,7 +387,7 @@ namespace ThienDao.UI
         void BuildWindows()
         {
             var buttons = Ui.Node("WindowButtons", _root);
-            Ui.Place(buttons, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -12f), new Vector2(260f, 60f));
+            Ui.Place(buttons, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -12f), new Vector2(320f, 60f));
             Row(buttons, 6).childAlignment = TextAnchor.MiddleRight;
 
             _windowStack = Ui.Node("Windows", _root);
@@ -393,9 +396,13 @@ namespace ThienDao.UI
             col.childAlignment = TextAnchor.UpperRight;
 
             _ranking = MakeWindow("Bảng cường giả");
+            BuildRankingRows();
             _events = MakeWindow("Sự kiện");
             _stats = MakeWindow("Thống kê");
             _powers = MakeWindow("Thế lực");
+            _chronicle = new ChronicleWindow(_root, _game);
+            var book = Ui.Button(buttons, Icons.Book, "Biên niên sử: sử sách, truyền kỳ, danh nhân (H)", () => _chronicle.Toggle(), 56f);
+            Size(book.Frame, 56f, 56f);
             AddWindowButton(buttons, Icons.Banner, "Thế lực: tông môn, lãnh thổ, chiến tranh", _powers);
             AddWindowButton(buttons, Icons.Crown, "Bảng cường giả", _ranking);
             AddWindowButton(buttons, Icons.Scroll, "Sự kiện thế giới", _events);
@@ -542,13 +549,15 @@ namespace ThienDao.UI
             if (_slowRefresh <= 0f)
             {
                 _slowRefresh = 0.25f;
-                if (_ranking.Open) _ranking.Body.text = RankingText();
+                if (_ranking.Open) UpdateRankingRows();
                 if (_events.Open) _events.Body.text = EventsText();
                 if (_powers.Open) _powers.Body.text = PowersText();
             }
             if (_stats.Open) _stats.Body.text = StatsText();
 
             UpdateCard();
+            _chronicle.Tick(Time.unscaledDeltaTime);
+            UpdateToast();
             UpdateTooltip();
         }
 
@@ -586,26 +595,91 @@ namespace ThienDao.UI
             }
         }
 
-        string RankingText()
+        const int RankRows = 8;
+        readonly Ui.IconButton[] _rankRows = new Ui.IconButton[RankRows];
+        readonly Cultivator[] _rankWho = new Cultivator[RankRows];
+
+        // Each row of the ranking is a button: click to select that expert and follow them on the map.
+        void BuildRankingRows()
+        {
+            _ranking.Body.text = "<color=#8890a8>Bấm vào một cao thủ để theo dõi vị trí hiện tại.</color>";
+            _ranking.Body.fontSize = 16;
+            for (int k = 0; k < RankRows; k++)
+            {
+                int row = k;
+                var b = Ui.Button(_ranking.Root, null, "Theo dõi cao thủ này trên bản đồ", () => FocusRanked(row), 56f, "");
+                b.Caption.alignment = TextAnchor.MiddleLeft;
+                b.Caption.fontSize = 17;
+                b.Caption.supportRichText = true;
+                Ui.Stretch(b.Caption.rectTransform, 12, 8, 2, 2);
+                Height(b.Frame, 54f);
+                _rankRows[k] = b;
+            }
+        }
+
+        void UpdateRankingRows()
         {
             var sim = _game.Sim;
             _rank.Clear();
             foreach (var c in sim.Cultivation.All)
                 if (c.Alive) _rank.Add(c);
-            _rank.Sort((a, b) => b.Rank.CompareTo(a.Rank));
-            var sb = new StringBuilder();
-            for (int k = 0; k < Mathf.Min(8, _rank.Count); k++)
+            _rank.Sort((a, b) => b.Rank != a.Rank ? b.Rank.CompareTo(a.Rank) : a.Index.CompareTo(b.Index));
+            for (int k = 0; k < RankRows; k++)
             {
-                var c = _rank[k];
+                var c = k < _rank.Count ? _rank[k] : null;
+                _rankWho[k] = c;
+                var b = _rankRows[k];
+                if (b.Frame.gameObject.activeSelf != (c != null)) b.Frame.gameObject.SetActive(c != null);
+                if (c == null) continue;
+                b.SetSelected(_game.Selected == c);
                 string where = c.SectId >= 0 ? $"{sim.Cultivation.Role(c)} {sim.Cultivation.SectName(c)}" : sim.Cultivation.Role(c);
-                sb.Append($"<color=#ffd873>{k + 1}. {c.Title}</color> · {c.RealmText}{(c.Demonic ? " <color=#ff7070>(ma tu)</color>" : "")}\n");
-                sb.Append($"     {where} · {c.AgeYears(sim.Clock.Tick):0}/{c.LifespanYears} tuổi\n");
+                string doing = sim.Cultivation.IsShownOnMap(c) ? $"<color=#9fe0a0>{c.Activity}</color>" : "<color=#8890a8>đang bế quan</color>";
+                b.Caption.text = $"<color=#ffd873>{k + 1}. {c.Title}</color> · {c.RealmText}{(c.Demonic ? " <color=#ff7070>ma tu</color>" : "")}\n" +
+                                 $"<size=15>{where} · {doing}</size>";
             }
-            return sb.ToString().TrimEnd();
+        }
+
+        void FocusRanked(int row)
+        {
+            var c = _rankWho[row];
+            if (c == null || !c.Alive) return;
+            if (_game.FocusCultivator(c)) return;
+            string place = c.SectId >= 0 ? $"tại {_game.Sim.Cultivation.SectName(c)}" : "trong động phủ";
+            ShowToast($"{c.Title} đang bế quan {place}, không xuất hiện trên bản đồ.");
+        }
+
+        // ---------------------------------------------------------------- toast
+
+        Text _toast;
+        float _toastUntil;
+
+        public void ShowToast(string text)
+        {
+            if (_toast == null)
+            {
+                var panel = Ui.Panel(_root, "Toast");
+                panel.raycastTarget = false;
+                var rt = panel.rectTransform;
+                Ui.Place(rt, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -150f), new Vector2(720f, 0f));
+                Column(rt, 0, 14);
+                Fit(rt, false, true);
+                _toast = Ui.Label(rt, "", 21, TextAnchor.MiddleCenter, Ui.Gold);
+            }
+            _toast.text = text;
+            _toast.transform.parent.gameObject.SetActive(true);
+            _toast.transform.parent.SetAsLastSibling();
+            _toastUntil = Time.unscaledTime + 3.5f;
+        }
+
+        void UpdateToast()
+        {
+            if (_toast == null || !_toast.transform.parent.gameObject.activeSelf) return;
+            if (Time.unscaledTime > _toastUntil) _toast.transform.parent.gameObject.SetActive(false);
         }
 
         readonly List<Faction> _powerRank = new List<Faction>();
         readonly List<BattleInfo> _battleInfo = new List<BattleInfo>();
+        readonly List<HistoryRecord> _bio = new List<HistoryRecord>();
         readonly List<Relation> _rels = new List<Relation>();
 
         static string Hex(Color32 c) => $"#{c.r:X2}{c.g:X2}{c.b:X2}";
@@ -735,7 +809,8 @@ namespace ThienDao.UI
                 sb.Append(c.SectId >= 0 ? $"{sim.Cultivation.Role(c)} · {sim.Cultivation.SectName(c)}\n" : $"{sim.Cultivation.Role(c)}\n");
                 if (!c.Alive)
                 {
-                    sb.Append("<color=#ff9090>Đã vẫn lạc.</color>\n");
+                    sb.Append($"<color=#ff9090>Đã vẫn lạc năm {c.DeathTick / SimClock.DaysPerYear + 1}" +
+                              (c.KilledBy >= 0 ? $" dưới tay {sim.Cultivation.All[c.KilledBy].Title}" : "") + ".</color>\n");
                 }
                 else
                 {
@@ -746,15 +821,27 @@ namespace ThienDao.UI
                     sb.Append($"Linh khí nơi ở {sim.Qi.SampleQi((int)c.HomeX, (int)c.HomeY):0} (cần {Realms.RequiredQi[(int)c.Realm]:0})" +
                               (c.FailedAttempts > 0 ? $" · đột phá thất bại {c.FailedAttempts} lần" : ""));
                 }
-                int n = 0;
-                var events = sim.Events.Recent;
-                for (int k = events.Count - 1; k >= 0 && n < 5; k--)
+                // Ties: sư phụ, huyết thù, the tally.
+                var master = sim.Cultivation.MasterOfDisciple(c);
+                var ties = new StringBuilder();
+                if (master != null) ties.Append($"Sư phụ {master.Name}{(master.Alive ? "" : " (đã mất)")}");
+                if (c.Nemesis >= 0)
                 {
-                    if (!events[k].Text.Contains(c.Name)) continue;
-                    if (n == 0) sb.Append("\n\n<color=#ffd873>Chuyện đời</color>");
-                    sb.Append($"\n<color=#8890a8>Năm {events[k].Tick / SimClock.DaysPerYear + 1}</color> {events[k].Text}");
-                    n++;
+                    var foe = sim.Cultivation.All[c.Nemesis];
+                    string why = c.NemesisFor >= 0 ? $" (giết {sim.Cultivation.All[c.NemesisFor].Name})" : "";
+                    ties.Append(ties.Length > 0 ? " · " : "").Append($"<color=#ff8a6a>Huyết thù: {foe.Name}{why}</color>");
                 }
+                if (c.Kills > 0) ties.Append(ties.Length > 0 ? " · " : "").Append($"{c.Kills} mạng");
+                if (c.Legend) ties.Append(ties.Length > 0 ? " · " : "").Append($"<color=#ffd873>Lưu danh sử sách</color>");
+                if (ties.Length > 0) sb.Append('\n').Append(ties);
+
+                // Tiểu sử from the HistoryLog: every remembered deed, not just the last few hundred lines.
+                sim.History.OfCultivator(c.Index, _bio, 6);
+                if (_bio.Count > 0) sb.Append("\n\n<color=#ffd873>Tiểu sử</color>");
+                for (int k = _bio.Count - 1; k >= 0; k--)
+                    sb.Append($"\n<color=#8890a8>Năm {_bio[k].Year}</color> {_bio[k].Text}");
+                int more = sim.History.CountOfCultivator(c.Index) - _bio.Count;
+                if (more > 0) sb.Append($"\n<color=#8890a8>… và {more} sự tích khác (Biên niên sử, H)</color>");
                 _cardBody.text = sb.ToString();
                 _cardBar1Root.gameObject.SetActive(c.Alive);
                 _cardBar2Root.gameObject.SetActive(c.Alive);
@@ -797,6 +884,15 @@ namespace ThienDao.UI
                     body.Append($"Thực lực {f.Power:N0} · trận thắng {f.BattlesWon}, thua {f.BattlesLost} · tử trận {f.Fallen}");
                     string ties = TiesText(f.Id, 3);
                     if (ties.Length > 0) body.Append('\n').Append(ties);
+                }
+                // Sử sách of the sect: its greatest moments.
+                sim.History.OfFaction(s.Id, _bio, 30);
+                int told = 0;
+                foreach (var r in _bio)
+                {
+                    if (r.Importance < 3 || told >= 4) continue;
+                    if (told++ == 0) body.Append("\n\n<color=#ffd873>Sử sách</color>");
+                    body.Append($"\n<color=#8890a8>Năm {r.Year}</color> {r.Text}");
                 }
             }
             else if (s.Alive)

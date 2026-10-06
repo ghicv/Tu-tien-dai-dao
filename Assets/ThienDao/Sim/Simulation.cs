@@ -34,6 +34,9 @@ namespace ThienDao.Sim
         public readonly SettlementSystem Settlements;
         public readonly CultivationSystem Cultivation;
         public readonly FactionSystem Factions;
+        public readonly CombatSystem Combat;
+        public readonly HistoryLog History = new HistoryLog();
+        public readonly StoryDetector Stories;
         public readonly EventLog Events = new EventLog();
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
@@ -50,6 +53,7 @@ namespace ThienDao.Sim
         public Simulation(WorldData world)
         {
             World = world;
+            Events.History = History;
             Qi = new QiSystem(world);
             Forage = new ForageSystem(world);
             world.TerrainChanged += Forage.RebuildCapBlocks; // must exist before settlements start clearing fields
@@ -58,6 +62,8 @@ namespace ThienDao.Sim
             Wildlife = new WildlifeSystem(world, Forage); // after villages have cleared their first fields
             Cultivation = new CultivationSystem(this);
             Factions = new FactionSystem(this); // needs the sect members to weigh each sect's power
+            Combat = new CombatSystem(this);
+            Stories = new StoryDetector(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -84,6 +90,7 @@ namespace ThienDao.Sim
                 Wildlife.MonthlyStep(Clock.Season);
                 Settlements.MonthlyStep(tick);
                 Cultivation.MonthlyStep(tick);
+                Combat.MonthlyStep(tick);
                 Factions.MonthlyStep(tick);
             }
             if (Clock.IsYearStart)
@@ -91,6 +98,8 @@ namespace ThienDao.Sim
                 Settlements.YearlyStep(tick);
                 Cultivation.YearlyStep(tick);
                 Factions.YearlyStep(tick);
+                Combat.YearlyStep(tick);
+                Stories.YearlyStep(tick);
             }
         }
 
@@ -159,6 +168,9 @@ namespace ThienDao.Sim
             Cultivation.HashInto(ref h);
             Settlements.HashInto(ref h);
             Factions.HashInto(ref h);
+            Combat.HashInto(ref h);
+            History.HashInto(ref h);
+            Stories.HashInto(ref h);
             return h;
         }
     }

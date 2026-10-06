@@ -17,7 +17,7 @@ namespace ThienDao.Sim
         public static readonly float[] StageNeed = { 0f, 0f, 300f, 1200f, 4000f, 12000f };   // points per stage (LK uses LuyenKhiLayerNeed)
         // Chance to break INTO this realm from the peak of the one below. Tu tiên is meant to be brutally hard:
         // Trúc Cơ needs luck or a pill, Kết Đan makes an elder, Nguyên Anh an overlord, Hóa Thần a legend.
-        public static readonly float[] BreakChance = { 0f, 1f, 0.1f, 0.04f, 0.015f, 0.003f };
+        public static readonly float[] BreakChance = { 0f, 1f, 0.1f, 0.03f, 0.012f, 0.003f };
         public const float HoaThanMinQi = 8000f; // only the richest phúc địa can carry a Nguyên Anh into Hóa Thần
         // Years to recover before the next attempt from this realm's peak.
         public static readonly int[] AttemptCooldownYears = { 1, 1, 3, 3, 3, 3 };
