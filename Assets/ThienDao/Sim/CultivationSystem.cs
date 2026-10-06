@@ -246,12 +246,15 @@ namespace ThienDao.Sim
                     continue;
                 }
 
+                if (!c.Travelling && !c.Away && !_w.IsWalkable(c.HomeX, c.HomeY))
+                    MoveHomeAshore(c);
+
                 if (c.Travelling)
                 {
                     if (!_sim.Creatures.HasArrived(c.Entity)) continue; // no cultivating on the road
                     Arrive(c, tick, ref rng);
                 }
-                else if (c.Away && tick >= c.StayUntil)
+                else if (c.Away && (tick >= c.StayUntil || !_w.IsWalkable(_e.X[c.Entity], _e.Y[c.Entity])))
                 {
                     SendTo(c, c.HomeX, c.HomeY, Trip.Return);
                     continue;
@@ -308,15 +311,16 @@ namespace ThienDao.Sim
             if (pill) chance += 0.25f;
             if (desperate) chance *= 0.6f;
 
+            float px = _e.X[c.Entity], py = _e.Y[c.Entity];
             if (next >= Realm.NguyenAnh)
             {
                 bool great = next == Realm.HoaThan;
                 float survive = (great ? 0.3f : 0.5f) + 0.3f * c.DaoHeart + 0.2f * c.Luck;
                 _sim.Events.Add(tick, EventKind.Tribulation, 3,
-                    $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!");
+                    $"{(great ? "Đại thiên kiếp" : "Thiên kiếp")} giáng xuống {who} khi đột phá {Realms.Names[(int)next]}!", px, py, Fx.Tribulation);
                 if (rng.NextFloat() >= survive)
                 {
-                    Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3);
+                    Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3, Fx.Lightning);
                     return;
                 }
             }
@@ -328,7 +332,7 @@ namespace ThienDao.Sim
                 c.FailedAttempts = 0;
                 int importance = next >= Realm.NguyenAnh ? 3 : next == Realm.KetDan ? 2 : 1;
                 _sim.Events.Add(tick, EventKind.Breakthrough, importance,
-                    $"{c.Name} ({SectName(c)}) đột phá {Realms.Names[(int)next]}{(pill ? " nhờ Trúc Cơ Đan" : "")}.");
+                    $"{c.Name} ({SectName(c)}) đột phá {Realms.Names[(int)next]}{(pill ? " nhờ Trúc Cơ Đan" : "")}.", px, py, Fx.LightPillar);
                 return;
             }
 
@@ -345,19 +349,19 @@ namespace ThienDao.Sim
             float outcome = rng.NextFloat();
             if (outcome < 0.4f)
             {
-                Die(c, tick, $"{who} tẩu hỏa nhập ma, kinh mạch đứt đoạn mà chết.", c.Realm >= Realm.TrucCo ? 2 : 1);
+                Die(c, tick, $"{who} tẩu hỏa nhập ma, kinh mạch đứt đoạn mà chết.", c.Realm >= Realm.TrucCo ? 2 : 1, Fx.DemonBlast);
             }
             else if (outcome < 0.7f || c.Demonic)
             {
                 if (c.Realm > Realm.LuyenKhi) SetRealm(c, c.Realm - 1, Realms.Stages[(int)c.Realm - 1] - 1);
                 else c.Stage = Mathf.Max(0, c.Stage - 3);
                 c.Progress = 0f;
-                _sim.Events.Add(tick, EventKind.Deviation, 1, $"{who} tẩu hỏa nhập ma, tu vi tụt xuống {c.RealmText}.");
+                _sim.Events.Add(tick, EventKind.Deviation, 1, $"{who} tẩu hỏa nhập ma, tu vi tụt xuống {c.RealmText}.", px, py, Fx.DemonBlast);
             }
             else
             {
                 c.Demonic = true;
-                _sim.Events.Add(tick, EventKind.Deviation, 2, $"{who} tẩu hỏa nhập ma, sa vào ma đạo.");
+                _sim.Events.Add(tick, EventKind.Deviation, 2, $"{who} tẩu hỏa nhập ma, sa vào ma đạo.", px, py, Fx.DemonBlast);
             }
         }
 
@@ -369,13 +373,14 @@ namespace ThienDao.Sim
             CountByRealm[(int)realm]++;
         }
 
-        void Die(Cultivator c, long tick, string text, int importance)
+        void Die(Cultivator c, long tick, string text, int importance, Fx fx = Fx.None)
         {
+            float x = _e.X[c.Entity], y = _e.Y[c.Entity];
             c.Alive = false;
             AliveCount--;
             CountByRealm[(int)c.Realm]--;
             _e.Kill(c.Entity, DeathCause.Natural);
-            _sim.Events.Add(tick, EventKind.Death, importance, text);
+            _sim.Events.Add(tick, EventKind.Death, importance, text, x, y, fx);
         }
 
         // ---------------------------------------------------------------- yearly
@@ -509,8 +514,110 @@ namespace ThienDao.Sim
                     break;
                 default:
                     c.Away = false;
+                    // Walkers can be blocked by water short of home; they find another way round.
+                    float dx = c.HomeX - _e.X[c.Entity], dy = c.HomeY - _e.Y[c.Entity];
+                    if (dx * dx + dy * dy > 9f) Teleport(c, c.HomeX, c.HomeY);
                     break;
             }
+        }
+
+        void Teleport(Cultivator c, float x, float y)
+        {
+            int id = c.Entity;
+            _e.X[id] = _e.PrevX[id] = _e.TX[id] = x;
+            _e.Y[id] = _e.PrevY[id] = _e.TY[id] = y;
+        }
+
+        // Their cave became bare peak (water is handled at once by Flood): settle on the nearest walkable ground.
+        void MoveHomeAshore(Cultivator c)
+        {
+            if (!FindDryGround(c.HomeX, c.HomeY, out float x, out float y)) return;
+            c.HomeX = x;
+            c.HomeY = y;
+            Teleport(c, x, y);
+        }
+
+        // Water just covered the rect: Luyện Khí standing there drown; Trúc Cơ and above fly to the nearest shore.
+        public void Flood(int x0, int y0, int x1, int y1, long tick)
+        {
+            foreach (var c in All)
+            {
+                if (!c.Alive) continue;
+                float x = _e.X[c.Entity], y = _e.Y[c.Entity];
+                bool inRect = x >= x0 && x <= x1 + 1 && y >= y0 && y <= y1 + 1;
+                bool homeInRect = c.HomeX >= x0 && c.HomeX <= x1 + 1 && c.HomeY >= y0 && c.HomeY <= y1 + 1;
+                bool airborne = c.Travelling && _e.Flying[c.Entity];
+
+                if (inRect && !airborne && !_w.IsWalkable(x, y))
+                {
+                    if (c.Realm >= Realm.TrucCo)
+                    {
+                        bool atHome = IsAtHome(c);
+                        if (FindDryGround(x, y, out float dx, out float dy))
+                        {
+                            Teleport(c, dx, dy);
+                            if (atHome) { c.HomeX = dx; c.HomeY = dy; }
+                        }
+                        if (c.Realm >= Realm.KetDan)
+                            _sim.Events.Add(tick, EventKind.Fortune, 1, $"{c.Title} ngự kiếm thoát khỏi biển nước.", x, y);
+                    }
+                    else
+                    {
+                        Die(c, tick, $"{c.Name} ({SectName(c)}) rơi xuống nước chết đuối.", 0, Fx.Splash);
+                        continue;
+                    }
+                }
+                if (homeInRect && !_w.IsWalkable(c.HomeX, c.HomeY) && FindDryGround(c.HomeX, c.HomeY, out float hx, out float hy))
+                {
+                    c.HomeX = hx;
+                    c.HomeY = hy;
+                }
+            }
+        }
+
+        bool FindDryGround(float fx, float fy, out float x, out float y)
+        {
+            int cx = (int)fx, cy = (int)fy;
+            for (int r = 1; r <= 80; r++)
+            for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue;
+                x = cx + dx + 0.5f;
+                y = cy + dy + 0.5f;
+                if (_w.IsWalkable(x, y)) return true;
+            }
+            x = fx;
+            y = fy;
+            return false;
+        }
+
+        // The sect moved to new ground: members' homes follow, those at home go with it.
+        public void RehomeSect(int sectId, int x, int y)
+        {
+            int k = 0;
+            foreach (var c in All)
+            {
+                if (!c.Alive || c.SectId != sectId) continue;
+                c.HomeX = x + 0.5f + (k % 5 - 2) * 0.6f;
+                c.HomeY = y + 0.5f + (k / 5 % 5 - 2) * 0.6f;
+                k++;
+                if (!c.Travelling && !c.Away) Teleport(c, c.HomeX, c.HomeY);
+            }
+        }
+
+        public void DisbandSect(int sectId, long tick)
+        {
+            string name = _sim.Settlements.All[sectId].BaseName;
+            int n = 0;
+            foreach (var c in All)
+            {
+                if (!c.Alive || c.SectId != sectId) continue;
+                c.SectId = -1;
+                n++;
+            }
+            _masters.Remove(sectId);
+            if (n > 0) _sim.Events.Add(tick, EventKind.Disaster, 2, $"{name} tan rã, {n} tu sĩ trở thành tán tu.");
         }
 
         void OutingReward(Cultivator c, long tick, ref DetRandom rng)
@@ -566,13 +673,13 @@ namespace ThienDao.Sim
             c.Luck = 1f;
             c.DaoHeart = Mathf.Min(1f, c.DaoHeart + 0.2f);
             c.BonusYears += 20;
-            _sim.Events.Add(tick, EventKind.Divine, 1, $"{c.Title} gặp cơ duyên, tu vi tăng mạnh.");
+            _sim.Events.Add(tick, EventKind.Divine, 1, $"{c.Title} gặp cơ duyên, tu vi tăng mạnh.", _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing);
         }
 
         public void Smite(Cultivator c, long tick)
         {
             if (c == null || !c.Alive) return;
-            Die(c, tick, $"Thiên phạt giáng xuống, {c.Title} ({SectName(c)}) hồn phi phách tán.", c.Realm >= Realm.KetDan ? 3 : 2);
+            Die(c, tick, $"Thiên phạt giáng xuống, {c.Title} ({SectName(c)}) hồn phi phách tán.", c.Realm >= Realm.KetDan ? 3 : 2, Fx.Lightning);
         }
 
         public void HashInto(ref ulong h)

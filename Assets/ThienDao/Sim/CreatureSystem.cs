@@ -107,7 +107,10 @@ namespace ThienDao.Sim
             float nx, ny;
             if (d <= speed) { nx = _e.TX[id]; ny = _e.TY[id]; }
             else { nx = x + dx / d * speed; ny = y + dy / d * speed; }
-            bool canPass = _e.Flying[id] ? _w.InBounds((int)nx, (int)ny) && nx >= 0f && ny >= 0f : _w.IsWalkable(nx, ny);
+            // Walkers stranded on water (the ground changed under them) may wade out.
+            bool canPass = _e.Flying[id]
+                ? _w.InBounds((int)nx, (int)ny) && nx >= 0f && ny >= 0f
+                : _w.IsWalkable(nx, ny) || !_w.IsWalkable(x, y);
             if (canPass)
             {
                 _e.X[id] = nx;

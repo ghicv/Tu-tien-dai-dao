@@ -189,6 +189,92 @@ namespace ThienDao.Tests
             Assert.Less(sim.Qi.BlockQi(bx, by), sim.Qi.BlockCap(bx, by) * 0.98f);
         }
 
+        // Thiên Đạo wrecks the world at random; whatever happens, the invariants must hold afterwards.
+        static Simulation RunChaos(string seed, int rounds)
+        {
+            var sim = new Simulation(MapGenerator.Generate(seed));
+            var rng = new DetRandom(Hash.FromString(seed) ^ 0xBADu);
+            for (int round = 0; round < rounds; round++)
+            {
+                var alive = new System.Collections.Generic.List<Settlement>();
+                foreach (var s in sim.Settlements.All)
+                    if (s.Alive) alive.Add(s);
+                var target = alive.Count > 0 ? alive[rng.Range(0, alive.Count)] : null;
+                int tx = target?.X ?? rng.Range(50, 970), ty = target?.Y ?? rng.Range(50, 970);
+                switch (rng.Range(0, 9))
+                {
+                    case 0: sim.Enqueue(new PaintTerrainCommand(tx, ty, rng.Range(10, 40), Terrain.Shallow)); break;
+                    case 1: sim.Enqueue(new PaintTerrainCommand(tx, ty, rng.Range(10, 40), Terrain.DeepOcean)); break;
+                    case 2: sim.Enqueue(new PaintTerrainCommand(tx, ty, rng.Range(6, 30), Terrain.Mountain)); break;
+                    case 3: sim.Enqueue(new PaintTerrainCommand(tx, ty, rng.Range(10, 40), Terrain.Desert)); break;
+                    case 4: sim.Enqueue(new EraseObjectsCommand(tx, ty, 20)); break;
+                    case 5: sim.Enqueue(new DivineActCommand(DivineAct.Smite, tx, ty)); break;
+                    case 6: sim.Enqueue(new SpawnCreaturesCommand(Species.Wolf, tx + 20, ty, 10)); break;
+                    case 7: sim.Enqueue(new FoundVillageCommand(rng.Range(50, 970), rng.Range(50, 970), 24, 0)); break;
+                    default: sim.Enqueue(new LeyLineCommand(tx, ty, 4, rng.NextFloat() < 0.5f)); break;
+                }
+                Run(sim, 60);
+            }
+            return sim;
+        }
+
+        [Test]
+        public void InvariantsHoldUnderChaos()
+        {
+            var sim = RunChaos("chaos", 60);
+            var errors = WorldInvariants.Check(sim);
+            Assert.IsEmpty(errors, string.Join("\n", errors));
+        }
+
+        [Test]
+        public void ChaosIsDeterministic()
+        {
+            Assert.AreEqual(RunChaos("chaos2", 15).ComputeStateHash(), RunChaos("chaos2", 15).ComputeStateHash());
+        }
+
+        [Test]
+        public void FloodDrownsTheSectButFlyersEscape()
+        {
+            var sim = new Simulation(MapGenerator.Generate("flood"));
+            Settlement sect = null;
+            foreach (var s in sim.Settlements.All)
+                if (s.Sect) { sect = s; break; }
+            var members = new System.Collections.Generic.List<Cultivator>();
+            foreach (var c in sim.Cultivation.All)
+                if (c.SectId == sect.Id && sim.Cultivation.IsAtHome(c)) members.Add(c);
+
+            sim.Enqueue(new PaintTerrainCommand(sect.X, sect.Y, 24, Terrain.Shallow));
+            sim.ApplyPending(); // the flood resolves at once, before any tick
+
+            Assert.IsFalse(sect.Alive, "a drowned town is gone");
+            foreach (var c in members)
+            {
+                if (c.Realm == Realm.LuyenKhi) Assert.IsFalse(c.Alive, $"{c.Name} cannot fly and should drown");
+                else
+                {
+                    Assert.IsTrue(c.Alive, $"{c.Name} can fly and should escape");
+                    Assert.IsTrue(sim.World.IsWalkable(sim.Entities.X[c.Entity], sim.Entities.Y[c.Entity]), $"{c.Name} should be on dry land");
+                }
+            }
+            Run(sim, SimClock.DaysPerMonth * 2);
+            Assert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void VillageUnderARaisedMountainMovesAway()
+        {
+            var sim = new Simulation(MapGenerator.Generate("flood"));
+            Settlement village = null;
+            foreach (var s in sim.Settlements.All)
+                if (!s.Sect) { village = s; break; }
+            int oldX = village.X, oldY = village.Y;
+            sim.Enqueue(new PaintTerrainCommand(oldX, oldY, 10, Terrain.Mountain));
+            Run(sim, SimClock.DaysPerMonth * 2);
+            Assert.IsTrue(village.Alive);
+            Assert.IsTrue(village.X != oldX || village.Y != oldY, "the village should have moved off the mountain");
+            Assert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
         [Test]
         public void CalendarRollsOver()
         {

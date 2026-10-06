@@ -31,6 +31,7 @@ namespace ThienDao.Sim
         float[][] _next;
         readonly bool[] _land;
         readonly float[] _deerShare; // share of a region's forage that is deer browse (woodland) vs rabbit grazing (open grass)
+        readonly int[] _landCells;   // walkable cells per region, to know how much a flood took
 
         public WildlifeSystem(WorldData w, ForageSystem forage)
         {
@@ -48,6 +49,8 @@ namespace ThienDao.Sim
             }
             _land = new bool[n];
             _deerShare = new float[n];
+            _landCells = new int[n];
+            for (int r = 0; r < n; r++) _landCells[r] = CountLand(r);
             SeedInitial();
         }
 
@@ -128,9 +131,35 @@ namespace ThienDao.Sim
         public void Add(Species s, float x, float y, float amount)
         {
             int k = KindIndex(s);
-            if (k < 0) return;
-            int r = RegionOf(x, y);
-            if (_land[r]) _pop[k][r] += amount;
+            if (k < 0 || !_w.IsWalkable(x, y)) return; // animals dropped into the sea are lost
+            _pop[k][RegionOf(x, y)] += amount;
+        }
+
+        // Call after any terrain edit: animals on land that became water drown (regions lose the flooded share).
+        public void LandChanged(int x0, int y0, int x1, int y1)
+        {
+            int rx0 = Mathf.Clamp(x0 / Region, 0, RW - 1), rx1 = Mathf.Clamp(x1 / Region, 0, RW - 1);
+            int ry0 = Mathf.Clamp(y0 / Region, 0, RH - 1), ry1 = Mathf.Clamp(y1 / Region, 0, RH - 1);
+            for (int ry = ry0; ry <= ry1; ry++)
+            for (int rx = rx0; rx <= rx1; rx++)
+            {
+                int r = ry * RW + rx;
+                int before = _landCells[r];
+                int after = CountLand(r);
+                _landCells[r] = after;
+                if (before <= 0 || after >= before) continue;
+                float keep = after / (float)before;
+                for (int k = 0; k < Kinds.Length; k++) _pop[k][r] *= keep;
+            }
+        }
+
+        int CountLand(int r)
+        {
+            int rx = r % RW, ry = r / RW, n = 0;
+            for (int y = ry * Region; y < (ry + 1) * Region; y++)
+            for (int x = rx * Region; x < (rx + 1) * Region; x++)
+                if (TerrainInfo.IsWalkable(_w.Terrain[y * _w.W + x])) n++;
+            return n;
         }
 
         // Villagers take a small share of the local game; returns food in person-months.
@@ -151,6 +180,9 @@ namespace ThienDao.Sim
             int n = RW * RH;
             for (int r = 0; r < n; r++)
             {
+                // Land can be flooded or raised by Thiên Đạo; a region with no forage left stops taking in wanderers.
+                int lbx = RegionBlock0(r, out int lby);
+                _land[r] = _forage.CapSum(lbx, lby, blocks) > 0f;
                 float deer = _pop[0][r], rabbits = _pop[1][r], wolves = _pop[2][r];
 
                 // Deer browse and rabbits graze different parts of the same forage, so they compete only partly.

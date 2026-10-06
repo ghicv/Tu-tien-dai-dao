@@ -171,6 +171,7 @@ namespace ThienDao.Render
                 var c = _sim.Cultivation.ForEntity(id);
                 if (c == null || !_sim.Cultivation.IsShownOnMap(c)) continue;
                 bool flying = e.Flying[id] && moving;
+                if (!flying && !_sim.World.IsWalkable(x, y)) continue; // the sim moves them ashore within the month
                 // Hover above the ground while flying, with a gentle bob.
                 float lift = flying ? 0.7f + Mathf.Sin(time * 3f + id) * 0.08f : 0f;
                 if (c.Realm >= Realm.KetDan)
@@ -209,17 +210,30 @@ namespace ThienDao.Render
                 if (s.Sect) AddSectStandIns(s.Id);
                 SyncStandIns(list, s, objects);
 
-                for (int k = 0; k < list.Count; k++)
+                for (int k = list.Count - 1; k >= 0; k--)
                 {
                     var v = list[k];
+                    if (!_sim.World.IsWalkable(v.X, v.Y))
+                    {
+                        list.RemoveAt(k); // ground changed under them; a replacement spawns on dry land
+                        continue;
+                    }
                     float dx = v.TX - v.X, dy = v.TY - v.Y, d = Mathf.Sqrt(dx * dx + dy * dy);
                     bool moving = false;
                     if (v.Wait > 0f) v.Wait -= dt;
-                    else if (d < 0.05f)
+                    else if (d < 0.05f || !PathClear(v.X, v.Y, v.TX, v.TY))
                     {
                         var p = RandomSpot(s, objects, v.Look);
-                        v.TX = p.x;
-                        v.TY = p.y;
+                        if (PathClear(v.X, v.Y, p.x, p.y))
+                        {
+                            v.TX = p.x;
+                            v.TY = p.y;
+                        }
+                        else
+                        {
+                            v.TX = v.X;
+                            v.TY = v.Y;
+                        }
                         v.Wait = 0.5f + (float)_rand.NextDouble() * 2.5f;
                     }
                     else
@@ -272,8 +286,22 @@ namespace ThienDao.Render
             {
                 var look = want == Unit.Villager0 ? (Unit)((int)Unit.Villager0 + _rand.Next(4)) : want;
                 var p = RandomSpot(s, objects, look);
+                if (!_sim.World.IsWalkable(p.x, p.y)) continue; // no dry ground found this frame
                 list.Add(new Villager { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 2f, Look = look });
             }
+        }
+
+        // Decorative walkers only take straight paths that stay on land.
+        bool PathClear(float x0, float y0, float x1, float y1)
+        {
+            float d = Mathf.Sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+            int steps = Mathf.Max(1, Mathf.CeilToInt(d * 2f));
+            for (int k = 0; k <= steps; k++)
+            {
+                float t = k / (float)steps;
+                if (!_sim.World.IsWalkable(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+            }
+            return true;
         }
 
         void DrawWildlife(Rect view)
@@ -317,20 +345,30 @@ namespace ThienDao.Render
                     }
                 }
 
-                for (int k = 0; k < list.Count; k++)
+                for (int k = list.Count - 1; k >= 0; k--)
                 {
                     var t = list[k];
+                    if (!_sim.World.IsWalkable(t.X, t.Y))
+                    {
+                        list.RemoveAt(k);
+                        continue;
+                    }
                     float dx = t.TX - t.X, dy = t.TY - t.Y, d = Mathf.Sqrt(dx * dx + dy * dy);
                     bool moving = false;
                     if (t.Wait > 0f) t.Wait -= dt;
-                    else if (d < 0.05f)
+                    else if (d < 0.05f || !PathClear(t.X, t.Y, t.TX, t.TY))
                     {
                         float nx = t.X + (float)(_rand.NextDouble() - 0.5) * 10f, ny = t.Y + (float)(_rand.NextDouble() - 0.5) * 10f;
                         bool inRegion = nx >= rx * size && nx < (rx + 1) * size && ny >= ry * size && ny < (ry + 1) * size;
-                        if (inRegion && _sim.World.IsWalkable(nx, ny))
+                        if (inRegion && PathClear(t.X, t.Y, nx, ny))
                         {
                             t.TX = nx;
                             t.TY = ny;
+                        }
+                        else
+                        {
+                            t.TX = t.X;
+                            t.TY = t.Y;
                         }
                         t.Wait = 1f + (float)_rand.NextDouble() * 4f;
                     }
@@ -368,6 +406,16 @@ namespace ThienDao.Render
 
         // A house doorstep or a field cell of the settlement.
         Vector2 RandomSpot(Settlement s, WorldObjects objects, Unit look)
+        {
+            for (int attempt = 0; attempt < 6; attempt++)
+            {
+                var p = RandomSpotOnce(s, objects, look);
+                if (_sim.World.IsWalkable(p.x, p.y)) return p;
+            }
+            return new Vector2(-1f, -1f); // callers treat off-map as "nowhere"
+        }
+
+        Vector2 RandomSpotOnce(Settlement s, WorldObjects objects, Unit look)
         {
             // Disciples and elders keep to the sect hall grounds; mortals go between fields and houses.
             if (!IsVillagerLook(look))

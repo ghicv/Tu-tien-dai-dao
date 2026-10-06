@@ -186,6 +186,7 @@ namespace ThienDao.Sim
         {
             s.Alive = false;
             AliveCount--;
+            if (s.Sect) _sim.Cultivation.DisbandSect(s.Id, _sim.Clock.Tick); // its hall stays behind as a ruin
             for (int k = s.Houses.Count - 1; k >= 0; k--) _w.Objects.Remove(s.Houses[k]);
             ReleaseFarmland(s, s.Farms.Count);
         }
@@ -219,6 +220,11 @@ namespace ThienDao.Sim
                 {
                     Abandon(s);
                     continue;
+                }
+                if (!CanSettleAt(s.X, s.Y))
+                {
+                    Displace(s, tick, ref rng);
+                    if (!s.Alive) continue;
                 }
 
                 int workers = s.Workers;
@@ -314,6 +320,167 @@ namespace ThienDao.Sim
                 if (pop >= 70 && (pop > s.HousingCapacity || s.Food < pop * 3f) && AliveCount < MaxSettlements && rng.NextFloat() < 0.35f)
                     Emigrate(s, tick, ref rng);
             }
+        }
+
+        // ---------------------------------------------------------------- flood: villages and migrant groups drown
+
+        public void Flood(int x0, int y0, int x1, int y1, long tick)
+        {
+            foreach (var s in All)
+            {
+                if (!s.Alive || s.X < x0 || s.X > x1 || s.Y < y0 || s.Y > y1) continue;
+                if (!TerrainInfo.IsWater(_w.Terrain[_w.Idx(s.X, s.Y)])) continue;
+                int dead = s.Population;
+                for (int b = 0; b < Settlement.AgeGroups; b++) s.Cohorts[b] = 0;
+                _sim.Events.Add(tick, EventKind.Disaster, 2, $"{s.Name} bị nước nhấn chìm, {dead} người chết đuối.", s.X + 0.5f, s.Y + 0.5f, Fx.Splash);
+                Abandon(s);
+            }
+
+            var e = _sim.Entities;
+            for (int g = _groups.Count - 1; g >= 0; g--)
+            {
+                int id = _groups[g].Entity;
+                float x = e.X[id], y = e.Y[id];
+                if (x < x0 || x > x1 + 1 || y < y0 || y > y1 + 1 || _w.IsWalkable(x, y)) continue;
+                int people = 0;
+                foreach (int c in _groups[g].Cohorts) people += c;
+                string from = All[_groups[g].From].Name;
+                _groups.RemoveAt(g);
+                e.Kill(id, DeathCause.Natural);
+                _sim.Events.Add(tick, EventKind.Disaster, 1, $"Đoàn di dân từ {from} bị nước cuốn, {people} người chết đuối.", x, y, Fx.Splash);
+            }
+        }
+
+        // A bolt of Thiên phạt landing near a village kills some of its people.
+        public void Strike(int x, int y, long tick)
+        {
+            foreach (var s in All)
+            {
+                if (!s.Alive || (s.X - x) * (s.X - x) + (s.Y - y) * (s.Y - y) > 6 * 6) continue;
+                var rng = RngFor(tick, 300000 + s.Id);
+                int dead = Mathf.Min(s.Population, Stoch(s.Population * 0.1f + 1f, ref rng));
+                RemovePeople(s, dead);
+                s.DeathsLastYear += dead;
+                _sim.Events.Add(tick, EventKind.Divine, 1, $"Thiên lôi đánh xuống {s.Name}, {dead} người thiệt mạng.");
+            }
+        }
+
+        // ---------------------------------------------------------------- displacement (mountain raised, …)
+
+        // A village needs ground it could build on at its centre.
+        bool CanSettleAt(int x, int y)
+        {
+            if (!_w.InBounds(x, y)) return false;
+            var t = _w.Terrain[_w.Idx(x, y)];
+            return t == Terrain.Farmland || ObjectInfo.CanStandOn(ObjectType.House, t);
+        }
+
+        // The village (or sect) lost its land: move everyone to the nearest good ground, or scatter them.
+        void Displace(Settlement s, long tick, ref DetRandom rng)
+        {
+            string oldName = s.Name;
+            if (!FindRefuge(s, out int nx, out int ny))
+            {
+                var host = NearestAlive(s.X, s.Y, s);
+                if (host != null)
+                {
+                    for (int b = 0; b < Settlement.AgeGroups; b++) host.Cohorts[b] += s.Cohorts[b];
+                    host.Food += s.Food;
+                }
+                for (int b = 0; b < Settlement.AgeGroups; b++) s.Cohorts[b] = 0;
+                _sim.Events.Add(tick, EventKind.Disaster, 2,
+                    $"{oldName} mất hết đất sống, dân chúng ly tán{(host != null ? $" về {host.Name}" : "")}.");
+                Abandon(s);
+                return;
+            }
+
+            if (s.Sect)
+            {
+                int old = _w.Objects.CellObject[_w.Idx(s.X, s.Y)];
+                if (old >= 0 && _w.Objects.Get(old).Type == ObjectType.SectHall) _w.Objects.Remove(old);
+            }
+            for (int k = s.Houses.Count - 1; k >= 0; k--) _w.Objects.Remove(s.Houses[k]);
+            ReleaseFarmland(s, s.Farms.Count);
+
+            s.X = nx;
+            s.Y = ny;
+            if (s.Sect)
+            {
+                PlaceSectHall(s, ref rng);
+                _sim.Cultivation.RehomeSect(s.Id, nx, ny);
+            }
+            for (int k = 0; k < 3; k++) TryBuildHouse(s, ref rng);
+            ClaimFarmland(s, (int)(s.Workers * CellsPerWorker));
+            _sim.Events.Add(tick, EventKind.Disaster, s.Sect ? 2 : 1, $"{oldName} mất đất cũ, cả {(s.Sect ? "tông môn" : "làng")} dời đến nơi ở mới.");
+        }
+
+        // Nearest buildable, unclaimed ground within 60 cells; a sect prefers the richest qi it can find.
+        bool FindRefuge(Settlement s, out int bx, out int by)
+        {
+            bx = by = -1;
+            float bestQi = -1f;
+            ushort owner = (ushort)(s.Id + 1);
+            for (int r = 4; r <= 60; r += 2)
+            {
+                for (int dy = -r; dy <= r; dy += 2)
+                for (int dx = -r; dx <= r; dx += 2)
+                {
+                    if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue;
+                    int x = s.X + dx, y = s.Y + dy;
+                    if (x < 8 || y < 8 || x >= _w.W - 8 || y >= _w.H - 8 || !CanSettleAt(x, y)) continue;
+                    int i = _w.Idx(x, y);
+                    if (_w.Terrain[i] == Terrain.Farmland || (_w.Owner[i] != 0 && _w.Owner[i] != owner)) continue;
+                    if (TooCloseToOthers(x, y, s, 20)) continue;
+                    if (!s.Sect)
+                    {
+                        bx = x;
+                        by = y;
+                        return true;
+                    }
+                    float qi = _w.QiCap[i];
+                    if (qi > bestQi) { bestQi = qi; bx = x; by = y; }
+                }
+                if (s.Sect && bx >= 0 && r >= 20) return true; // searched a fair ring; take the best so far
+            }
+            return bx >= 0;
+        }
+
+        bool TooCloseToOthers(int x, int y, Settlement self, int dist)
+        {
+            foreach (var o in All)
+                if (o != self && o.Alive && (o.X - x) * (o.X - x) + (o.Y - y) * (o.Y - y) < dist * dist) return true;
+            return false;
+        }
+
+        Settlement NearestAlive(int x, int y, Settlement except)
+        {
+            Settlement best = null;
+            int bestD = int.MaxValue;
+            foreach (var o in All)
+            {
+                if (!o.Alive || o == except) continue;
+                int d = (o.X - x) * (o.X - x) + (o.Y - y) * (o.Y - y);
+                if (d < bestD) { bestD = d; best = o; }
+            }
+            return best;
+        }
+
+        void PlaceSectHall(Settlement s, ref DetRandom rng)
+        {
+            int ox = s.X - 2, oy = s.Y - 2;
+            for (int y = oy; y < oy + 5; y++)
+            for (int x = ox; x < ox + 5; x++)
+            {
+                if (!_w.InBounds(x, y)) return;
+                int i = _w.Idx(x, y);
+                if (!ObjectInfo.CanStandOn(ObjectType.SectHall, _w.Terrain[i])) return;
+                int obj = _w.Objects.CellObject[i];
+                if (obj >= 0 && ObjectInfo.IsBuilding(_w.Objects.Get(obj).Type)) return;
+            }
+            for (int y = oy; y < oy + 5; y++)
+            for (int x = ox; x < ox + 5; x++)
+                _w.Objects.RemoveAtCell(x, y);
+            _w.Objects.Place(ObjectType.SectHall, ox, oy, (byte)rng.Range(0, 3));
         }
 
         // A child (preferably 10–14) leaves the village to walk the path of cultivation.

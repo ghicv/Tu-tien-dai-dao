@@ -36,6 +36,7 @@ namespace ThienDao
         readonly List<Cultivator> _ranking = new List<Cultivator>();
         WorldRenderer _renderer;
         UnitRenderer _units;
+        FxRenderer _fx;
         CameraController _cam;
         GUIStyle _label;
         WorldBrush _brush;
@@ -72,6 +73,8 @@ namespace ThienDao
             if (_renderer == null) _renderer = gameObject.AddComponent<WorldRenderer>();
             _units = GetComponent<UnitRenderer>();
             if (_units == null) _units = gameObject.AddComponent<UnitRenderer>();
+            _fx = GetComponent<FxRenderer>();
+            if (_fx == null) _fx = gameObject.AddComponent<FxRenderer>();
             _cursor = CreateCursor();
             _seedInput = Seed;
         }
@@ -91,6 +94,7 @@ namespace ThienDao
             _genMs = (float)sw.Elapsed.TotalMilliseconds;
             _renderer.Init(_world, _sim);
             _units.Init(_sim);
+            _fx.Init(_sim);
 
             var prev = _brush;
             _brush = new WorldBrush(_sim);
@@ -255,6 +259,7 @@ namespace ThienDao
             _renderer.SetTint(SeasonTint(_sim.Clock.YearFraction));
             _renderer.Tick(_cam.Cam);
             _units.Tick(_cam.Cam, _cam.PixelsPerCell);
+            _fx.Tick(_cam.Cam);
         }
 
         static Color SeasonTint(float yearFraction)

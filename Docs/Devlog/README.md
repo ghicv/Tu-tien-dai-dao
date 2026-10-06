@@ -8,7 +8,8 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 01 | [01-m1-thoi-gian-linh-khi.md](01-m1-thoi-gian-linh-khi.md) | M1 — Đồng hồ, mùa, linh khí sống, hàng đợi lệnh | `a9d21c4` |
 | 02 | [02-m2-sinh-menh.md](02-m2-sinh-menh.md) | M2 — Làng quần thể, động vật, di dân | `d808dc5` |
 | 03 | [03-m2-thu-hoang-quan-the.md](03-m2-thu-hoang-quan-the.md) | M2.1 — Thú hoang thành quần thể, hiển thị tượng trưng | `ee83767` |
-| 04 | [04-m3-tu-tien.md](04-m3-tu-tien.md) | M3 — Tu tiên lõi, tu sĩ ra ngoài, popup nhân vật | (commit M3) |
+| 04 | [04-m3-tu-tien.md](04-m3-tu-tien.md) | M3 — Tu tiên lõi, tu sĩ ra ngoài, popup nhân vật | `1ba8595` |
+| 05 | [05-m3-1-truong-hop-bien-va-hieu-ung.md](05-m3-1-truong-hop-bien-va-hieu-ung.md) | M3.1 — Nước nhấn chìm, bất biến, chaos test, hiệu ứng sét/nổ | (commit M3.1) |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Sim/Lore.cs`).

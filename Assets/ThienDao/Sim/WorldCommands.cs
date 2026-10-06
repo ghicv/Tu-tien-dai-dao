@@ -61,6 +61,8 @@ namespace ThienDao.Sim
             sim.Qi.RebuildCapBlocks(x0, y0, x1, y1);
             w.NotifyTerrainChanged(x0, y0, x1, y1);
             w.NotifyQiCapChanged(x0, y0, x1, y1);
+            sim.Wildlife.LandChanged(x0, y0, x1, y1);
+            if (TerrainInfo.IsWater(Terrain)) sim.ResolveFlood(x0, y0, x1, y1); // whoever stood there falls in
         }
     }
 
@@ -236,8 +238,27 @@ namespace ThienDao.Sim
             // Prefer someone visible under the cursor; otherwise whoever is meditating nearby.
             var c = sim.Cultivation.FindShownNear(X + 0.5f, Y + 0.5f, 3f) ??
                     sim.Cultivation.ForEntity(sim.Creatures.FindNearest(X + 0.5f, Y + 0.5f, 6f, CultivatorMask));
-            if (Act == DivineAct.Bless) sim.Cultivation.Bless(c, tick);
-            else sim.Cultivation.Smite(c, tick);
+            if (Act == DivineAct.Bless)
+            {
+                sim.Cultivation.Bless(c, tick);
+                return;
+            }
+            if (c != null)
+            {
+                sim.Cultivation.Smite(c, tick);
+                return;
+            }
+            // Nobody to punish: the bolt still falls, scorching the ground and anyone living there.
+            var w = sim.World;
+            for (int y = Y - 2; y <= Y + 2; y++)
+            for (int x = X - 2; x <= X + 2; x++)
+            {
+                if (!w.InBounds(x, y)) continue;
+                int id = w.Objects.CellObject[w.Idx(x, y)];
+                if (id >= 0 && !ObjectInfo.IsBuilding(w.Objects.Get(id).Type)) w.Objects.Remove(id);
+            }
+            sim.Settlements.Strike(X, Y, tick);
+            sim.Events.Add(tick, EventKind.Divine, 0, "Thiên lôi giáng xuống.", X + 0.5f, Y + 0.5f, Fx.Lightning);
         }
     }
 

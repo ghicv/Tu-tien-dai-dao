@@ -111,6 +111,14 @@ namespace ThienDao.Sim
             }
         }
 
+        // Land in the rect just became water: whoever stood there falls in, right now.
+        public void ResolveFlood(int x0, int y0, int x1, int y1)
+        {
+            long tick = Clock.Tick;
+            Cultivation.Flood(x0, y0, x1, y1, tick);
+            Settlements.Flood(x0, y0, x1, y1, tick);
+        }
+
         public static float RegenMultiplier(Season s)
         {
             switch (s)

@@ -13,9 +13,12 @@ namespace ThienDao.Sim
         Relocation,     // moved to a better cave / phúc địa
         Divine,         // Thiên Đạo intervened
         Fortune,        // cơ duyên: found herbs, treasures
-        Disaster,       // plague, famine, natural calamity
+        Disaster,       // plague, famine, flood, natural calamity
         Succession,     // a new tông chủ
     }
+
+    // Visual effect the renderer should play at the event's position.
+    public enum Fx : byte { None, Lightning, Tribulation, Explosion, DemonBlast, Splash, LightPillar, Blessing }
 
     public readonly struct WorldEvent
     {
@@ -23,13 +26,18 @@ namespace ThienDao.Sim
         public readonly EventKind Kind;
         public readonly int Importance; // 0 minor … 3 world-shaking
         public readonly string Text;
+        public readonly float X, Y;     // world position, X < 0 when it has none
+        public readonly Fx Fx;
 
-        public WorldEvent(long tick, EventKind kind, int importance, string text)
+        public WorldEvent(long tick, EventKind kind, int importance, string text, float x, float y, Fx fx)
         {
             Tick = tick;
             Kind = kind;
             Importance = importance;
             Text = text;
+            X = x;
+            Y = y;
+            Fx = fx;
         }
     }
 
@@ -41,12 +49,14 @@ namespace ThienDao.Sim
         public readonly int[] CountByKind = new int[16];
 
         public IReadOnlyList<WorldEvent> Recent => _events;
+        public long TotalAdded { get; private set; } // lets presentation pick up only what is new
 
-        public void Add(long tick, EventKind kind, int importance, string text)
+        public void Add(long tick, EventKind kind, int importance, string text, float x = -1f, float y = -1f, Fx fx = Fx.None)
         {
             CountByKind[(int)kind]++;
+            TotalAdded++;
             if (_events.Count == Capacity) _events.RemoveAt(0);
-            _events.Add(new WorldEvent(tick, kind, importance, text));
+            _events.Add(new WorldEvent(tick, kind, importance, text, x, y, fx));
         }
     }
 }
