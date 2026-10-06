@@ -19,7 +19,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 12 | [12-m6-thien-kiep-thien-tai.md](12-m6-thien-kiep-thien-tai.md) | M6 (phần 1) — Thiên kiếp & lôi địa; thiên tai: động đất, núi lửa, lũ lụt, hạn hán, ôn dịch, thú triều | `f5122ab` |
 | 13 | [13-m6-quy-luat-sinh-tu-dai-kiep.md](13-m6-quy-luat-sinh-tu-dai-kiep.md) | M6 (phần 2) — Quy luật, hồi sinh & diệt môn, đại kiếp, thời tiết, đánh lén lúc độ kiếp, lớp phủ thiên tai | `4178ecf` |
 | 14 | [14-ui-it-chu-nhieu-icon.md](14-ui-it-chu-nhieu-icon.md) | UI ít chữ, nhiều icon: HUD chip + cảnh báo, tin có icon, thẻ nhân vật dạng chip, thống kê/sự kiện/cường giả bằng icon | `5296fe5` |
-| 15 | [15-m7-chieu-sau-the-gioi.md](15-m7-chieu-sau-the-gioi.md) | M7 — Yêu thú & yêu tộc, bí cảnh từ lịch sử, kinh tế & thương lộ, thời đại & mạt pháp; hiệu ứng đánh nhau pixel, nháy trắng, khói trắng | (chưa ghi hash) |
+| 15 | [15-m7-chieu-sau-the-gioi.md](15-m7-chieu-sau-the-gioi.md) | M7 — Yêu thú & yêu tộc, bí cảnh từ lịch sử, kinh tế & thương lộ, thời đại & mạt pháp; hiệu ứng đánh nhau pixel, nháy trắng, khói trắng | `173fa71` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Sim/Lore.cs`).
