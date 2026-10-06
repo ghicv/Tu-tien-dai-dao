@@ -485,7 +485,7 @@ Tham khảo 3 ảnh: địa hình là khối ô vuông (viền bờ biển bậc
 | **M1 — Thời gian & linh khí** ✅ | Clock, tick, mùa, linh mạch, khuếch tán linh khí, Command queue | linh khí lan, cạn, hồi |
 | **M2 — Sinh mệnh cơ bản** ✅ | EntityStore, phàm nhân + động vật, ăn/di chuyển/sinh/chết, làng dạng quần thể, sprite instancing | dân số tự tăng/giảm theo tài nguyên |
 | **M3 — Tu tiên lõi** ✅ | linh căn, Luyện Khí → Nguyên Anh, tu luyện hút linh khí, đột phá, tẩu hỏa, thọ nguyên | tu sĩ tự tìm phúc địa, có người đột phá/chết già |
-| **M4 — Thế lực** | Faction chung, làng → thành, tông môn lập/tuyển đệ tử, ngoại giao opinion | tông môn tự sinh & tranh linh mạch |
+| **M4 — Thế lực** ✅ | Faction chung, làng → thành, tông môn lập/tuyển đệ tử, ngoại giao opinion | tông môn tự sinh & tranh linh mạch |
 | **M5 — Xung đột & lịch sử** | chiến đấu cá nhân, trận trừu tượng, HistoryLog, biên niên sử UI, StoryDetector v1 | đọc được "câu chuyện" sau 1.000 năm |
 | **M6 — Thiên Đạo** | đủ các tab quyền năng, thiên kiếp, thiên tai | vòng CREATE → INTERVENE → CONSEQUENCE hoàn chỉnh |
 | **M7 — Chiều sâu** | kinh tế/chợ/thương lộ, yêu thú tiến hóa & yêu tộc, bí cảnh từ lịch sử, thời đại & mạt pháp | hai seed khác nhau → lịch sử khác hẳn |

@@ -13,6 +13,33 @@ namespace ThienDao.Sim
             "Lạc Vân Tông", "Cổ Kiếm Môn", "Bách Xảo Viện", "Thái Nhất Môn", "Âm La Tông", "Tinh Cung"
         };
 
+        // Ma đạo: the six demonic sects of Thiên Nam plus a few others from the novel. A sect with one of these
+        // names follows the demonic path; demonic founders pick from here first.
+        public static readonly string[] DemonicSects =
+        {
+            "Quỷ Linh Môn", "Hợp Hoan Tông", "Ngự Linh Tông", "Thiên Sát Tông", "Âm La Tông", "Thiên Ma Tông",
+            "Độc Thánh Môn", "Ma Diễm Môn", "Huyết Sát Tông", "Vạn Độc Môn"
+        };
+
+        // Righteous sects for sects founded during the simulation (the starting ones draw from Sects).
+        public static readonly string[] RighteousSects =
+        {
+            "Diệu Âm Môn", "Vạn Pháp Môn", "Cửu Tiên Cung", "Thiên Lan Thánh Điện", "Huyền Thiên Tông", "Thanh Vân Môn",
+            "Kim Cương Tự", "Thiên Kiếm Tông", "Tử Tiêu Cung", "Bích Vân Cốc"
+        };
+
+        public static bool IsDemonicSect(string name) => System.Array.IndexOf(DemonicSects, name) >= 0;
+
+        static readonly string[] SectSuffixes = { "Tông", "Môn", "Cốc", "Phái", "Cung", "Các", "Sơn" };
+
+        // When the named pools run out: two syllables and a sect suffix, e.g. "Thanh Hạc Tông".
+        public static string GeneratedSectName(ref DetRandom rng)
+        {
+            int a = rng.Range(0, Syllables.Length), b = rng.Range(0, Syllables.Length - 1);
+            if (b >= a) b++;
+            return $"{Syllables[a]} {Syllables[b]} {SectSuffixes[rng.Range(0, SectSuffixes.Length)]}";
+        }
+
         // Bare place names; the settlement adds Thôn / Trấn / Thành by size.
         public static readonly string[] Places =
         {

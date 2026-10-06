@@ -285,5 +285,79 @@ namespace ThienDao.Tests
             for (int i = SimClock.DaysPerSeason; i < SimClock.DaysPerYear; i++) clock.Advance();
             Assert.AreEqual((2, 1, 1, Season.Xuan), (clock.Year, clock.Month, clock.Day, clock.Season));
         }
+
+        // ---------------------------------------------------------------- M4: thế lực
+
+        [Test]
+        public void SectsStartAsFactionsHoldingLand()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var fs = sim.Factions;
+            int sects = 0;
+            foreach (var s in sim.Settlements.All)
+            {
+                if (!s.Sect) continue;
+                sects++;
+                var f = fs.Get(s.Id);
+                Assert.IsNotNull(f, $"{s.Name} has no faction");
+                Assert.AreEqual(f, fs.OwnerAt(s.X, s.Y), $"{s.Name} does not hold its own seat");
+                Assert.GreaterOrEqual(f.Tiles, 3, $"{s.Name} holds too little land");
+                Assert.Greater(f.Power, 0f);
+            }
+            Assert.AreEqual(sects, fs.AliveCount);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void NewSectsAreFoundedAndBreakAway()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            int start = sim.Factions.All.Count;
+            Run(sim, SimClock.DaysPerYear * 150);
+            var k = sim.Events.CountByKind;
+            Assert.Greater(k[(int)EventKind.Founding] + k[(int)EventKind.Schism], 0, "no sect was founded or split in 150 years");
+            Assert.Greater(sim.Factions.All.Count, start, "no new faction appeared");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void WarIsFoughtOverLandAndCostsLives()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var fs = sim.Factions;
+            // The two closest sects go to war.
+            Faction a = null, b = null;
+            int best = int.MaxValue;
+            foreach (var x in fs.All)
+            foreach (var y in fs.All)
+            {
+                if (x.Id >= y.Id) continue;
+                var sx = sim.Settlements.All[x.Id];
+                var sy = sim.Settlements.All[y.Id];
+                int d = (sx.X - sy.X) * (sx.X - sy.X) + (sx.Y - sy.Y) * (sx.Y - sy.Y);
+                if (d < best) { best = d; a = x; b = y; }
+            }
+            Assert.IsTrue(fs.DeclareWar(a.Id, b.Id, sim.Clock.Tick));
+            Assert.AreEqual(Stance.War, fs.StanceBetween(a.Id, b.Id));
+            Run(sim, SimClock.DaysPerYear * 3);
+            Assert.Greater(a.BattlesWon + a.BattlesLost, 0, "no battle was fought in three years of war");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void DestroyedSectLeavesNoDanglingState()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var fs = sim.Factions;
+            Settlement sect = null;
+            foreach (var s in sim.Settlements.All)
+                if (s.Sect) { sect = s; break; }
+            // Drown the whole sect: the faction must go with it, land and quarrels included.
+            sim.Enqueue(new PaintTerrainCommand(sect.X, sect.Y, 30, Terrain.DeepOcean));
+            Run(sim, SimClock.DaysPerYear * 2);
+            Assert.IsFalse(fs.Get(sect.Id).Alive);
+            for (int t = 0; t < fs.TileOwner.Length; t++) Assert.AreNotEqual(sect.Id + 1, fs.TileOwner[t]);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
     }
 }

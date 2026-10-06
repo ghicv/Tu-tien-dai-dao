@@ -82,6 +82,37 @@ namespace ThienDao.Sim
                 float total = sim.Wildlife.Total(kind);
                 if (float.IsNaN(total) || total < 0f) errors.Add($"wildlife {kind} total is {total}");
             }
+
+            // Thế lực: every living sect is a living faction and the other way round; land and wars only among the living.
+            var fs = sim.Factions;
+            int aliveFactions = 0;
+            foreach (var f in fs.All)
+            {
+                var s = st.All[f.Id];
+                if (f.Alive)
+                {
+                    aliveFactions++;
+                    if (!s.Alive || !s.Sect) errors.Add($"faction {f.Id} alive but its seat {s.Name} is not a living sect");
+                    if (float.IsNaN(f.Treasury) || f.Treasury < 0f) errors.Add($"faction {s.BaseName} treasury {f.Treasury}");
+                }
+            }
+            if (aliveFactions != fs.AliveCount) errors.Add($"faction count {fs.AliveCount} != {aliveFactions}");
+            foreach (var s in st.All)
+                if (s.Alive && s.Sect && (fs.Get(s.Id) == null || !fs.Get(s.Id).Alive)) errors.Add($"sect {s.Name} has no living faction");
+            for (int t = 0; t < fs.TileOwner.Length; t++)
+            {
+                int o = fs.TileOwner[t];
+                if (o != 0 && (fs.Get(o - 1) == null || !fs.Get(o - 1).Alive)) errors.Add($"territory tile {t} held by dead faction {o - 1}");
+            }
+            foreach (var r in fs.Relations)
+            {
+                if (fs.Get(r.A) == null || !fs.Get(r.A).Alive || fs.Get(r.B) == null || !fs.Get(r.B).Alive)
+                    errors.Add($"relation {r.A}-{r.B} involves a dead faction");
+                if (float.IsNaN(r.Opinion) || r.Opinion < -100f || r.Opinion > 100f) errors.Add($"relation {r.A}-{r.B} opinion {r.Opinion}");
+            }
+            foreach (var c in cs.All)
+                if (c.Alive && c.SectId >= 0 && (fs.Get(c.SectId) == null || !fs.Get(c.SectId).Alive))
+                    errors.Add($"cultivator {c.Name} belongs to a dead faction");
             return errors;
         }
     }

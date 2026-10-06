@@ -45,7 +45,7 @@ namespace ThienDao.UI
 
         // windows
         RectTransform _windowStack;
-        Window _ranking, _events, _stats;
+        Window _ranking, _events, _stats, _powers;
         float _slowRefresh;
         readonly List<Cultivator> _rank = new List<Cultivator>();
 
@@ -384,7 +384,7 @@ namespace ThienDao.UI
         void BuildWindows()
         {
             var buttons = Ui.Node("WindowButtons", _root);
-            Ui.Place(buttons, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -12f), new Vector2(200f, 60f));
+            Ui.Place(buttons, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -12f), new Vector2(260f, 60f));
             Row(buttons, 6).childAlignment = TextAnchor.MiddleRight;
 
             _windowStack = Ui.Node("Windows", _root);
@@ -395,6 +395,8 @@ namespace ThienDao.UI
             _ranking = MakeWindow("Bảng cường giả");
             _events = MakeWindow("Sự kiện");
             _stats = MakeWindow("Thống kê");
+            _powers = MakeWindow("Thế lực");
+            AddWindowButton(buttons, Icons.Banner, "Thế lực: tông môn, lãnh thổ, chiến tranh", _powers);
             AddWindowButton(buttons, Icons.Crown, "Bảng cường giả", _ranking);
             AddWindowButton(buttons, Icons.Scroll, "Sự kiện thế giới", _events);
             AddWindowButton(buttons, Icons.Chart, "Thống kê", _stats);
@@ -506,6 +508,7 @@ namespace ThienDao.UI
                 _slowRefresh = 0.25f;
                 if (_ranking.Open) _ranking.Body.text = RankingText();
                 if (_events.Open) _events.Body.text = EventsText();
+                if (_powers.Open) _powers.Body.text = PowersText();
             }
             if (_stats.Open) _stats.Body.text = StatsText();
 
@@ -565,6 +568,61 @@ namespace ThienDao.UI
             return sb.ToString().TrimEnd();
         }
 
+        readonly List<Faction> _powerRank = new List<Faction>();
+        readonly List<BattleInfo> _battleInfo = new List<BattleInfo>();
+        readonly List<Relation> _rels = new List<Relation>();
+
+        static string Hex(Color32 c) => $"#{c.r:X2}{c.g:X2}{c.b:X2}";
+
+        string PowersText()
+        {
+            var sim = _game.Sim;
+            var fs = sim.Factions;
+            _powerRank.Clear();
+            foreach (var f in fs.All)
+                if (f.Alive) _powerRank.Add(f);
+            _powerRank.Sort((a, b) => b.Power != a.Power ? b.Power.CompareTo(a.Power) : a.Id.CompareTo(b.Id));
+            var sb = new StringBuilder();
+            sb.Append($"<color=#8890a8>{fs.AliveCount} thế lực · {fs.WarCount} cuộc chiến đang diễn ra</color>\n");
+            for (int k = 0; k < Mathf.Min(7, _powerRank.Count); k++)
+            {
+                var f = _powerRank[k];
+                var master = sim.Cultivation.MasterOf(f.Id);
+                sb.Append($"<color={Hex(f.Color)}>■</color> <color=#ffd873>{fs.NameOf(f.Id)}</color>{(f.Demonic ? " <color=#ff7070>ma</color>" : "")}" +
+                          $" · {f.Members} tu sĩ" + (master != null ? $" · {Realms.Names[(int)master.Realm]}" : "") + "\n");
+                sb.Append($"   <color=#b8bccc>{f.Tiles} vùng · {f.LeyTiles} linh mạch · {f.Treasury:N0} linh thạch</color>\n");
+                string ties = TiesText(f.Id, 1);
+                if (ties.Length > 0) sb.Append($"   {ties}\n");
+            }
+            return sb.ToString().TrimEnd();
+        }
+
+        // "Chiến: A, B · Minh: C" for one faction; at most `max` names per group.
+        string TiesText(int id, int max)
+        {
+            var fs = _game.Sim.Factions;
+            fs.RelationsOf(id, _rels);
+            var war = new StringBuilder();
+            var ally = new StringBuilder();
+            var foe = new StringBuilder();
+            int nw = 0, na = 0, nf = 0;
+            foreach (var r in _rels)
+            {
+                string name = fs.NameOf(r.Other(id));
+                switch (r.Stance)
+                {
+                    case Stance.War: if (nw++ < max) war.Append(nw > 1 ? ", " : "").Append(name); break;
+                    case Stance.Allied: if (na++ < max) ally.Append(na > 1 ? ", " : "").Append(name); break;
+                    case Stance.Hostile: if (nf++ < max) foe.Append(nf > 1 ? ", " : "").Append(name); break;
+                }
+            }
+            var sb = new StringBuilder();
+            if (nw > 0) sb.Append($"<color=#ff7070>Chiến: {war}{(nw > max ? $" +{nw - max}" : "")}</color>");
+            if (na > 0) sb.Append(sb.Length > 0 ? " · " : "").Append($"<color=#9fe0a0>Minh: {ally}{(na > max ? $" +{na - max}" : "")}</color>");
+            if (nf > 0) sb.Append(sb.Length > 0 ? " · " : "").Append($"<color=#e0a070>Thù: {foe}{(nf > max ? $" +{nf - max}" : "")}</color>");
+            return sb.ToString();
+        }
+
         string EventsText()
         {
             var events = _game.Sim.Events.Recent;
@@ -590,6 +648,8 @@ namespace ThienDao.UI
             var sb = new StringBuilder();
             sb.Append($"Phàm nhân {sim.Settlements.TotalPopulation:N0} · {sim.Settlements.AliveCount} làng · {sim.Settlements.MigrantGroups} đoàn di dân\n");
             sb.Append($"Tu sĩ {sim.Cultivation.AliveCount}: Luyện Khí {cr[1]} · Trúc Cơ {cr[2]} · Kết Đan {cr[3]} · Nguyên Anh {cr[4]} · Hóa Thần {cr[5]}\n");
+            sb.Append($"Thế lực {sim.Factions.AliveCount} · {sim.Factions.WarCount} cuộc chiến · lập tông {sim.Events.CountByKind[(int)EventKind.Founding]} · " +
+                      $"ly khai {sim.Events.CountByKind[(int)EventKind.Schism]} · diệt môn {sim.Events.CountByKind[(int)EventKind.Destruction]}\n");
             sb.Append($"Hoang dã: Hươu {wild.Total(Species.Deer):N0} · Thỏ {wild.Total(Species.Rabbit):N0} · Sói {wild.Total(Species.Wolf):N0}\n");
 
             int hx = _game.HoverX, hy = _game.HoverY;
@@ -689,6 +749,22 @@ namespace ThienDao.UI
                 var master = sim.Cultivation.MasterOf(s.Id);
                 body.Append($"\n\n<color=#ffd873>Tông môn</color>{(master != null ? $" · tông chủ {master.Title} ({master.RealmText})" : "")}\n");
                 body.Append($"Luyện Khí {count[1]} · Trúc Cơ {count[2]} · Kết Đan {count[3]} · Nguyên Anh {count[4]} · Hóa Thần {count[5]}");
+                var f = sim.Factions.Get(s.Id);
+                if (f != null && f.Alive)
+                {
+                    body.Append($"\n\n<color={Hex(f.Color)}>■</color> <color=#ffd873>Thế lực</color> {(f.Demonic ? "<color=#ff7070>ma đạo</color>" : "chính đạo")}" +
+                                (f.ParentId >= 0 ? $" · tách từ {sim.Factions.NameOf(f.ParentId)}" : "") +
+                                (f.FounderName != null ? $" · khai sơn: {f.FounderName}" : "") + "\n");
+                    body.Append($"{f.Tiles} vùng lãnh thổ, {f.LeyTiles} linh mạch · {f.Treasury:N0} linh thạch (+{f.LastIncome:0}/năm)\n");
+                    body.Append($"Thực lực {f.Power:N0} · trận thắng {f.BattlesWon}, thua {f.BattlesLost} · tử trận {f.Fallen}");
+                    string ties = TiesText(f.Id, 3);
+                    if (ties.Length > 0) body.Append('\n').Append(ties);
+                }
+            }
+            else if (s.Alive)
+            {
+                var protector = sim.Factions.ProtectorOf(s.X, s.Y);
+                if (protector != null) body.Append($"\nDưới sự che chở của {protector.BaseName} (nộp cống linh thạch, tiến cử đệ tử)");
             }
             _cardBody.text = body.ToString();
             _cardBar1Root.gameObject.SetActive(false);
@@ -780,6 +856,11 @@ namespace ThienDao.UI
             var owner = sim.Settlements.Owning(i);
             if (owner != null && owner.Alive)
                 sb.Append(terrain == Terrain.Farmland ? $"Ruộng của {owner.Name}\n" : $"Đất của {owner.Name}\n");
+            var realm = sim.Factions.OwnerAt(x, y);
+            int tile = sim.Factions.TileOf(x, y);
+            sb.Append(realm != null
+                ? $"Lãnh thổ <color={Hex(realm.Color)}>{sim.Factions.NameOf(realm.Id)}</color>{(sim.Factions.IsLeyTile(tile) ? " · vùng có linh mạch" : "")}\n"
+                : $"Vô chủ{(sim.Factions.IsLeyTile(tile) ? " · vùng có linh mạch chưa ai chiếm" : "")}\n");
             int region = sim.Wildlife.RegionOf(x, y);
             sb.Append($"<color=#8890a8>Vùng thú: hươu {sim.Wildlife.At(Species.Deer, region):0} · thỏ {sim.Wildlife.At(Species.Rabbit, region):0} · sói {sim.Wildlife.At(Species.Wolf, region):0}</color>");
         }
@@ -813,8 +894,15 @@ namespace ThienDao.UI
                 foreach (var s in sim.Settlements.All)
                 {
                     if (!s.Alive) continue;
-                    PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 5f, 0f), $"{s.Name} ({s.Population})", Ui.Ink, 20);
+                    var f = s.Sect ? sim.Factions.Get(s.Id) : null;
+                    // Sects in a light tint of their colour; mortal villages in plain ink.
+                    var color = f != null ? Color.Lerp(f.Color, Color.white, 0.45f) : Ui.Ink;
+                    PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 5f, 0f), $"{s.Name} ({s.Population})", color, 20);
                 }
+                sim.Factions.ActiveBattles(_battleInfo);
+                foreach (var b in _battleInfo)
+                    PlaceLabel(ref used, cam, new Vector3(b.X, b.Y + 3.5f, 0f),
+                        $"Chiến trường: {sim.Factions.NameOf(b.Attacker)} – {sim.Factions.NameOf(b.Defender)}", new Color(1f, 0.45f, 0.4f), 18);
                 var e = sim.Entities;
                 foreach (var c in sim.Cultivation.All)
                 {

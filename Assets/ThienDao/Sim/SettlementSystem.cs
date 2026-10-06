@@ -131,8 +131,21 @@ namespace ThienDao.Sim
         }
 
         // The village a house or sect hall belongs to, if any.
-        public Settlement OwnerOfObject(int objectId) =>
-            _houseOwner.TryGetValue(objectId, out int id) && id >= 0 && id < All.Count ? All[id] : null;
+        public Settlement OwnerOfObject(int objectId)
+        {
+            if (_houseOwner.TryGetValue(objectId, out int id) && id >= 0 && id < All.Count) return All[id];
+            if (!_w.Objects.IsAlive(objectId) || _w.Objects.Get(objectId).Type != ObjectType.SectHall) return null;
+            foreach (var s in All) // a sect hall stands centred on its sect
+                if (s.Alive && s.Sect && HallOf(s) == objectId) return s;
+            return null;
+        }
+
+        public int HallOf(Settlement s)
+        {
+            if (!_w.InBounds(s.X, s.Y)) return -1;
+            int obj = _w.Objects.CellObject[_w.Idx(s.X, s.Y)];
+            return obj >= 0 && _w.Objects.Get(obj).Type == ObjectType.SectHall ? obj : -1;
+        }
 
         // Read-only view of a travelling migrant group, for the inspector.
         public bool MigrantInfo(int entity, out Settlement from, out int people, out float food)
@@ -169,12 +182,12 @@ namespace ThienDao.Sim
 
         // ---------------------------------------------------------------- lifecycle
 
-        Settlement Create(int x, int y, byte roof, bool sect, long tick, ref DetRandom rng)
+        Settlement Create(int x, int y, byte roof, bool sect, long tick, ref DetRandom rng, string name = null)
         {
             var s = new Settlement
             {
                 Id = All.Count,
-                BaseName = sect ? _sectNames.Next(ref rng) : _placeNames.Next(ref rng),
+                BaseName = name ?? (sect ? _sectNames.Next(ref rng) : _placeNames.Next(ref rng)),
                 X = x,
                 Y = y,
                 Roof = roof,
@@ -204,7 +217,11 @@ namespace ThienDao.Sim
         {
             s.Alive = false;
             AliveCount--;
-            if (s.Sect) _sim.Cultivation.DisbandSect(s.Id, _sim.Clock.Tick); // its hall stays behind as a ruin
+            if (s.Sect)
+            {
+                _sim.Factions?.SectGone(s.Id, _sim.Clock.Tick);
+                _sim.Cultivation.DisbandSect(s.Id, _sim.Clock.Tick); // its hall stays behind as a ruin
+            }
             for (int k = s.Houses.Count - 1; k >= 0; k--) _w.Objects.Remove(s.Houses[k]);
             ReleaseFarmland(s, s.Farms.Count);
         }
@@ -219,6 +236,88 @@ namespace ThienDao.Sim
             for (int k = 0; k < 3; k++) TryBuildHouse(s, ref rng);
             ClaimFarmland(s, (int)(s.Workers * CellsPerWorker));
             return s;
+        }
+
+        // ---------------------------------------------------------------- sects (thế lực)
+
+        // Room for a sect: buildable, unclaimed ground for the 5×5 hall, clear of other settlements.
+        public bool CanFoundSectAt(int x, int y)
+        {
+            if (x < 10 || y < 10 || x >= _w.W - 10 || y >= _w.H - 10 || !CanSettleAt(x, y)) return false;
+            if (AliveCount >= MaxSettlements || TooCloseToOthers(x, y, null, 24)) return false;
+            for (int yy = y - 2; yy <= y + 2; yy++)
+            for (int xx = x - 2; xx <= x + 2; xx++)
+            {
+                int i = _w.Idx(xx, yy);
+                if (_w.Owner[i] != 0 || !ObjectInfo.CanStandOn(ObjectType.SectHall, _w.Terrain[i])) return false;
+                int obj = _w.Objects.CellObject[i];
+                if (obj >= 0 && ObjectInfo.IsBuilding(_w.Objects.Get(obj).Type)) return false;
+            }
+            return true;
+        }
+
+        // A name no settlement has carried yet, true to the founder's path.
+        public string NewSectName(bool demonic, ref DetRandom rng)
+        {
+            var free = new List<string>();
+            foreach (var n in demonic ? Lore.DemonicSects : Lore.RighteousSects)
+                if (!NameTaken(n)) free.Add(n);
+            foreach (var n in Lore.Sects)
+                if (Lore.IsDemonicSect(n) == demonic && !NameTaken(n) && !free.Contains(n)) free.Add(n);
+            if (free.Count > 0) return free[rng.Range(0, free.Count)];
+            for (int k = 0; k < 30; k++)
+            {
+                string g = Lore.GeneratedSectName(ref rng);
+                if (!NameTaken(g)) return g;
+            }
+            return Lore.GeneratedSectName(ref rng) + " " + All.Count;
+        }
+
+        bool NameTaken(string name)
+        {
+            foreach (var s in All)
+                if (s.BaseName == name) return true;
+            return false;
+        }
+
+        // A new sect town: the hall, a couple of houses, and servants drawn from the nearest village.
+        public Settlement FoundSect(int x, int y, string name, long tick)
+        {
+            if (!CanFoundSectAt(x, y)) return null;
+            var rng = RngFor(tick, 400000 + x * 4099 + y);
+            var s = Create(x, y, (byte)rng.Range(0, 4), true, tick, ref rng, name);
+            PlaceSectHall(s, ref rng);
+            var host = NearestAlive(x, y, s);
+            int want = rng.Range(8, 16);
+            if (host != null && !host.Sect && (host.X - x) * (host.X - x) + (host.Y - y) * (host.Y - y) < 140 * 140 && host.Population > want + 20)
+            {
+                for (int b = 3; b <= 8 && want > 0; b++)
+                {
+                    int n = Mathf.Min(want, host.Cohorts[b] / 3);
+                    host.Cohorts[b] -= n;
+                    s.Cohorts[b] += n;
+                    want -= n;
+                }
+                s.ParentId = host.Id;
+            }
+            if (s.Population < 6) DistributeInitial(s, 6, ref rng);
+            s.Food = s.Population * 6f;
+            TryBuildHouse(s, ref rng);
+            TryBuildHouse(s, ref rng);
+            ClaimFarmland(s, (int)(s.Workers * CellsPerWorker));
+            return s;
+        }
+
+        // Diệt môn: the hall burns, the cultivators are gone, the servants stay on as an ordinary village.
+        public void ConvertSectToVillage(Settlement s, long tick)
+        {
+            if (!s.Sect) return;
+            int hall = HallOf(s);
+            if (hall >= 0) _w.Objects.Remove(hall);
+            _sim.Cultivation.DisbandSect(s.Id, tick);
+            s.Sect = false;
+            var rng = RngFor(tick, 600000 + s.Id);
+            s.BaseName = _placeNames.Next(ref rng);
         }
 
         // ---------------------------------------------------------------- monthly / yearly

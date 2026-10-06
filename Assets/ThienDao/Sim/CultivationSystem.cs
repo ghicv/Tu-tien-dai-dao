@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ThienDao.Sim
 {
-    public enum Trip : byte { None, Relocate, Excursion, Return }
+    public enum Trip : byte { None, Relocate, Excursion, Return, Battle }
     public enum Outing : byte { Sightseeing, Training, HerbHunting }
 
     public sealed class Cultivator
@@ -19,6 +19,7 @@ namespace ThienDao.Sim
         public float Comprehension; // ngộ tính 0..1
         public float Luck;          // khí vận 0..1
         public float DaoHeart;      // tâm cảnh 0..1
+        public float Ambition;      // dã tâm 0..1: founding sects, breaking away
         public Realm Realm;
         public int Stage;
         public float Progress;
@@ -38,7 +39,10 @@ namespace ThienDao.Sim
 
         public float AgeYears(long tick) => (tick - BirthTick) / (float)SimClock.DaysPerYear;
 
+        public bool AtWar;          // flying to or standing on a battlefield
+
         public string Activity =>
+            AtWar ? "đang xuất chiến" :
             Trip == Trip.Relocate ? "đang đi tìm động phủ mới" :
             Trip == Trip.Return ? "đang trở về" :
             Trip == Trip.Excursion || Away ? OutingNames[(int)Outing] : "đang bế quan";
@@ -93,7 +97,12 @@ namespace ThienDao.Sim
 
         readonly Dictionary<int, Cultivator> _masters = new Dictionary<int, Cultivator>(); // sect id → tông chủ
 
+        readonly Dictionary<int, long> _successionTick = new Dictionary<int, long>();
+
         public Cultivator MasterOf(int sectId) => _masters.TryGetValue(sectId, out var m) && m.Alive ? m : null;
+
+        // When the sect last changed hands (long.MinValue if never); a fresh, contested succession breeds schism.
+        public long LastSuccession(int sectId) => _successionTick.TryGetValue(sectId, out long t) ? t : long.MinValue;
 
         // Tông chủ is the strongest living member; other Kết Đan+ are elders.
         public string Role(Cultivator c)
@@ -117,6 +126,7 @@ namespace ThienDao.Sim
                 var old = MasterOf(kv.Key);
                 if (old == kv.Value) continue;
                 _masters[kv.Key] = kv.Value;
+                if (old != null) _successionTick[kv.Key] = tick;
                 if (old != null || tick > 0)
                     _sim.Events.Add(tick, EventKind.Succession, kv.Value.Realm >= Realm.KetDan ? 2 : 1,
                         $"{kv.Value.Title} trở thành tông chủ {SectName(kv.Value)}.");
@@ -169,6 +179,7 @@ namespace ThienDao.Sim
                 Comprehension = rng.NextFloat(),
                 Luck = rng.NextFloat(),
                 DaoHeart = rng.Range(0.4f, 0.8f),
+                Ambition = rng.NextFloat(),
                 Realm = realm,
                 Stage = stage,
                 SectId = sectId
@@ -307,7 +318,8 @@ namespace ThienDao.Sim
             // Talent helps in proportion to how hard the gate is.
             float baseChance = Realms.BreakChance[(int)next];
             float chance = baseChance * (1f + c.Comprehension * 0.8f + c.DaoHeart * 0.4f + c.Luck * 0.4f);
-            bool pill = next == Realm.TrucCo && c.SectId >= 0 && rng.NextFloat() < 0.5f;
+            // The sect buys Trúc Cơ Đan with its linh thạch; a poor sect's disciples go without.
+            bool pill = next == Realm.TrucCo && c.SectId >= 0 && _sim.Factions != null && _sim.Factions.TrySpend(c.SectId, FactionSystem.PillCost);
             if (pill) chance += 0.25f;
             if (desperate) chance *= 0.6f;
 
@@ -409,7 +421,8 @@ namespace ThienDao.Sim
                 for (int k = 0; k < awakened; k++)
                 {
                     if (!_sim.Settlements.TakeChild(s)) break;
-                    var sect = NearestSect(s.X, s.Y);
+                    // The sect whose land the village lies in takes its gifted children first.
+                    var sect = _sim.Factions?.ProtectorOf(s.X, s.Y) ?? NearestSect(s.X, s.Y);
                     var c = Create(ref rng, Realm.LuyenKhi, 0, 10f, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick);
                     c.Progress = 0f;
                     if (sect != null) Recruit(c, sect, ref rng);
@@ -472,6 +485,7 @@ namespace ThienDao.Sim
         {
             c.Travelling = true;
             c.Trip = trip;
+            c.AtWar = trip == Trip.Battle;
             if (trip != Trip.Excursion) c.Away = false;
             _e.Flying[c.Entity] = c.Realm >= Realm.TrucCo; // từ Trúc Cơ: ngự kiếm phi hành
             _e.TX[c.Entity] = x;
@@ -511,6 +525,9 @@ namespace ThienDao.Sim
                     c.Away = true;
                     c.StayUntil = tick + rng.Range(20, 90);
                     OutingReward(c, tick, ref rng);
+                    break;
+                case Trip.Battle:
+                    c.Away = true; // holds the field until the battle is decided (StayUntil is a safety net)
                     break;
                 default:
                     c.Away = false;
@@ -641,6 +658,36 @@ namespace ThienDao.Sim
             }
         }
 
+        // ---------------------------------------------------------------- thế lực (driven by FactionSystem)
+
+        public void SendToBattle(Cultivator c, float x, float y, long holdUntil)
+        {
+            c.StayUntil = holdUntil;
+            SendTo(c, x, y, Trip.Battle);
+        }
+
+        public void ReturnHome(Cultivator c)
+        {
+            if (!c.Alive) return;
+            if (c.Travelling || c.Away) SendTo(c, c.HomeX, c.HomeY, Trip.Return);
+            c.AtWar = false;
+        }
+
+        public void KillInBattle(Cultivator c, long tick, string text, int importance) => Die(c, tick, text, importance, Fx.Explosion);
+
+        // Joins (or changes to) a sect; the sect becomes home and they head there.
+        public void JoinSect(Cultivator c, Settlement sect, long tick)
+        {
+            c.SectId = sect.Id;
+            var rng = RngFor(tick, 800000 + c.Index);
+            Recruit(c, sect, ref rng);
+        }
+
+        public void LeaveSect(Cultivator c) => c.SectId = -1;
+
+        // The founder heads a new sect from day one (no succession event).
+        public void SetMaster(int sectId, Cultivator c) => _masters[sectId] = c;
+
         // ---------------------------------------------------------------- Thiên Đạo
 
         public Cultivator GrantRoot(int x, int y, long tick)
@@ -691,6 +738,7 @@ namespace ThienDao.Sim
                                      (c.Away ? 1 << 18 : 0) | ((int)c.Trip << 20) | ((long)c.StayUntil << 24));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Progress));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.DaoHeart));
+                StateHash.Add(ref h, c.SectId | (c.AtWar ? 1L << 32 : 0));
             }
         }
     }

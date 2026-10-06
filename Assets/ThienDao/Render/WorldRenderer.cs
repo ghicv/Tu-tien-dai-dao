@@ -36,6 +36,7 @@ namespace ThienDao.Render
 
         WorldData _world;
         QiSystem _qi;
+        FactionSystem _factions;
         ForageSystem _forage;
         Color _tint = Color.white;
         int _chunksX, _chunksY;
@@ -73,6 +74,8 @@ namespace ThienDao.Render
             _world = world;
             _qi = sim.Qi;
             _forage = sim.Forage;
+            _factions = sim.Factions;
+            _factions.TerritoryChanged += HandleTerritoryChanged;
             _world.Objects.Added += OnObjectAdded;
             _world.Objects.Removed += OnObjectRemoved;
             _world.TerrainChanged += HandleTerrainChanged;
@@ -124,6 +127,7 @@ namespace ThienDao.Render
                 _world.QiCapChanged -= HandleQiCapChanged;
             }
             if (_qi != null) _qi.Changed -= HandleQiChanged;
+            if (_factions != null) _factions.TerritoryChanged -= HandleTerritoryChanged;
             if (_chunks != null)
                 foreach (var ch in _chunks) ReleaseTexture(ch);
             if (_chunkRoot != null) Destroy(_chunkRoot.gameObject);
@@ -411,6 +415,11 @@ namespace ThienDao.Render
             if (Overlay == OverlayMode.Qi) _overlayDirty = true;
         }
 
+        void HandleTerritoryChanged()
+        {
+            if (Overlay == OverlayMode.Territory) _overlayDirty = true;
+        }
+
         // Seasonal colour grade, multiplied onto every terrain renderer.
         public void SetTint(Color tint)
         {
@@ -615,10 +624,24 @@ namespace ThienDao.Render
                 }
                 case OverlayMode.Territory:
                 {
-                    int owner = _world.Owner[i];
-                    if (owner == 0) return default;
-                    uint hsh = Hash.U32((uint)owner * 0x9E3779B1u);
-                    return new Color32((byte)(80 + (hsh & 0x7F)), (byte)(80 + ((hsh >> 8) & 0x7F)), (byte)(80 + ((hsh >> 16) & 0x7F)), 150);
+                    // Sect lands in the sect's colour with a bright border; village fields and houses show through lighter.
+                    const int T = FactionSystem.Tile;
+                    var fs = _factions;
+                    int tile = (y / T) * fs.TW + x / T;
+                    int owner = fs.TileOwner[tile];
+                    bool village = _world.Owner[i] != 0;
+                    if (owner == 0) return village ? new Color32(235, 225, 190, 45) : default;
+                    var f = fs.Get(owner - 1);
+                    if (f == null) return default;
+                    var c = f.Color;
+                    int lx = x % T, ly = y % T;
+                    bool edge = (lx == 0 && (x == 0 || fs.TileOwner[tile - 1] != owner)) ||
+                                (lx == T - 1 && (x == _world.W - 1 || fs.TileOwner[tile + 1] != owner)) ||
+                                (ly == 0 && (y == 0 || fs.TileOwner[tile - fs.TW] != owner)) ||
+                                (ly == T - 1 && (y == _world.H - 1 || fs.TileOwner[tile + fs.TW] != owner));
+                    if (edge) return new Color32((byte)(c.r * 0.7f), (byte)(c.g * 0.7f), (byte)(c.b * 0.7f), 255);
+                    c.a = (byte)(village ? 190 : 140);
+                    return c;
                 }
                 default: return default;
             }

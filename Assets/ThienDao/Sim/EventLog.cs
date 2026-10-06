@@ -15,6 +15,14 @@ namespace ThienDao.Sim
         Fortune,        // cơ duyên: found herbs, treasures
         Disaster,       // plague, famine, flood, natural calamity
         Succession,     // a new tông chủ
+        Founding,       // khai tông lập phái
+        Schism,         // an elder breaks away or is driven out
+        War,            // tuyên chiến
+        Battle,
+        Peace,          // giảng hòa / đình chiến
+        Alliance,       // kết minh
+        Destruction,    // diệt môn
+        Patronage,      // a sect buys a tán tu as khách khanh
     }
 
     // Visual effect the renderer should play at the event's position.
@@ -46,7 +54,7 @@ namespace ThienDao.Sim
     {
         const int Capacity = 400;
         readonly List<WorldEvent> _events = new List<WorldEvent>();
-        public readonly int[] CountByKind = new int[16];
+        public readonly int[] CountByKind = new int[32];
 
         public IReadOnlyList<WorldEvent> Recent => _events;
         public long TotalAdded { get; private set; } // lets presentation pick up only what is new

@@ -303,6 +303,23 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Sect banner on a pole: the Thế lực window.
+        public static Sprite Banner => Glyph("banner", new[]
+        {
+            ".kk.........",
+            ".kskkkkkkk..",
+            ".ksrrrrrrrk.",
+            ".ksrryyrrrk.",
+            ".ksrryyyrrk.",
+            ".ksrrrryrrk.",
+            ".ksrrrrrrk..",
+            ".ksrrrrrk...",
+            ".kskkkkk....",
+            ".ks.........",
+            ".ks.........",
+            ".kk.........",
+        }, P);
+
         public static Sprite Scroll => Glyph("scroll", new[]
         {
             ".kkkkkkkkkk.",

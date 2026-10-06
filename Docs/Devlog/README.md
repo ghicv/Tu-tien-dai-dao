@@ -11,7 +11,8 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 04 | [04-m3-tu-tien.md](04-m3-tu-tien.md) | M3 — Tu tiên lõi, tu sĩ ra ngoài, popup nhân vật | `1ba8595` |
 | 05 | [05-m3-1-truong-hop-bien-va-hieu-ung.md](05-m3-1-truong-hop-bien-va-hieu-ung.md) | M3.1 — Nước nhấn chìm, bất biến, chaos test, hiệu ứng sét/nổ | `d1d0d8f` |
 | 06 | [06-ui-kieu-worldbox.md](06-ui-kieu-worldbox.md) | UI kiểu WorldBox — toolbar tab + icon, cửa sổ, thẻ nhân vật | `b86d936` |
-| 07 | [07-xem-moi-thu-va-highlight.md](07-xem-moi-thu-va-highlight.md) | Sửa click nhân vật; Xem mọi thứ (thú, vật thể, ô đất); highlight khi rê chuột | (commit này) |
+| 07 | [07-xem-moi-thu-va-highlight.md](07-xem-moi-thu-va-highlight.md) | Sửa click nhân vật; Xem mọi thứ (thú, vật thể, ô đất); highlight khi rê chuột | `9157b11` |
+| 08 | [08-m4-the-luc.md](08-m4-the-luc.md) | M4 — Thế lực: lãnh thổ, linh thạch, ngoại giao, chiến tranh, lập tông, ly khai | (commit M4) |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Sim/Lore.cs`).
