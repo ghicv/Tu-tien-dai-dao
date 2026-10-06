@@ -802,6 +802,11 @@ namespace ThienDao.UI
                 case Sim.Fx.Snow: return Snowflake;
                 case Sim.Fx.Storm: return Storm;
                 case Sim.Fx.Tribulation: return Tribulation;
+                case Sim.Fx.DuelKill:
+                case Sim.Fx.DuelFlee: return Sword;
+                case Sim.Fx.BeastSlain:
+                case Sim.Fx.BeastKill:
+                case Sim.Fx.BeastFlee: return Paw;
             }
             switch (kind)
             {
@@ -825,6 +830,9 @@ namespace ThienDao.UI
                 case Sim.EventKind.Patronage: return Banner;
                 case Sim.EventKind.Awakening: return Seed;
                 case Sim.EventKind.Fortune: return Gem;
+                case Sim.EventKind.Beast: return Paw;
+                case Sim.EventKind.Relic: return Book;
+                case Sim.EventKind.Era: return Globe;
                 default: return Scroll;
             }
         }
@@ -842,6 +850,23 @@ namespace ThienDao.UI
             ".kwkwwwwkwk.",
             ".kwwwwwwwwk.",
             ".kkkkkkkkkk.",
+            "............",
+        }, P);
+
+        // Linh thảo: a sprig of spirit herb.
+        public static Sprite Herb => Glyph("herb", new[]
+        {
+            "......g.....",
+            ".....ggk....",
+            "....gwgk.g..",
+            "..g.ggk.ggk.",
+            ".ggkgk.ggk..",
+            "..gggkggk...",
+            "....ggkk....",
+            ".....nk.....",
+            ".....nk.....",
+            "....nnk.....",
+            "............",
             "............",
         }, P);
 

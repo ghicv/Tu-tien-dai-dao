@@ -43,7 +43,8 @@ namespace ThienDao.Player
         Rain,
         Storm,
         Cold,
-        Annihilate
+        Annihilate,
+        SpawnBeast
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -55,7 +56,7 @@ namespace ThienDao.Player
             "Trồng cây", "Nhà dân", "Tông môn", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
             "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
             "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
-            "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn"
+            "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn", "Thả yêu thú"
         };
 
         readonly Simulation _sim;
@@ -97,7 +98,8 @@ namespace ThienDao.Player
 
         // Tools that act on one spot rather than painting an area.
         public static bool IsPointTool(BrushTool t) =>
-            t == BrushTool.Inspect || t == BrushTool.FoundVillage || t == BrushTool.SpawnDeer || t == BrushTool.SpawnRabbit || t == BrushTool.SpawnWolf;
+            t == BrushTool.Inspect || t == BrushTool.FoundVillage || t == BrushTool.SpawnDeer || t == BrushTool.SpawnRabbit || t == BrushTool.SpawnWolf ||
+            t == BrushTool.SpawnBeast;
 
         public static ObjectType BuildingFor(BrushTool t) => t == BrushTool.SectHall ? ObjectType.SectHall : ObjectType.House;
 
@@ -110,6 +112,11 @@ namespace ThienDao.Player
                 if (!pressedThisFrame) return;
                 var type = BuildingFor(Tool);
                 _sim.Enqueue(new PlaceBuildingCommand(type, cx, cy, (byte)_rng.Range(0, SpriteLibrary.VariantCount(type))));
+                return;
+            }
+            if (Tool == BrushTool.SpawnBeast)
+            {
+                if (pressedThisFrame) _sim.Enqueue(new SpawnBeastCommand(cx, cy, 3));
                 return;
             }
             if (Tool == BrushTool.FoundVillage)

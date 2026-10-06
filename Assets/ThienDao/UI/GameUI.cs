@@ -94,6 +94,7 @@ namespace ThienDao.UI
             { BrushTool.Storm, "Bão — cuồng phong quét theo một đường dài: cây đổ, nhà tốc mái, người chết (cọ to thì bão rộng)" },
             { BrushTool.Cold, "Rét — vài tháng tuyết phủ: mùa màng mất trắng, người già trẻ nhỏ chết cóng, cỏ héo" },
             { BrushTool.Annihilate, "Diệt môn — bấm vào một tông môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa" },
+            { BrushTool.SpawnBeast, "Thả yêu thú tam giai: nó chiếm lãnh địa, săn thú, tập kích làng; tu sĩ sẽ tới săn yêu đan" },
         };
 
         public bool PointerOverUI => _visible && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
@@ -212,13 +213,14 @@ namespace ThienDao.UI
         void BuildClock()
         {
             var panel = Ui.Panel(_root, "Clock");
-            Ui.Place(panel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(12f, -12f), new Vector2(456f, 150f));
+            Ui.Place(panel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(12f, -12f), new Vector2(520f, 150f));
             _seasonIcon = Ui.Icon(panel.rectTransform, Icons.Flower, 32f);
             Ui.Place(_seasonIcon.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -10f), new Vector2(32f, 32f));
             _seasonTip = _seasonIcon.gameObject.AddComponent<Tooltip>();
             _seasonIcon.raycastTarget = true;
-            _date = Ui.Label(panel.rectTransform, "", 26, TextAnchor.MiddleLeft, Ui.Gold);
-            Ui.Place(_date.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(54f, -10f), new Vector2(390f, 32f));
+            _date = Ui.Label(panel.rectTransform, "", 24, TextAnchor.MiddleLeft, Ui.Gold);
+            Ui.Place(_date.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(54f, -10f), new Vector2(456f, 32f));
+            _date.horizontalOverflow = HorizontalWrapMode.Overflow;
 
             var speeds = Ui.Node("Speeds", panel.rectTransform);
             Ui.Place(speeds, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(14f, -48f), new Vector2(300f, 48f));
@@ -241,7 +243,7 @@ namespace ThienDao.UI
 
             // Warnings, each an icon and a number, only while they matter.
             var alerts = Ui.Node("Alerts", _root);
-            Ui.Place(alerts, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -168f), new Vector2(440f, 32f));
+            Ui.Place(alerts, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -168f), new Vector2(520f, 32f));
             Row(alerts, 8).childAlignment = TextAnchor.MiddleLeft;
             for (int k = 0; k < _alerts.Length; k++) _alerts[k] = Ui.MakeChip(alerts, 72f);
 
@@ -254,14 +256,15 @@ namespace ThienDao.UI
         Image _seasonIcon;
         Tooltip _seasonTip;
         readonly Ui.Chip[] _hud = new Ui.Chip[6];
-        readonly Ui.Chip[] _alerts = new Ui.Chip[5];
+        readonly Ui.Chip[] _alerts = new Ui.Chip[6];
         static readonly string[] SeasonNames = { "Xuân", "Hạ", "Thu", "Đông" };
 
         void UpdateHud()
         {
             var sim = _game.Sim;
             var clock = sim.Clock;
-            _date.text = $"Năm {clock.Year} · tháng {clock.Month}";
+            var era = sim.Eras.Current;
+            _date.text = $"Năm {clock.Year} · tháng {clock.Month}" + (era != null ? $"  <size=17><color=#c8b8ff>{era.Name}</color></size>" : "");
             _seasonIcon.sprite = Icons.Season(clock.Season);
             _seasonTip.Text = $"Mùa {SeasonNames[(int)clock.Season]} · {clock.DateText}";
 
@@ -276,6 +279,10 @@ namespace ThienDao.UI
 
             var dis = sim.Disasters;
             int n = 0;
+            float cycle = sim.Eras.QiFactor(clock.Tick);
+            if (cycle < 0.85f || cycle > 1.15f)
+                _alerts[n++].Set(Icons.Orb, $"{cycle * 100f:0}%", $"Linh khí thiên địa đang ở {cycle * 100f:0}% ({(sim.Eras.Waxing(clock.Tick) ? "đang dâng" : "đang suy")}): " +
+                                 (cycle < 0.85f ? "mạt pháp, tu sĩ khó tiến cảnh" : "thời hoàng kim của người tu tiên"), cycle < 0.85f ? new Color(1f, 0.55f, 0.5f) : new Color(0.55f, 0.95f, 1f));
             if (dis.GreatCalamityActive)
                 _alerts[n++].Set(Icons.Eclipse, $"{dis.GreatCalamityYearsLeft(clock.Tick)} năm", "Đại kiếp: linh khí chỉ còn một nửa, thiên tai liên miên", new Color(1f, 0.5f, 0.4f));
             if (dis.DroughtCount > 0) _alerts[n++].Set(Icons.Sun, $"{dis.DroughtCount}", "Vùng đang hạn hán (lớp phủ Thiên tai để xem)", new Color(1f, 0.75f, 0.4f));
@@ -359,6 +366,7 @@ namespace ThienDao.UI
                     AddTool(BrushTool.SpawnDeer, Icons.Unit(Unit.Deer));
                     AddTool(BrushTool.SpawnRabbit, Icons.Unit(Unit.Rabbit));
                     AddTool(BrushTool.SpawnWolf, Icons.Unit(Unit.Wolf));
+                    AddTool(BrushTool.SpawnBeast, Icons.Unit(Unit.Beast));
                     AddTool(BrushTool.Erase, Icons.Erase);
                     break;
                 case 2:
@@ -670,7 +678,7 @@ namespace ThienDao.UI
 
         Image _cardPortrait;
         Text _cardSub, _cardBar1Text, _cardBar2Text;
-        readonly Ui.Chip[] _cardChips = new Ui.Chip[15];
+        readonly Ui.Chip[] _cardChips = new Ui.Chip[21];
         int _chipCount;
 
         void Chip(Sprite icon, string text, string tip, Color? color = null)
@@ -1118,7 +1126,7 @@ namespace ThienDao.UI
 
         // ---------------------------------------------------------------- stats window: the world in icons
 
-        readonly Ui.Chip[] _statChips = new Ui.Chip[21];
+        readonly Ui.Chip[] _statChips = new Ui.Chip[27];
 
         void BuildStatChips()
         {
@@ -1160,6 +1168,20 @@ namespace ThienDao.UI
             _statChips[k++].Set(Icons.Tribulation, $"{scars}", "Lôi địa");
             _statChips[k++].Set(Icons.Volcano, $"{volcanoes}", "Núi lửa");
             _statChips[k++].Set(Icons.Eclipse, $"{n[(int)EventKind.Calamity]}", "Thiên tai đã xảy ra");
+            int kings = 0, found = 0, open = 0;
+            foreach (var b in sim.Beasts.All)
+                if (b.Alive && b.IsKing) kings++;
+            foreach (var r in sim.Relics.All)
+            {
+                if (r.Open) open++;
+                if (r.Open && r.Discovered) found++;
+            }
+            _statChips[k++].Set(Icons.Unit(Unit.Beast), $"{sim.Beasts.AliveCount}", "Yêu thú");
+            _statChips[k++].Set(Icons.Crown, $"{kings}", "Yêu Vương (mỗi người một yêu tộc)");
+            _statChips[k++].Set(Icons.Book, $"{found}/{open}", "Bí cảnh đã lộ diện / còn chưa bị vét sạch");
+            _statChips[k++].Set(Icons.Unit(Unit.Caravan), $"{sim.Trade.CaravanCount}", $"Thương đội đang đi · đã giao {sim.Trade.Delivered:N0} chuyến");
+            _statChips[k++].Set(Icons.Tag, $"{sim.Trade.Roads:N0}", "Ô thương lộ (đường do thương đội đi mòn)");
+            _statChips[k++].Set(Icons.Orb, $"{sim.Eras.QiFactor(sim.Clock.Tick) * 100f:0}%", $"Linh khí thiên địa theo chu kỳ ({(sim.Eras.Waxing(sim.Clock.Tick) ? "đang dâng" : "đang suy")})");
             while (k < _statChips.Length) _statChips[k++].Hide();
         }
 
@@ -1202,11 +1224,12 @@ namespace ThienDao.UI
                 _cardTitle.text = InspectTitle(sel);
                 _cardSub.text = "";
                 _cardBody.text = InspectBody(sel);
-                _cardBody.gameObject.SetActive(true);
+                _cardBody.gameObject.SetActive(_cardBody.text.Length > 0);
+                if (sel.Kind == InspectKind.Beast) BeastChips(sim.Beasts.ForEntity(sel.Entity));
                 EndChips();
                 _cardBar1Root.gameObject.SetActive(false);
                 _cardBar2Root.gameObject.SetActive(false);
-                _followButton.Frame.gameObject.SetActive(sel.Kind == InspectKind.Migrants);
+                _followButton.Frame.gameObject.SetActive(sel.Kind == InspectKind.Migrants || sel.Kind == InspectKind.Beast || sel.Kind == InspectKind.Caravan);
                 ShowDivineButtons(false, false);
                 ShowRevive(false);
                 _watchButton.Frame.gameObject.SetActive(false);
@@ -1304,6 +1327,14 @@ namespace ThienDao.UI
                 if (sim.Disasters.IsInfected(s.Id)) Chip(Icons.Skull, "Ôn dịch", "Ôn dịch đang hoành hành", new Color(0.6f, 0.9f, 0.5f));
                 int drought = sim.Disasters.DroughtMonthsLeft(s.X, s.Y, sim.Clock.Tick);
                 if (drought >= 0) Chip(Icons.Sun, $"{drought} th", "Đại hạn, còn khoảng chừng ấy tháng", new Color(1f, 0.75f, 0.4f));
+                // The market: stock and price against the usual (red when dear).
+                var m = sim.Trade.MarketOf(s);
+                Color? Dear(Good g) => sim.Trade.PriceFactor(s, g) > 1.5f ? warn : sim.Trade.PriceFactor(s, g) < 0.7f ? new Color(0.6f, 0.95f, 0.6f) : (Color?)null;
+                Chip(Icons.Bowl, $"giá ×{sim.Trade.PriceFactor(s, Good.Food):0.0}", "Giá lương thực ở chợ so với bình thường", Dear(Good.Food));
+                Chip(Icons.Herb, $"{m.Herbs:0} · ×{sim.Trade.PriceFactor(s, Good.Herb):0.0}", "Linh thảo trong kho · giá so với bình thường", Dear(Good.Herb));
+                Chip(Icons.Pill, $"{m.Pills:0} · ×{sim.Trade.PriceFactor(s, Good.Pill):0.0}", "Đan dược trong kho · giá so với bình thường", Dear(Good.Pill));
+                if (m.CaravansSent + m.CaravansReceived > 0)
+                    Chip(Icons.Unit(Unit.Caravan), $"{m.CaravansSent}/{m.CaravansReceived}", "Thương đội đã gửi đi / đã nhận");
             }
             if (s.Sect)
             {
@@ -1349,6 +1380,20 @@ namespace ThienDao.UI
             if (_reviveButton.Frame.gameObject.activeSelf != on) _reviveButton.Frame.gameObject.SetActive(on);
         }
 
+        void BeastChips(Beast b)
+        {
+            if (b == null) return;
+            var sim = _game.Sim;
+            var red = new Color(1f, 0.55f, 0.5f);
+            _cardSub.text = b.IsKing ? $"Yêu Vương của {b.ClanName}" : b.Clan >= 0 ? $"Thuộc {sim.Beasts.KingOf(b).ClanName}" : "Yêu thú tự do";
+            Chip(Icons.Unit(Unit.Beast), b.GradeText, $"Giai {b.Grade} · sức mạnh ngang {Realms.Names[(b.Grade + 1) / 2]}", Ui.Gold);
+            Chip(Icons.Hourglass, $"{b.AgeYears(sim.Clock.Tick):0}/{b.LifespanYears}", "Tuổi / thọ nguyên");
+            Chip(Icons.Skull, $"{b.Kills}", "Số người đã giết", b.Kills > 0 ? red : (Color?)null);
+            Chip(Icons.Orb, $"{sim.Qi.SampleQi((int)b.HomeX, (int)b.HomeY):0}", "Linh khí nơi hang ổ (càng dày, lên giai càng nhanh)");
+            if (b.IsKing) Chip(Icons.Crown, $"{sim.Beasts.ClanSize(b)}", "Số yêu thú thuộc hạ", Ui.Gold);
+            if (b.Humanoid) Chip(Icons.Person, "Hóa hình", "Đã hóa thành hình người");
+        }
+
         static string RootShort(int roots)
         {
             string k = SpiritRoots.Kind(roots);
@@ -1361,6 +1406,8 @@ namespace ThienDao.UI
             switch (t.Kind)
             {
                 case InspectKind.Migrants: return Icons.Unit(Unit.Migrants);
+                case InspectKind.Beast: return Icons.Unit(Unit.Beast);
+                case InspectKind.Caravan: return Icons.Unit(Unit.Caravan);
                 case InspectKind.Animal:
                     var kind = WildlifeSystem.Kinds[t.Animal];
                     return Icons.Unit(kind == Species.Deer ? Unit.Deer : kind == Species.Rabbit ? Unit.Rabbit : Unit.Wolf);
@@ -1377,6 +1424,12 @@ namespace ThienDao.UI
             switch (t.Kind)
             {
                 case InspectKind.Migrants: return "Đoàn di dân";
+                case InspectKind.Beast:
+                {
+                    var b = _game.Sim.Beasts.ForEntity(t.Entity);
+                    return b != null ? b.Title : "Yêu thú đã chết";
+                }
+                case InspectKind.Caravan: return "Thương đội";
                 case InspectKind.Animal: return $"Đàn {SpeciesInfo.Names[(int)WildlifeSystem.Kinds[t.Animal]].ToLower()}";
                 case InspectKind.Object:
                     return w.Objects.IsAlive(t.ObjectId) ? ObjectInfo.Names[(int)w.Objects.Get(t.ObjectId).Type] : "Vật thể đã mất";
@@ -1392,6 +1445,22 @@ namespace ThienDao.UI
             var sb = new StringBuilder();
             switch (t.Kind)
             {
+                case InspectKind.Beast:
+                    if (sim.Beasts.ForEntity(t.Entity) == null) sb.Append("<color=#8890a8>Đã bị trảm sát hoặc chết già.</color>");
+                    break;
+                case InspectKind.Caravan:
+                {
+                    var c = sim.Trade.ForEntity(t.Entity);
+                    if (c == null)
+                    {
+                        sb.Append("<color=#8890a8>Thương đội đã tới nơi.</color>");
+                        break;
+                    }
+                    var all = sim.Settlements.All;
+                    sb.Append($"{all[c.From].Name} → {all[c.To].Name}\n");
+                    sb.Append($"Chở {c.Amount:0} {TradeSystem.GoodNames[(int)c.Good]} · đi được {(sim.Clock.Tick - c.Start) / (float)SimClock.DaysPerMonth:0} tháng");
+                    break;
+                }
                 case InspectKind.Migrants:
                     if (sim.Entities.Species[t.Entity] != Species.Migrants || !sim.Settlements.MigrantInfo(t.Entity, out var from, out int people, out float food))
                     {
@@ -1514,6 +1583,15 @@ namespace ThienDao.UI
                     if (l.Alive)
                         PlaceLabel(ref used, cam, new Vector3(l.X + 0.5f, l.Y + l.R + 1.5f, 0f), l.Name,
                             l.Kind == Landmark.Thunder ? new Color(0.8f, 0.68f, 1f) : new Color(1f, 0.6f, 0.4f), 18);
+                // Known bí cảnh, and the Yêu Vương with the name of their yêu tộc.
+                foreach (var r in sim.Relics.All)
+                    if (r.Discovered && r.Open)
+                        PlaceLabel(ref used, cam, new Vector3(r.X + 0.5f, r.Y + 1.5f, 0f), $"[{r.Name}]", new Color(0.55f, 0.95f, 0.85f), 17);
+                var ent = sim.Entities;
+                foreach (var b in sim.Beasts.All)
+                    if (b.Alive && (b.IsKing || b.Grade >= 5))
+                        PlaceLabel(ref used, cam, new Vector3(ent.X[b.Entity], ent.Y[b.Entity] + 2.4f, 0f),
+                            b.IsKing ? $"{b.ClanName} · {b.Name}" : $"{b.Name} · {b.GradeText}", new Color(1f, 0.5f, 0.45f), 17);
                 sim.Factions.ActiveBattles(_battleInfo);
                 foreach (var b in _battleInfo)
                     PlaceLabel(ref used, cam, new Vector3(b.X, b.Y + 3.5f, 0f),

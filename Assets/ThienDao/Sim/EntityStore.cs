@@ -11,16 +11,18 @@ namespace ThienDao.Sim
         Wolf,
         Migrants,   // a group of villagers travelling to found a new village
         Cultivator, // tu sĩ; the person's data lives in CultivationSystem
+        Beast,      // yêu thú (M7): an animal that opened its spirit; data in BeastSystem
+        Caravan,    // thương đội (M7): a trade caravan between two towns; data in TradeSystem
         Count
     }
 
     public static class SpeciesInfo
     {
-        public static readonly string[] Names = { "", "Hươu", "Thỏ", "Sói", "Đoàn di dân", "Tu sĩ" };
+        public static readonly string[] Names = { "", "Hươu", "Thỏ", "Sói", "Đoàn di dân", "Tu sĩ", "Yêu thú", "Thương đội" };
 
         // Index by (int)Species.
-        public static readonly float[] Speed = { 0f, 2f, 1.5f, 2.4f, 3f, 3f };   // cells per day on foot
-        public static readonly float[] HuntFood = { 0f, 8f, 2f, 4f, 0f, 0f };     // person-months of food per animal hunted
+        public static readonly float[] Speed = { 0f, 2f, 1.5f, 2.4f, 3f, 3f, 2.5f, 2.5f };   // cells per day on foot
+        public static readonly float[] HuntFood = { 0f, 8f, 2f, 4f, 0f, 0f, 0f, 0f };       // person-months of food per animal hunted
         public const float FlyingSpeed = 12f;                                     // ngự kiếm phi hành, cells per day
     }
 

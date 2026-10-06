@@ -460,6 +460,7 @@ namespace ThienDao.Sim
                 $"{(winner != null ? NameOf(winner.Id) + " công phá sơn môn, " : "")}{NameOf(loser.Id)} bị diệt môn!" +
                 (surrendered > 0 ? $" {surrendered} đệ tử quy hàng." : ""), hx, hy, Fx.Explosion, -1, -1, winner?.Id ?? -1, loser.Id);
             _sim.Stories?.OnFactionDestroyed(winner, loser, tick);
+            _sim.Relics?.OnSectDestroyed(s, NameOf(loser.Id), tick);
             SectGone(loser.Id, tick);
             _sim.Settlements.ConvertSectToVillage(s, tick);
             // The victor takes what lies within its reach.

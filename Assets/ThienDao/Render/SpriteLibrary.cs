@@ -95,17 +95,22 @@ namespace ThienDao.Render
         {
             Deer, Rabbit, Wolf, Villager0, Villager1, Villager2, Villager3, Migrants,
             CultivatorLK, CultivatorTC, CultivatorKD, CultivatorNA, CultivatorHT, CultivatorDemonic, FlyingSword, Aura,
+            Beast, Caravan,
             Count
         }
 
         public const int UnitFrames = 2;
         const int UnitSlot = 16;
-        static PixelSprite[] _units;     // index = unit * UnitFrames + frame
+        static PixelSprite[] _units;     // index = unit * UnitFrames + frame; then the same again as white silhouettes
         static Texture2D _unitAtlas;
         static Rect[] _unitUv;
 
+        static int UnitCount => (int)Unit.Count * UnitFrames;
+
         public static PixelSprite UnitSprite(Unit u, int frame) { EnsureUnits(); return _units[(int)u * UnitFrames + frame]; }
-        public static Rect UnitUv(Unit u, int frame) { EnsureUnits(); return _unitUv[(int)u * UnitFrames + frame]; }
+
+        // white: the sprite's body as a flat white silhouette (the hit flash drawn over a unit).
+        public static Rect UnitUv(Unit u, int frame, bool white = false) { EnsureUnits(); return _unitUv[(int)u * UnitFrames + frame + (white ? UnitCount : 0)]; }
 
         public static Texture2D UnitAtlas
         {
@@ -160,9 +165,78 @@ namespace ThienDao.Render
                 list[(int)Unit.CultivatorDemonic * UnitFrames + f] = Cultivator(f, C(70, 26, 36), C(214, 40, 52));
                 list[(int)Unit.FlyingSword * UnitFrames + f] = FlyingSword(f);
                 list[(int)Unit.Aura * UnitFrames + f] = Aura(f);
+                list[(int)Unit.Beast * UnitFrames + f] = Beast(f);
+                list[(int)Unit.Caravan * UnitFrames + f] = Caravan(f);
             }
-            _units = list;
+            // Every unit again as a white silhouette of its body (soft shadows left out).
+            var all = new PixelSprite[list.Length * 2];
+            for (int k = 0; k < list.Length; k++)
+            {
+                all[k] = list[k];
+                var src = list[k];
+                var px = new Color32[src.Px.Length];
+                for (int i = 0; i < px.Length; i++)
+                    if (src.Px[i].a == 255) px[i] = new Color32(255, 255, 255, 255);
+                all[list.Length + k] = new PixelSprite { W = src.W, H = src.H, OffX = src.OffX, OffY = src.OffY, Px = px, MapColor = src.MapColor };
+            }
+            _units = all;
             if (_unitUv == null) _ = UnitAtlas;
+        }
+
+        // Yêu thú: a big hunched beast, dark coat, glowing eyes and horns, bigger than any wolf.
+        static PixelSprite Beast(int frame)
+        {
+            var cv = new Canvas(16, 13);
+            var fur = C(92, 54, 70);
+            var furLight = C(140, 84, 102);
+            var leg = C(64, 36, 50);
+            int la = frame == 0 ? 2 : 3, lb = frame == 0 ? 10 : 9;
+            cv.Rect(la, 1, la + 1, 3, leg);
+            cv.Rect(lb, 1, lb + 1, 3, leg);
+            cv.Rect(2, 4, 11, 7, fur);              // body
+            cv.Rect(3, 7, 10, 8, furLight);         // hackles
+            cv.Rect(10, 5, 14, 9, fur);             // head
+            cv.Rect(13, 4, 15, 5, furLight);        // jaw
+            cv.Set(14, 4, C(240, 240, 230));        // fang
+            cv.Set(13, 8, C(255, 70, 50));          // eye
+            cv.Set(12, 10, C(230, 210, 150));       // horns
+            cv.Set(13, 11, C(230, 210, 150));
+            cv.Set(11, 10, C(230, 210, 150));
+            cv.Rect(0, 7, 1, 9, fur);               // tail
+            cv.Set(0, 10, furLight);
+            cv.Outline(0.4f);
+            cv.Shadow(7.5f, 0.8f, 6.5f, 1.1f);
+            return cv.ToSprite(0, 0, fur);
+        }
+
+        // Thương đội: a laden ox cart with bales and a pennant.
+        static PixelSprite Caravan(int frame)
+        {
+            var cv = new Canvas(16, 12);
+            var wood = C(150, 100, 60);
+            var bale = C(214, 170, 90);
+            var baleDark = C(176, 132, 64);
+            var wheel = C(80, 54, 34);
+            cv.Rect(1, 3, 10, 4, wood);
+            cv.Rect(2, 5, 5, 7, bale);
+            cv.Rect(6, 5, 9, 7, baleDark);
+            cv.Rect(3, 8, 8, 9, bale);
+            cv.Rect(1, 5, 1, 11, wood);             // pole
+            cv.Rect(2, 10, 3, 11, C(200, 50, 50));  // pennant
+            foreach (int wx in new[] { 3, 8 })
+            {
+                cv.Rect(wx - 1, 1, wx + 1, 2, wheel);
+                cv.Set(frame == 0 ? wx : wx - 1, 2, C(190, 150, 100));
+            }
+            var ox = C(120, 96, 80);                // the ox
+            cv.Rect(11, frame == 0 ? 1 : 2, 11, 2, C(70, 58, 46));
+            cv.Rect(14, frame == 0 ? 2 : 1, 14, 2, C(70, 58, 46));
+            cv.Rect(11, 3, 14, 5, ox);
+            cv.Rect(14, 5, 15, 6, ox);
+            cv.Set(15, 7, C(230, 220, 200));
+            cv.Outline(0.45f);
+            cv.Shadow(7.5f, 0.8f, 7f, 1f);
+            return cv.ToSprite(0, 0, bale);
         }
 
         static PixelSprite Deer(int frame)

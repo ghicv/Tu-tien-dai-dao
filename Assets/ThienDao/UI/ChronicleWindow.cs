@@ -140,6 +140,18 @@ namespace ThienDao.UI
             var sb = new StringBuilder();
             int now = HistoryLog.CenturyOf(sim.Clock.Tick);
             sb.Append($"<color=#8890a8>Năm {sim.Clock.Year} · {h.All.Count:N0} sự kiện được ghi vào sử sách · {sim.Stories.All.Count} truyền kỳ</color>\n\n");
+            // The ages of the world, newest first.
+            var eras = sim.Eras.All;
+            if (eras.Count > 0)
+            {
+                sb.Append("<size=24><color=#c8b8ff>Các thời đại</color></size>\n");
+                for (int k = eras.Count - 1; k >= 0 && k >= eras.Count - 8; k--)
+                {
+                    int to = k + 1 < eras.Count ? eras[k + 1].Year - 1 : sim.Clock.Year;
+                    sb.Append($"  <color=#8890a8>Năm {eras[k].Year}–{to}</color>  <color=#c8b8ff>{eras[k].Name}</color> <color=#b8bccc>— {eras[k].Reason}</color>\n");
+                }
+                sb.Append('\n');
+            }
             for (int c = now; c >= 0 && sb.Length < MaxChars; c--)
             {
                 int from = c * HistoryLog.YearsPerCentury + 1, to = Mathf.Min((c + 1) * HistoryLog.YearsPerCentury, sim.Clock.Year);

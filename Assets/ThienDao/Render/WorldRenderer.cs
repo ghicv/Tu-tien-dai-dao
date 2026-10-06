@@ -500,6 +500,8 @@ namespace ThienDao.Render
             f *= 0.97f + (Hash.U32(_world.Seed ^ 0x99u, x, y) & 255) / 255f * 0.06f;
             if (t == Terrain.Lava) f = 0.85f + (Hash.U32(_world.Seed ^ 0x1A7Au, x, y) & 255) / 255f * 0.35f; // glowing, crusted in patches
             var c = SpriteLibrary.Shade(TerrainInfo.Colors[(int)t], f);
+            // Thương lộ: packed earth where caravans have worn a road.
+            if ((_world.Zone[i] & ZoneFlags.Road) != 0 && TerrainInfo.IsLand(t)) c = Color32.Lerp(c, new Color32(186, 150, 104, 255), 0.6f);
             // Lôi địa: the ground keeps a violet sheen while lôi khí lingers.
             if ((_world.Zone[i] & ZoneFlags.Thunder) != 0) c = Color32.Lerp(c, new Color32(150, 112, 230, 255), 0.3f);
             return c;

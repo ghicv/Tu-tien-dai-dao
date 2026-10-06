@@ -85,6 +85,20 @@ namespace ThienDao.Sim
             "Cửu Tiêu Lôi Đài", "Ngũ Lôi Nhai", "Hắc Lôi Trạch", "Thanh Lôi Phong"
         };
 
+        // Yêu thú (M7): an epithet and the creature it grew from.
+        public static readonly string[] BeastEpithets =
+        {
+            "Xích Mục", "Bạch Mao", "Hắc Phong", "Kim Giác", "Huyết Nha", "Ngân Bối", "Thiết Trảo", "Thanh Lân", "Tử Văn", "Cuồng Phong",
+            "Liệt Diễm", "Hàn Sương", "Độc Giác", "Song Đầu", "Lôi Văn", "Âm Phong"
+        };
+        public static readonly string[] BeastFromWolf = { "Yêu Lang", "Huyết Lang", "Phong Lang", "Lang Vương" };
+        public static readonly string[] BeastFromDeer = { "Linh Lộc", "Giác Lộc", "Bạch Lộc" };
+        public static readonly string[] BeastFromRabbit = { "Ngọc Thố", "Nguyệt Thố", "Phong Thố" };
+        public static readonly string[] BeastClans = { "Vạn Yêu Cốc", "Bách Thú Lĩnh", "Yêu Lang Tộc", "Huyết Nguyệt Sơn", "Thanh Khâu", "Hắc Phong Động", "Thiên Yêu Lâm" };
+
+        // Bí cảnh (M7): what remains of the great dead, of fallen sects, of the land's own wonders.
+        public static readonly string[] NaturalTreasures = { "Vạn Niên Linh Nhũ", "Địa Hỏa Linh Tủy", "Lôi Linh Tinh Thạch", "Thiên Niên Hàn Ngọc", "Cửu Khúc Linh Sâm", "Long Huyết Thạch" };
+
         public static readonly string[] Volcanoes =
         {
             "Hỏa Diễm Sơn", "Xích Viêm Sơn", "Địa Hỏa Phong", "Liệt Dương Sơn", "Hỏa Long Lĩnh", "Chu Tước Phong",

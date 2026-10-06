@@ -360,7 +360,9 @@ namespace ThienDao.Sim
             float baseChance = Realms.BreakChance[(int)next] * _sim.Rules[Rule.Breakthrough];
             float chance = baseChance * (1f + c.Comprehension * 0.8f + c.DaoHeart * 0.4f + c.Luck * 0.4f);
             // The sect buys Trúc Cơ Đan with its linh thạch; a poor sect's disciples go without.
-            bool pill = next == Realm.TrucCo && c.SectId >= 0 && _sim.Factions != null && _sim.Factions.TrySpend(c.SectId, FactionSystem.PillCost);
+            // From the sect's own alchemists if they have one in store (TradeSystem), else bought with linh thạch.
+            bool pill = next == Realm.TrucCo && c.SectId >= 0 && _sim.Factions != null &&
+                        ((_sim.Trade != null && _sim.Trade.TakePill(c.SectId)) || _sim.Factions.TrySpend(c.SectId, FactionSystem.PillCost));
             if (pill) chance += 0.25f;
             // Their own pill for this gate, bought or found on the road.
             bool ownPill = c.Pills > 0;
@@ -561,11 +563,12 @@ namespace ThienDao.Sim
             // A legend's death is remembered at full weight.
             if (c.Legend) importance = Mathf.Max(importance, 3);
             _sim.Events.Add(tick, EventKind.Death, importance, text, x, y, fx, c.Index, killer?.Index ?? -1, c.SectId, killer?.SectId ?? -1);
+            _sim.Relics?.OnDeath(c, tick); // the cave they leave behind may become a bí cảnh
         }
 
         // Killed by another cultivator (duel, battle, vendetta): the killer is remembered.
         public void Slay(Cultivator victim, Cultivator killer, long tick, string text, int importance) =>
-            Die(victim, tick, text, importance, Fx.Explosion, killer);
+            Die(victim, tick, text, importance, killer != null ? Fx.DuelKill : Fx.Explosion, killer);
 
         // Killed by a calamity (beast tide, a stray bolt of someone else's tribulation).
         public void Perish(Cultivator c, long tick, string text, int importance, Fx fx)

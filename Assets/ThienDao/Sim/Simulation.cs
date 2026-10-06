@@ -39,11 +39,16 @@ namespace ThienDao.Sim
         public readonly StoryDetector Stories;
         public readonly ProtagonistAI Protagonists;
         public readonly DisasterSystem Disasters;
+        public readonly BeastSystem Beasts;
+        public readonly RelicSystem Relics;
+        public readonly TradeSystem Trade;
+        public readonly EraSystem Eras;
         public readonly WorldRules Rules = new WorldRules();
         public readonly EventLog Events = new EventLog();
 
-        // Share of its natural ceiling the world's qi settles toward: the Quy luật slider times any đại kiếp.
-        public float QiScale => Rules[Rule.WorldQi] * Disasters.QiFactor;
+        // Share of its natural ceiling the world's qi settles toward: the Quy luật slider, any đại kiếp, and the
+        // great cycle of the ages (mạt pháp ↔ linh khí phục tô).
+        public float QiScale => Rules[Rule.WorldQi] * Disasters.QiFactor * Eras.QiFactor(Clock.Tick);
         public readonly List<LoggedCommand> Log = new List<LoggedCommand>();
 
         readonly Queue<IWorldCommand> _pending = new Queue<IWorldCommand>();
@@ -72,6 +77,10 @@ namespace ThienDao.Sim
             Stories = new StoryDetector(this);
             Protagonists = new ProtagonistAI(this);
             Disasters = new DisasterSystem(this);
+            Beasts = new BeastSystem(this);
+            Relics = new RelicSystem(this);
+            Trade = new TradeSystem(this);
+            Eras = new EraSystem(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -100,7 +109,10 @@ namespace ThienDao.Sim
                 Settlements.MonthlyStep(tick);
                 Cultivation.MonthlyStep(tick);
                 Combat.MonthlyStep(tick);
+                Beasts.MonthlyStep(tick);
                 Protagonists.MonthlyStep(tick);
+                Relics.MonthlyStep(tick);
+                Trade.MonthlyStep(tick);
                 Factions.MonthlyStep(tick);
             }
             if (Clock.IsYearStart)
@@ -110,6 +122,9 @@ namespace ThienDao.Sim
                 Factions.YearlyStep(tick);
                 Combat.YearlyStep(tick);
                 Disasters.YearlyStep(tick);
+                Beasts.YearlyStep(tick);
+                Relics.YearlyStep(tick);
+                Eras.YearlyStep(tick);
                 Stories.YearlyStep(tick);
             }
         }
@@ -141,6 +156,8 @@ namespace ThienDao.Sim
             long tick = Clock.Tick;
             Cultivation.Flood(x0, y0, x1, y1, tick);
             Settlements.Flood(x0, y0, x1, y1, tick);
+            Beasts?.Flood(x0, y0, x1, y1, tick);
+            Trade?.Flood(x0, y0, x1, y1);
         }
 
         public static float RegenMultiplier(Season s)
@@ -184,6 +201,10 @@ namespace ThienDao.Sim
             Stories.HashInto(ref h);
             Disasters.HashInto(ref h);
             Rules.HashInto(ref h);
+            Beasts.HashInto(ref h);
+            Relics.HashInto(ref h);
+            Trade.HashInto(ref h);
+            Eras.HashInto(ref h);
             return h;
         }
     }

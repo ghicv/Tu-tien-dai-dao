@@ -9,7 +9,7 @@ using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao
 {
-    public enum InspectKind { None, Cultivator, Settlement, Migrants, Animal, Object, Cell }
+    public enum InspectKind { None, Cultivator, Settlement, Migrants, Animal, Object, Cell, Beast, Caravan }
 
     // Anything the Xem tool can point at: a person, a village, an animal herd, an object or a bare cell.
     public struct InspectTarget
@@ -213,7 +213,12 @@ namespace ThienDao
                 t.HoverBox = hit.Box;
                 if (hit.Cultivator != null) { t.Kind = InspectKind.Cultivator; t.Cultivator = hit.Cultivator; }
                 else if (hit.Settlement != null) { t.Kind = InspectKind.Settlement; t.Settlement = hit.Settlement; }
-                else if (hit.Entity >= 0) { t.Kind = InspectKind.Migrants; t.Entity = hit.Entity; }
+                else if (hit.Entity >= 0)
+                {
+                    var sp = Sim.Entities.Species[hit.Entity];
+                    t.Kind = sp == Species.Beast ? InspectKind.Beast : sp == Species.Caravan ? InspectKind.Caravan : InspectKind.Migrants;
+                    t.Entity = hit.Entity;
+                }
                 else { t.Kind = InspectKind.Animal; t.Region = hit.Region; t.Animal = hit.Kind; }
                 return t;
             }
@@ -339,8 +344,13 @@ namespace ThienDao
                 case InspectKind.Settlement:
                     return s.Settlement.Alive ? SettlementBounds(s.Settlement) : (Rect?)null;
                 case InspectKind.Migrants:
-                    if (Sim.Entities.Species[s.Entity] != Species.Migrants) return null;
+                case InspectKind.Beast:
+                case InspectKind.Caravan:
+                {
+                    var want = s.Kind == InspectKind.Beast ? Species.Beast : s.Kind == InspectKind.Caravan ? Species.Caravan : Species.Migrants;
+                    if (Sim.Entities.Species[s.Entity] != want) return null;
                     return _units.BoxOf(null, s.Entity, out var mb) ? mb : (Rect?)null;
+                }
                 case InspectKind.Animal:
                 {
                     const int size = WildlifeSystem.Region;

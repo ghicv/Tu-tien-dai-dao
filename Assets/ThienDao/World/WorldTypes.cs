@@ -29,6 +29,7 @@ namespace ThienDao.World
     public static class ZoneFlags
     {
         public const byte Thunder = 1; // lôi địa: where heaven's tribulation fell; thick lôi khí, no fields, no trees
+        public const byte Road = 2;    // thương lộ: worn into the ground by caravans
     }
 
     public static class TerrainInfo

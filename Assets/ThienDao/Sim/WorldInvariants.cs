@@ -124,6 +124,23 @@ namespace ThienDao.Sim
                 if (c.Alive && c.HuntTarget >= 0 && !cs.All[c.HuntTarget].Alive) errors.Add($"cultivator {c.Name} hunts the dead");
                 if (!c.Alive && (c.AtWar || c.HuntTarget >= 0)) errors.Add($"dead cultivator {c.Name} still at war / hunting");
             }
+            // Yêu thú: entity links, counts by grade, clans only around living kings.
+            var bs = sim.Beasts;
+            var byGrade = new int[10];
+            int beasts = 0;
+            foreach (var b in bs.All)
+            {
+                if (!b.Alive) continue;
+                beasts++;
+                byGrade[b.Grade]++;
+                if (!e.IsAlive(b.Entity) || e.Species[b.Entity] != Species.Beast || e.Payload[b.Entity] != b.Index)
+                    errors.Add($"beast {b.Name} has a broken entity link");
+                if (b.Clan >= 0 && (!bs.All[b.Clan].Alive || !bs.All[b.Clan].IsKing)) errors.Add($"beast {b.Name} follows a dead or deposed king");
+            }
+            if (beasts != bs.AliveCount) errors.Add($"beast count {bs.AliveCount} != {beasts}");
+            for (int g = 0; g < 10; g++)
+                if (byGrade[g] != bs.CountByGrade[g]) errors.Add($"beast grade {g} count {bs.CountByGrade[g]} != {byGrade[g]}");
+
             long last = -1;
             foreach (var r in sim.History.All)
             {

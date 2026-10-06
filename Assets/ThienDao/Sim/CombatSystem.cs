@@ -45,7 +45,7 @@ namespace ThienDao.Sim
                 loser.DaoHeart = Mathf.Max(0f, loser.DaoHeart - 0.05f);
                 _sim.Cultivation.ReturnHome(loser);
                 _sim.Events.Add(tick, EventKind.Duel, Mathf.Max(0, imp - 1),
-                    $"{winner.Title} ({Sect(winner)}) {context}, đánh {loser.Title} trọng thương bỏ chạy.", x, y, Fx.Lightning, winner.Index, loser.Index, winner.SectId, loser.SectId);
+                    $"{winner.Title} ({Sect(winner)}) {context}, đánh {loser.Title} trọng thương bỏ chạy.", x, y, Fx.DuelFlee, winner.Index, loser.Index, winner.SectId, loser.SectId);
             }
             return winner;
         }

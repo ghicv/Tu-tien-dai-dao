@@ -109,6 +109,29 @@ namespace ThienDao.Sim
                     $"{c.Title} ({Sect(c)}) đột phá Hóa Thần, cảnh giới vạn năm khó gặp; cả Thiên Nam chấn động.", c.Index, -1, c.SectId, -1, x, y);
         }
 
+        // Bí cảnh (M7): the past reaching into the present.
+        public void OnRelic(Cultivator c, Relic r, Cultivator owner, bool heir, long tick)
+        {
+            float x = r.X + 0.5f, y = r.Y + 0.5f;
+            if (heir && owner != null)
+                Tell($"heir:{c.Index}:{r.Index}", tick, "Kế thừa y bát",
+                    $"{owner.Name} vẫn lạc đã {Years(owner.DeathTick, tick)} năm; nay đệ tử đời sau là {c.Name} tìm về động phủ cũ, kế thừa y bát của tiền nhân.",
+                    c.Index, owner.Index, c.SectId, r.Sect, x, y);
+            else if (owner != null && owner.Legend)
+                Tell($"legacy:{c.Index}:{r.Index}", tick, "Di bảo truyền kỳ",
+                    $"Động phủ của {owner.Epithet} {owner.Name} ẩn mình {Years(owner.DeathTick, tick)} năm, rốt cuộc rơi vào tay {c.Title} ({Sect(c)}).",
+                    c.Index, owner.Index, c.SectId, r.Sect, x, y);
+            else if (r.Kind == RelicKind.Ruins && r.Sect >= 0)
+                foreach (var f in _sim.Factions.All)
+                    if (f.Alive && f.ParentId == r.Sect && f.Id == c.SectId)
+                        Tell($"return:{c.Index}:{r.Index}", tick, "Tìm về cố địa",
+                            $"{_sim.Factions.NameOf(f.Id)} vốn tách ra từ {_sim.Factions.NameOf(r.Sect)}; nay {c.Name} tìm lại di tích của tông môn gốc.",
+                            c.Index, -1, f.Id, r.Sect, x, y);
+            if (Years(r.Tick, tick) >= 300)
+                Tell($"ancientrelic:{r.Index}", tick, "Bí cảnh ngàn năm",
+                    $"{r.Name} ({r.Origin}) ngủ yên {Years(r.Tick, tick)} năm, nay được {c.Title} khai mở.", c.Index, r.Owner, c.SectId, r.Sect, x, y);
+        }
+
         public void OnFactionDestroyed(Faction winner, Faction loser, long tick)
         {
             var fs = _sim.Factions;

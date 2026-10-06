@@ -140,8 +140,8 @@ namespace ThienDao.Sim
             // 6. At a bottleneck: a pill from the market, or a cơ duyên from the wilds.
             if (Realms.IsPeak(c.Realm, c.Stage) && c.Realm < Realm.HoaThan && c.Pills == 0)
             {
-                float price = PillPrice(c.Realm + 1);
                 var market = Market(c);
+                float price = PillPrice(c.Realm + 1, market);
                 if (c.Stones >= price && market != null)
                 {
                     Begin(c, Goal.Market, $"đang đến phường thị {market.Name} mua {Lore.PillFor(c.Realm + 1)}", tick);
@@ -220,6 +220,16 @@ namespace ThienDao.Sim
 
         bool SeekFortune(Cultivator c, long tick, ref DetRandom rng)
         {
+            // A bí cảnh people speak of, if one lies within reach and they think they can survive it.
+            var known = _sim.Relics.NearestKnown(c.HomeX, c.HomeY, Reach);
+            if (known != null && RelicSystem.DeathChance(known, c) < 0.4f && _w.IsWalkable(known.X + 0.5f, known.Y + 0.5f))
+            {
+                Begin(c, Goal.SeekFortune, $"đang đến {known.Name}", tick);
+                c.Outing = Outing.HerbHunting;
+                Cult.Travel(c, known.X + 0.5f, known.Y + 0.5f, Trip.Excursion);
+                Note(c, tick, 1, $"{c.Title} nghe tin {known.Name} xuất thế, lên đường thám hiểm.");
+                return true;
+            }
             // Wild land with rich qi that no sect holds: where herbs and old caves are found.
             float best = 0f, bx = 0f, by = 0f;
             for (int k = 0; k < 20; k++)
@@ -246,7 +256,7 @@ namespace ThienDao.Sim
                 case Goal.Market:
                 {
                     var next = c.Realm + 1;
-                    float price = PillPrice(next);
+                    float price = PillPrice(next, Market(c));
                     if (Realms.IsPeak(c.Realm, c.Stage) && c.Pills == 0 && c.Stones >= price)
                     {
                         c.Stones -= price;
@@ -279,6 +289,14 @@ namespace ThienDao.Sim
                 }
                 case Goal.SeekFortune:
                 {
+                    // A real bí cảnh at the spot: explore it rather than roll for a find.
+                    var e = _sim.Entities;
+                    var relic = _sim.Relics.At((int)e.X[c.Entity], (int)e.Y[c.Entity], 8f);
+                    if (relic != null)
+                    {
+                        _sim.Relics.Explore(c, relic, tick);
+                        break;
+                    }
                     float r = rng.NextFloat();
                     if (r < 0.08f)
                     {
@@ -321,7 +339,9 @@ namespace ThienDao.Sim
 
         // ---------------------------------------------------------------- helpers
 
-        static float PillPrice(Realm next) => 40f * Mathf.Pow(3f, (int)next - (int)Realm.TrucCo);
+        // What a pill costs at this market: the base price times how scarce pills are there (TradeSystem).
+        float PillPrice(Realm next, Settlement market = null) =>
+            40f * Mathf.Pow(3f, (int)next - (int)Realm.TrucCo) * (market != null ? _sim.Trade.PriceFactor(market, Good.Pill) : 1f);
 
         // The biggest town within reach: phường thị where pills are sold.
         Settlement Market(Cultivator c)

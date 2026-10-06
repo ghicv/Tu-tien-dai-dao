@@ -313,6 +313,27 @@ namespace ThienDao.Sim
         }
     }
 
+    // Thiên Đạo looses a yêu thú of the given grade at (X, Y).
+    public sealed class SpawnBeastCommand : IWorldCommand
+    {
+        public readonly int X, Y, Grade;
+
+        public SpawnBeastCommand(int x, int y, int grade)
+        {
+            X = x;
+            Y = y;
+            Grade = grade;
+        }
+
+        public void Apply(Simulation sim)
+        {
+            if (!sim.World.IsWalkable(X + 0.5f, Y + 0.5f)) return;
+            var rng = new DetRandom(Hash.U32(sim.World.Seed ^ 0x5BEAu, (int)sim.Clock.Tick, X * 4099 + Y));
+            var b = sim.Beasts.Spawn(Species.Wolf, Grade, X + 0.5f, Y + 0.5f, sim.Clock.Tick, ref rng);
+            sim.Events.Add(sim.Clock.Tick, EventKind.Beast, 2, $"Thiên Đạo thả {b.Name} ({b.GradeText}) xuống nhân gian.", X + 0.5f, Y + 0.5f, Fx.Stampede);
+        }
+    }
+
     // Thiên tai sent by Thiên Đạo at (X, Y); Size is the brush size (the reach follows DisasterSystem.Radius).
     public sealed class CalamityCommand : IWorldCommand
     {

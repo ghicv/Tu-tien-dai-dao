@@ -79,6 +79,12 @@ namespace ThienDao.Sim
                 _e.PrevY[id] = _e.Y[id];
                 if (s == Species.Migrants) TickMigrants(id, tick);
                 else if (s == Species.Cultivator) Move(id, _e.Flying[id] ? SpeciesInfo.FlyingSpeed : SpeciesInfo.Speed[(int)s]);
+                else if (s == Species.Beast) Move(id, SpeciesInfo.Speed[(int)s]);
+                else if (s == Species.Caravan)
+                {
+                    Move(id, SpeciesInfo.Speed[(int)s]);
+                    _sim.Trade.Walked(id, tick); // wears the road, delivers on arrival
+                }
             }
         }
 

@@ -13,7 +13,7 @@ namespace ThienDao.Render
         const int MaxEffects = 48;
         const float CellPx = WorldRenderer.CellPx;
 
-        enum Sprite { BoltA, BoltB, Flash, Ring, Spark, Smoke, Fire0, Fire1, Fire2, Cloud, Beam, Drop, Count }
+        enum Sprite { BoltA, BoltB, Flash, Ring, Spark, Smoke, Fire0, Fire1, Fire2, Cloud, Beam, Drop, QiShot, Count }
 
         struct Particle
         {
@@ -55,6 +55,7 @@ namespace ThienDao.Render
             _seen = sim.Events.TotalAdded;
             _effects.Clear();
             _particles.Clear();
+            FightScenes.Clear();
             if (_mesh != null) return;
 
             BuildAtlas(out var atlas);
@@ -100,9 +101,157 @@ namespace ThienDao.Render
             for (int k = start; k < events.Count; k++)
             {
                 var ev = events[k];
-                if (ev.Fx == Fx.None || ev.X < 0f || _effects.Count >= MaxEffects) continue;
-                if (!view.Contains(new Vector2(ev.X, ev.Y))) continue;
+                if (ev.X < 0f || !view.Contains(new Vector2(ev.X, ev.Y))) continue;
+                if (ev.Fx >= Fx.DuelKill)
+                {
+                    StartFight(ev, k);
+                    continue;
+                }
+                // Anyone who dies without a fight on screen (old age, a bolt, a flood) goes up in white smoke.
+                bool death = ev.Kind == EventKind.Death || (ev.Kind == EventKind.Beast && ev.Text.Contains("chết"));
+                if (death) Poof(ev.X, ev.Y + 0.4f);
+                if (ev.Fx == Fx.None) continue;
+                Hurt(ev.Fx, ev.X, ev.Y);
+                if (_effects.Count >= MaxEffects) continue;
                 Spawn(ev.Fx, ev.X, ev.Y);
+            }
+        }
+
+        // Effects that harm the living mark a zone where creatures blink white, and some of the stand-ins die.
+        void Hurt(Fx fx, float x, float y)
+        {
+            float r, kill;
+            switch (fx)
+            {
+                case Fx.Stampede: r = 7f; kill = 0.3f; break;
+                case Fx.Quake: r = 10f; kill = 0.25f; break;
+                case Fx.Eruption: r = 12f; kill = 0.45f; break;
+                case Fx.Lightning: r = 3.5f; kill = 0.5f; break;
+                case Fx.Tribulation: r = 7f; kill = 0.3f; break;
+                case Fx.Storm: r = 8f; kill = 0.12f; break;
+                case Fx.Miasma: r = 6f; kill = 0.2f; break;
+                case Fx.Explosion:
+                case Fx.DemonBlast: r = 2.5f; kill = 0.2f; break;
+                case Fx.Splash: r = 2.5f; kill = 0.3f; break;
+                default: return;
+            }
+            FightScenes.Hurt.Add(new HurtZone { X = x, Y = y, R = r, Start = Time.unscaledTime, Kill = kill });
+        }
+
+        // White smoke where something died; then it is gone.
+        void Poof(float x, float y)
+        {
+            for (int s = 0; s < 5; s++)
+                _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-0.5f, 0.5f), Y = y + Rand(-0.2f, 0.4f), VX = Rand(-0.5f, 0.5f), VY = Rand(0.5f, 1.2f),
+                    Life = Rand(0.4f, 0.75f), Size = 1f, Grow = s == 0 ? 2f : 0f, Color = new Color32(245, 245, 245, 255) });
+            _particles.Add(new Particle { Sprite = Sprite.Flash, X = x, Y = y, Life = 0.15f, Size = 1f, Color = new Color32(255, 255, 255, 255) });
+        }
+
+        // ---------------------------------------------------------------- fights played out
+
+        static readonly Color32[] KiemKhi =
+        {
+            new Color32(200, 200, 200, 255), new Color32(150, 205, 255, 255), new Color32(120, 255, 170, 255),
+            new Color32(255, 220, 110, 255), new Color32(210, 150, 255, 255), new Color32(240, 250, 255, 255)
+        };
+        static readonly Color32 DemonQi = new Color32(255, 70, 70, 255);
+        static readonly Color32 Claw = new Color32(255, 110, 70, 255);
+
+        Color32 QiOf(Cultivator c) => c.Demonic ? DemonQi : KiemKhi[Mathf.Clamp((int)c.Realm, 0, KiemKhi.Length - 1)];
+
+        void StartFight(WorldEvent ev, int salt)
+        {
+            if (FightScenes.Active.Count >= FightScenes.Max) return;
+            var all = _sim.Cultivation.All;
+            Cultivator a = ev.A >= 0 && ev.A < all.Count ? all[ev.A] : null, b = ev.B >= 0 && ev.B < all.Count ? all[ev.B] : null;
+            if (a == null) return;
+            bool beast = ev.Fx >= Fx.BeastSlain;
+            var f = FightScene.Make(Time.unscaledTime, ev.X, ev.Y, (int)(ev.Tick * 31 + salt), beast ? 5 : 7);
+            switch (ev.Fx)
+            {
+                case Fx.DuelKill: // A died at B's hand
+                    if (b == null) return;
+                    Set(f, b, a, true);
+                    break;
+                case Fx.DuelFlee: // A beat B
+                    if (b == null) return;
+                    Set(f, a, b, false);
+                    break;
+                case Fx.BeastSlain: // A cut down a beast
+                    f.WinnerLook = UnitRenderer.CultivatorLook(a);
+                    f.WinnerColor = QiOf(a);
+                    f.WinnerIdx = a.Index;
+                    f.LoserLook = SpriteLibrary.Unit.Beast;
+                    f.LoserColor = Claw;
+                    f.LoserClaws = true;
+                    f.LoserDies = true;
+                    break;
+                default: // a beast killed A, or A fled from it
+                    f.WinnerLook = SpriteLibrary.Unit.Beast;
+                    f.WinnerColor = Claw;
+                    f.WinnerClaws = true;
+                    f.LoserLook = UnitRenderer.CultivatorLook(a);
+                    f.LoserColor = QiOf(a);
+                    f.LoserIdx = a.Index;
+                    f.LoserDies = ev.Fx == Fx.BeastKill;
+                    break;
+            }
+            FightScenes.Active.Add(f);
+        }
+
+        void Set(FightScene f, Cultivator winner, Cultivator loser, bool dies)
+        {
+            f.WinnerLook = UnitRenderer.CultivatorLook(winner);
+            f.LoserLook = UnitRenderer.CultivatorLook(loser);
+            f.WinnerColor = QiOf(winner);
+            f.LoserColor = QiOf(loser);
+            f.WinnerIdx = winner.Index;
+            f.LoserIdx = loser.Index;
+            f.LoserDies = dies;
+        }
+
+        // Kiếm khí flying between the fighters, sparks where it lands, a burst on the final blow, dust when one falls.
+        void DrawFights(float now)
+        {
+            var list = FightScenes.Active;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var f = list[i];
+                if (now > f.End) { list.RemoveAt(i); continue; }
+                Vector2 w = f.WinnerPos + new Vector2(0f, 0.7f), l = f.LoserPos + new Vector2(0f, 0.7f);
+                for (int k = 0; k < f.Blows.Count; k++)
+                {
+                    var (at, byWinner) = f.Blows[k];
+                    Vector2 from = byWinner ? w : l, to = byWinner ? l : w;
+                    var color = byWinner ? f.WinnerColor : f.LoserColor;
+                    bool claws = byWinner ? f.WinnerClaws : f.LoserClaws;
+                    float t = (now - at) / FightScene.Flight;
+                    if (t >= 0f && t < 1f && !claws)
+                    {
+                        // A bolt of kiếm khí with a short trail.
+                        var p = Vector2.Lerp(from, to, t);
+                        Quad(Sprite.QiShot, p.x, p.y, 1f, 1f, color, to.x < from.x);
+                        var trail = Vector2.Lerp(from, to, Mathf.Max(0f, t - 0.25f));
+                        Quad(Sprite.Spark, trail.x, trail.y, 1.2f, 1.2f, new Color32(color.r, color.g, color.b, 160));
+                    }
+                    if (k < f.Impacts || t < 1f) continue;
+                    // It lands: sparks (claw marks are a red slash), and the final blow bursts.
+                    f.Impacts = k + 1;
+                    bool final = k == f.Blows.Count - 1;
+                    Burst(to.x, to.y, claws ? Claw : color, final ? 14 : 6, final ? 6f : 3.5f, final);
+                    if (claws)
+                        for (int s = 0; s < 3; s++)
+                            _particles.Add(new Particle { Sprite = Sprite.Spark, X = to.x - 0.3f + s * 0.3f, Y = to.y + 0.4f, VY = -3f,
+                                Life = 0.2f, Size = 1.3f, Color = Claw });
+                }
+                float sinceFinal = now - f.FinalBlow;
+                if (sinceFinal >= 0f && sinceFinal < 0.3f)
+                    Quad(Sprite.Ring, l.x, l.y - 0.4f, 0.6f + sinceFinal * 6f, 0.4f + sinceFinal * 3f, new Color32(255, 240, 220, (byte)(220 * (1f - sinceFinal / 0.3f))));
+                if (f.LoserDies && !f.Smoked && sinceFinal > 0.15f)
+                {
+                    f.Smoked = true;
+                    Poof(l.x, l.y - 0.3f); // the fallen goes up in white smoke and is gone
+                }
             }
         }
 
@@ -148,7 +297,7 @@ namespace ThienDao.Render
                     break;
                 case Fx.Quake:
                     e.Duration = 2.4f;
-                    for (int k = 0; k < 22; k++) // dust thrown up across the shaken ground
+                    for (int k = 0; k < 10; k++) // dust thrown up across the shaken ground
                         _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-7f, 7f), Y = y + Rand(-5f, 5f), VX = Rand(-0.4f, 0.4f), VY = Rand(0.3f, 1f),
                             Life = Rand(1.2f, 2.2f), Size = Rand(1f, 1.8f), Grow = 0.6f, Color = new Color32(160, 130, 96, 170) });
                     break;
@@ -166,7 +315,7 @@ namespace ThienDao.Render
                     break;
                 case Fx.Stampede:
                     e.Duration = 2.2f;
-                    for (int k = 0; k < 16; k++)
+                    for (int k = 0; k < 7; k++)
                         _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-5f, 5f), Y = y + Rand(-3f, 3f), VX = Rand(-2f, 2f), VY = Rand(0.2f, 0.8f),
                             Life = Rand(0.8f, 1.6f), Size = Rand(0.8f, 1.4f), Grow = 0.7f, Color = new Color32(140, 120, 100, 160) });
                     break;
@@ -174,7 +323,7 @@ namespace ThienDao.Render
             _effects.Add(e);
         }
 
-        void Burst(float x, float y, Color32 color, int count, float speed)
+        void Burst(float x, float y, Color32 color, int count, float speed, bool smoke = true)
         {
             for (int k = 0; k < count; k++)
             {
@@ -182,9 +331,9 @@ namespace ThienDao.Render
                 _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y, VX = Mathf.Cos(a) * v, VY = Mathf.Sin(a) * v + 2f, Gravity = 8f,
                     Life = Rand(0.4f, 0.8f), Size = Rand(0.8f, 1.5f), Color = color });
             }
-            for (int k = 0; k < 4; k++)
+            for (int k = 0; k < (smoke ? 2 : 0); k++)
                 _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-0.5f, 0.5f), Y = y + Rand(0f, 0.5f), VX = Rand(-0.3f, 0.3f), VY = Rand(0.4f, 0.9f),
-                    Life = Rand(1.2f, 2f), Size = Rand(0.8f, 1.2f), Grow = 0.8f, Color = new Color32(70, 66, 64, 170) });
+                    Life = Rand(0.6f, 1f), Size = 1f, Color = new Color32(96, 92, 96, 255) });
         }
 
         // ---------------------------------------------------------------- per frame
@@ -208,6 +357,10 @@ namespace ThienDao.Render
                 if (t > e.Duration) { _effects.RemoveAt(i); continue; }
                 DrawEffect(e, t, now);
             }
+            DrawFights(now);
+            foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
+            FightScenes.Poofs.Clear();
+            FightScenes.Hurt.RemoveAll(z => now - z.Start > FightScenes.HurtTime);
 
             for (int i = _particles.Count - 1; i >= 0; i--)
             {
@@ -220,7 +373,9 @@ namespace ThienDao.Render
                 _particles[i] = p;
                 float k = 1f - p.Age / p.Life;
                 var c = p.Color;
-                c.a = (byte)(c.a * k);
+                // Pixel smoke stays solid, swells in whole steps and then is simply gone; translucent puffs
+                // stacked on each other read as blur. Sparks and drops fade in hard steps.
+                c.a = p.Sprite == Sprite.Smoke ? (byte)255 : (byte)(c.a * k);
                 float s = p.Size * (1f + p.Grow * p.Age);
                 Quad(p.Sprite, p.X, p.Y, s, s, c);
             }
@@ -369,33 +524,45 @@ namespace ThienDao.Render
             }
         }
 
+        // Pixel art rules for every effect: sprites only grow by whole multiples (so a pixel stays a square block),
+        // sit on the 8-px-per-cell grid like the map, and fade in a few hard steps instead of a smooth blur.
+        static int Whole(float scale) => Mathf.Max(1, Mathf.RoundToInt(scale));
+
         // Centred quad scaled from the sprite's native size.
-        void Quad(Sprite s, float x, float y, float sx, float sy, Color32 color)
+        void Quad(Sprite s, float x, float y, float sx, float sy, Color32 color, bool flip = false)
         {
             var size = _size[(int)s];
-            AddQuad(s, x - size.x * sx * 0.5f, y - size.y * sy * 0.5f, size.x * sx, size.y * sy, color);
+            float w = size.x * Whole(sx), h = size.y * Whole(sy);
+            AddQuad(s, x - w * 0.5f, y - h * 0.5f, w, h, color, flip);
         }
 
         // Anchored at the bottom centre (bolts, beams strike down to the ground).
         void QuadBottom(Sprite s, float x, float y, float scale, Color32 color, float widthScale = 1f)
         {
             var size = _size[(int)s];
-            float w = size.x * scale * widthScale, h = size.y * scale;
+            float w = size.x * Whole(scale * widthScale), h = size.y * Whole(scale);
             AddQuad(s, x - w * 0.5f, y, w, h, color);
         }
 
-        void AddQuad(Sprite s, float x0, float y0, float w, float h, Color32 color)
+        static byte StepAlpha(byte a) => a < 40 ? (byte)0 : a < 120 ? (byte)96 : a < 200 ? (byte)170 : (byte)255;
+
+        void AddQuad(Sprite s, float x0, float y0, float w, float h, Color32 color, bool flip = false)
         {
             if (_verts.Count >= MaxQuads * 4) return;
+            color.a = StepAlpha(color.a);
+            if (color.a == 0) return;
+            x0 = Mathf.Round(x0 * CellPx) / CellPx;
+            y0 = Mathf.Round(y0 * CellPx) / CellPx;
             var uv = _uv[(int)s];
+            float u0 = flip ? uv.xMax : uv.xMin, u1 = flip ? uv.xMin : uv.xMax;
             _verts.Add(new Vector3(x0, y0, 0f));
             _verts.Add(new Vector3(x0, y0 + h, 0f));
             _verts.Add(new Vector3(x0 + w, y0 + h, 0f));
             _verts.Add(new Vector3(x0 + w, y0, 0f));
-            _uvs.Add(new Vector2(uv.xMin, uv.yMin));
-            _uvs.Add(new Vector2(uv.xMin, uv.yMax));
-            _uvs.Add(new Vector2(uv.xMax, uv.yMax));
-            _uvs.Add(new Vector2(uv.xMax, uv.yMin));
+            _uvs.Add(new Vector2(u0, uv.yMin));
+            _uvs.Add(new Vector2(u0, uv.yMax));
+            _uvs.Add(new Vector2(u1, uv.yMax));
+            _uvs.Add(new Vector2(u1, uv.yMin));
             _colors.Add(color);
             _colors.Add(color);
             _colors.Add(color);
@@ -425,35 +592,35 @@ namespace ThienDao.Render
                 rowH = Mathf.Max(rowH, h);
             }
 
-            Color32 White(float a) => new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
+            // Pixel art only: every pixel is either fully there or not, in two or three flat shades (the vertex colour
+            // tints the white ones). No soft gradients: those read as blur next to the map's chunky pixels.
+            var white = new Color32(255, 255, 255, 255);
+            var light = new Color32(214, 214, 222, 255);
+            var shade = new Color32(170, 172, 186, 255);
+            Color32 Hard(bool on, Color32 c) => on ? c : default;
+            float Dist(int x, int y, float cx, float cy) => Mathf.Sqrt((x + 0.5f - cx) * (x + 0.5f - cx) + (y + 0.5f - cy) * (y + 0.5f - cy));
 
-            // Jagged bolt: random walk from sky to ground with a hot core and soft glow.
+            // Jagged bolt: a one-pixel white core with a pale blue pixel either side, zigzagging down in steps.
             Color32[] Bolt(int seed)
             {
                 const int w = 16, h = 96;
                 var b = new Color32[w * h];
                 var r = new System.Random(seed);
-                float x = 8f;
+                int x = 8;
+                var edge = new Color32(170, 205, 255, 255);
                 for (int y = h - 1; y >= 0; y--)
                 {
-                    if (y % 3 == 0) x = Mathf.Clamp(x + r.Next(-2, 3), 3f, 12f);
-                    int xi = (int)x;
-                    for (int dx = -2; dx <= 2; dx++)
-                    {
-                        int xx = xi + dx;
-                        if (xx < 0 || xx >= w) continue;
-                        float a = dx == 0 ? 1f : Mathf.Abs(dx) == 1 ? 0.75f : 0.25f;
-                        var c = White(a);
-                        if (Mathf.Abs(dx) > 0) { c.r = 180; c.g = 210; }
-                        if (b[y * w + xx].a < c.a) b[y * w + xx] = c;
-                    }
-                    if (y > 20 && r.NextDouble() < 0.04) // short branch
+                    if (y % 4 == 0) x = Mathf.Clamp(x + r.Next(-2, 3), 3, 12);
+                    if (b[y * w + x - 1].a == 0) b[y * w + x - 1] = edge;
+                    if (b[y * w + x + 1].a == 0) b[y * w + x + 1] = edge;
+                    b[y * w + x] = white;
+                    if (y > 20 && r.NextDouble() < 0.04) // short branch, a pixel staircase
                     {
                         int dir = r.Next(2) == 0 ? -1 : 1;
-                        for (int k = 1; k < 8 && y - k >= 0; k++)
+                        for (int k = 1; k < 7 && y - k >= 0; k++)
                         {
-                            int bx = xi + dir * k / 2;
-                            if (bx >= 0 && bx < w) b[(y - k) * w + bx] = White(0.6f - k * 0.06f);
+                            int bx = x + dir * ((k + 1) / 2);
+                            if (bx >= 0 && bx < w) b[(y - k) * w + bx] = edge;
                         }
                     }
                 }
@@ -464,51 +631,62 @@ namespace ThienDao.Render
             var boltB = Bolt(29);
             Put(Sprite.BoltA, 16, 96, (x, y) => boltA[y * 16 + x]);
             Put(Sprite.BoltB, 16, 96, (x, y) => boltB[y * 16 + x]);
+            // Light pillar: white core, pale sides, thinning out at the top in a checker dither.
             Put(Sprite.Beam, 8, 96, (x, y) =>
             {
-                float edge = 1f - Mathf.Abs(x + 0.5f - 4f) / 4f;
-                return White(edge * edge * (1f - y / 96f) * 1.2f);
+                bool core = x == 3 || x == 4, side = x == 2 || x == 5;
+                if (!core && !side) return default;
+                if (y > 60 && ((x + y) & 1) == 1) return default;
+                if (y > 82 && !core) return default;
+                return core ? white : light;
             });
-            Put(Sprite.Flash, 32, 32, (x, y) =>
+            // Impact star: a plus with short diagonals.
+            Put(Sprite.Flash, 9, 9, (x, y) =>
             {
-                float d = Mathf.Sqrt((x + 0.5f - 16f) * (x + 0.5f - 16f) + (y + 0.5f - 16f) * (y + 0.5f - 16f)) / 16f;
-                return White(Mathf.Pow(Mathf.Clamp01(1f - d), 2f));
+                int dx = Mathf.Abs(x - 4), dy = Mathf.Abs(y - 4);
+                if (dx <= 1 && dy <= 1) return white;
+                if (dx == 0 || dy == 0) return dx + dy <= 4 ? (dx + dy <= 2 ? white : light) : default;
+                return dx == dy && dx == 2 ? light : default;
             });
-            Put(Sprite.Ring, 32, 32, (x, y) =>
+            // Shock ring: a one-pixel circle.
+            Put(Sprite.Ring, 15, 15, (x, y) => Hard(Mathf.Abs(Dist(x, y, 7.5f, 7.5f) - 6f) < 0.55f, white));
+            // Cloud: a lumpy pixel bank, lit on top.
+            Put(Sprite.Cloud, 32, 12, (x, y) =>
             {
-                float d = Mathf.Sqrt((x + 0.5f - 16f) * (x + 0.5f - 16f) + (y + 0.5f - 16f) * (y + 0.5f - 16f));
-                return White(1f - Mathf.Abs(d - 13f) / 2.5f);
+                bool inside = false;
+                for (int k = 0; k < 4; k++)
+                    if (Dist(x, y, 5f + k * 7.5f, 5f + (k % 2) * 2f) <= 4.5f + (k % 2)) inside = true;
+                if (!inside) return default;
+                return y >= 7 ? white : y >= 4 ? light : shade;
             });
-            Put(Sprite.Cloud, 64, 24, (x, y) =>
+            // Smoke puff: a round blob with a highlight and a darker rim.
+            Put(Sprite.Smoke, 8, 8, (x, y) =>
             {
-                float a = 0f;
-                for (int k = 0; k < 5; k++)
-                {
-                    float bx = 10f + k * 11f, by = 12f + (k % 2) * 3f, r = 9f + (k % 3) * 2f;
-                    float d = Mathf.Sqrt((x - bx) * (x - bx) + (y - by) * (y - by)) / r;
-                    a = Mathf.Max(a, 1f - d);
-                }
-                return White(Mathf.Clamp01(a * 2f));
+                float d = Dist(x, y, 4f, 4f);
+                if (d > 3.7f) return default;
+                if (x <= 3 && y >= 4 && d < 2.6f) return white;
+                return d > 2.9f ? shade : light;
             });
-            Put(Sprite.Smoke, 16, 16, (x, y) =>
+            Put(Sprite.Spark, 2, 2, (x, y) => white);
+            Put(Sprite.Drop, 3, 3, (x, y) => Hard(x == 1 || y == 1, white));
+            // Kiếm khí: a short streak of light, bright head, fading tail in steps.
+            Put(Sprite.QiShot, 7, 3, (x, y) =>
             {
-                float d = Mathf.Sqrt((x + 0.5f - 8f) * (x + 0.5f - 8f) + (y + 0.5f - 8f) * (y + 0.5f - 8f)) / 8f;
-                return White((1f - d) * (0.7f + 0.3f * (float)rng.NextDouble()));
+                if (y == 1) return x >= 4 ? white : x >= 2 ? light : shade;
+                return x >= 3 && x <= 5 ? light : default;
             });
-            Put(Sprite.Spark, 4, 4, (x, y) => White(x == 0 || x == 3 || y == 0 || y == 3 ? 0.4f : 1f));
-            Put(Sprite.Drop, 3, 3, (x, y) => White(x == 1 || y == 1 ? 1f : 0.3f));
+            // Flames: three flat bands, red outside, orange, a yellow heart.
             for (int f = 0; f < 3; f++)
             {
                 int frame = f;
                 Put((Sprite)((int)Sprite.Fire0 + f), 8, 12, (x, y) =>
                 {
-                    float sway = Mathf.Sin((y + frame * 3) * 0.7f) * 0.8f;
-                    float width = 3.6f * (1f - y / 12f) + 0.4f;
-                    float d = Mathf.Abs(x + 0.5f - 4f - sway);
-                    if (d > width) return default;
-                    float heat = 1f - d / width;
-                    byte g = (byte)(80 + 170 * heat * (1f - y / 14f));
-                    return new Color32(255, g, (byte)(40 * heat), (byte)(255 * Mathf.Clamp01(1.2f - y / 12f)));
+                    int sway = ((y + frame * 3) / 3) % 2 == 0 ? 0 : (frame == 1 ? 1 : -1);
+                    int half = Mathf.Max(0, 3 - y / 3);
+                    int d = Mathf.Abs(x - 4 - sway);
+                    if (d > half || y > 10) return default;
+                    if (d == half) return new Color32(220, 70, 30, 255);
+                    return d <= half - 2 && y < 7 ? new Color32(255, 236, 120, 255) : new Color32(255, 150, 40, 255);
                 });
             }
 

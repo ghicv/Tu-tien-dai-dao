@@ -27,10 +27,20 @@ namespace ThienDao.Sim
         Vendetta,       // setting out to avenge a master or disciple
         Legend,         // StoryDetector: a story worth telling
         Calamity,       // thiên tai (M6): earthquake, eruption, flood, drought, epidemic, beast tide
+        Beast,          // yêu thú (M7): awakening, growth, raids, slain, yêu vương and yêu tộc
+        Relic,          // bí cảnh (M7): left by the dead, found, explored
+        Era,            // thời đại (M7): the world enters a new age
     }
 
     // Visual effect the renderer should play at the event's position.
-    public enum Fx : byte { None, Lightning, Tribulation, Explosion, DemonBlast, Splash, LightPillar, Blessing, Quake, Eruption, Miasma, Stampede, Rain, Snow, Storm }
+    public enum Fx : byte { None, Lightning, Tribulation, Explosion, DemonBlast, Splash, LightPillar, Blessing, Quake, Eruption, Miasma, Stampede, Rain, Snow, Storm,
+        // Fights the renderer plays out as a short scene (kiếm khí, hit flashes, the fall):
+        DuelKill,   // A died at B's hand
+        DuelFlee,   // A beat B, who fled wounded
+        BeastSlain, // cultivator A killed a yêu thú
+        BeastKill,  // a yêu thú killed cultivator A
+        BeastFlee,  // cultivator A fled from a yêu thú
+    }
 
     public readonly struct WorldEvent
     {

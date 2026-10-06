@@ -39,6 +39,7 @@ namespace ThienDao.Tests
             sim.Enqueue(new CalamityCommand(Calamity.Cold, 300, 600, 10));
             sim.Enqueue(new CalamityCommand(Calamity.Rain, 500, 500, 10));
             sim.Enqueue(new CalamityCommand(Calamity.GreatCalamity, 0, 0, 1));
+            sim.Enqueue(new SpawnBeastCommand(v.X + 25, v.Y, 4));
             Run(sim, 100);
             var fallen = sim.Cultivation.All.Find(c => !c.Alive);
             if (fallen != null) sim.Enqueue(new DivineActCommand(DivineAct.Revive, 0, 0, fallen.Index));
@@ -252,6 +253,7 @@ namespace ThienDao.Tests
                     }
                     case 18:
                         if (target != null) sim.Enqueue(new DivineActCommand(DivineAct.Annihilate, target.X, target.Y, -1, target.Id));
+                        sim.Enqueue(new SpawnBeastCommand(tx + 15, ty, rng.Range(1, 7)));
                         sim.Enqueue(new SetRuleCommand((Rule)rng.Range(0, (int)Rule.Count), rng.Range(0f, 3f)));
                         break;
                     case 9: sim.Enqueue(new CalamityCommand(Calamity.Earthquake, tx, ty, rng.Range(5, 30))); break;
@@ -705,7 +707,7 @@ namespace ThienDao.Tests
             sim.Enqueue(new CalamityCommand(Calamity.GreatCalamity, 0, 0, 1));
             sim.ApplyPending();
             Assert.IsTrue(sim.Disasters.GreatCalamityActive);
-            Assert.AreEqual(0.5f, sim.QiScale, 1e-4f);
+            Assert.AreEqual(0.5f, sim.Disasters.QiFactor, 1e-4f);
             int before = sim.Events.CountByKind[(int)EventKind.Calamity];
             Run(sim, SimClock.DaysPerYear * 17);
             Assert.IsFalse(sim.Disasters.GreatCalamityActive, "the đại kiếp ends and a new age begins");
@@ -776,6 +778,105 @@ namespace ThienDao.Tests
                 if (ev.Text.Contains("đánh lén")) ambush = true;
             Assert.IsTrue(ambush, "someone should be struck in the middle of their tribulation");
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        // ---------------------------------------------------------------- M7: yêu thú, bí cảnh, kinh tế, thời đại
+
+        [Test]
+        public void BeastsAwakenAndGrow()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            int start = sim.Beasts.All.Count;
+            Assert.Greater(start, 0, "the world starts with a few beasts in the wilds");
+            Run(sim, SimClock.DaysPerYear * 60);
+            Assert.Greater(sim.Beasts.All.Count, start, "animals in rich qi open their spirit");
+            Assert.IsTrue(sim.Beasts.All.Exists(b => b.Grade >= 3), "beasts grow in grade");
+            Assert.Greater(sim.Events.CountByKind[(int)EventKind.Beast], 0);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void CultivatorSlaysBeastForItsCore()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var c = sim.Cultivation.All.Find(x => x.Alive && x.Realm == Realm.KetDan);
+            var rng = new DetRandom(7u);
+            var b = sim.Beasts.Spawn(Species.Wolf, 1, c.HomeX + 2f, c.HomeY, sim.Clock.Tick, ref rng);
+            float stones = c.Stones;
+            sim.Beasts.Fight(c, b, sim.Clock.Tick, "săn yêu đan", ref rng);
+            Assert.IsFalse(b.Alive, "a Kết Đan cuts down a nhất giai beast");
+            Assert.IsTrue(c.Alive);
+            Assert.Greater(c.Stones, stones, "and takes its yêu đan");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void YeuVuongGathersAClan()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var (x, y) = FindOpenLand(sim, 512, 512);
+            var rng = new DetRandom(9u);
+            var king = sim.Beasts.Spawn(Species.Wolf, 5, x + 0.5f, y + 0.5f, sim.Clock.Tick, ref rng);
+            var minions = new System.Collections.Generic.List<Beast>();
+            for (int k = 0; k < 3; k++) minions.Add(sim.Beasts.Spawn(Species.Deer, 2, x + 0.5f + k * 3, y + 3.5f, sim.Clock.Tick, ref rng));
+            sim.Beasts.YearlyStep(sim.Clock.Tick);
+            if (!king.Alive) Assert.Inconclusive("the king was cut down the same year");
+            Assert.IsTrue(king.IsKing, "a ngũ giai beast with lesser ones around proclaims itself Yêu Vương");
+            Assert.IsNotNull(king.ClanName);
+            foreach (var m in minions)
+                if (m.Alive) Assert.AreEqual(king.Index, m.Clan);
+        }
+
+        [Test]
+        public void DeadExpertsLeaveCavesThatCanBeExplored()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var all = sim.Cultivation.All;
+            // Kết Đan elders die until one leaves a cave behind.
+            foreach (var c in all.FindAll(x => x.Alive && x.Realm >= Realm.KetDan))
+            {
+                c.Treasures = 1;
+                c.TreasureName = "Thanh Trúc Phong Vân Kiếm";
+                sim.Cultivation.Perish(c, sim.Clock.Tick, "test", 2, Fx.None);
+                if (sim.Relics.All.Count > 0) break;
+            }
+            Assert.Greater(sim.Relics.All.Count, 0, "a strong cultivator's death leaves a cave");
+            var relic = sim.Relics.All[0];
+            Assert.AreEqual("Thanh Trúc Phong Vân Kiếm", relic.Treasure, "with the treasure nobody took from them");
+            var explorer = all.Find(x => x.Alive && x.Realm >= Realm.KetDan);
+            if (explorer == null) Assert.Inconclusive("no Kết Đan left to explore");
+            int treasures = explorer.Treasures;
+            sim.Relics.Explore(explorer, relic, sim.Clock.Tick);
+            Assert.IsTrue(relic.Discovered);
+            if (explorer.Alive) Assert.AreEqual(treasures + 1, explorer.Treasures, "the explorer carries the pháp bảo out");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void CaravansCarryGoodsAndWearRoads()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 30);
+            Assert.Greater(sim.Trade.Delivered, 20, "caravans reach their markets");
+            Assert.Greater(sim.Trade.Roads, 20, "and wear roads into the land");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void EachWorldHasItsOwnAges()
+        {
+            var a = new Simulation(MapGenerator.Generate("ThienDao"));
+            var b = new Simulation(MapGenerator.Generate("PhamNhan"));
+            long year500 = 500L * SimClock.DaysPerYear;
+            Assert.AreNotEqual(a.Eras.QiFactor(year500), b.Eras.QiFactor(year500), "two seeds breathe on different cycles");
+            for (long y = 0; y < 4000; y += 100)
+            {
+                float f = a.Eras.QiFactor(y * SimClock.DaysPerYear);
+                Assert.That(f, Is.InRange(0.74f, 1.26f));
+            }
+            Assert.GreaterOrEqual(a.Eras.QiFactor(0), 0.94f, "no world opens in mạt pháp");
+            Run(a, SimClock.DaysPerYear * 3);
+            Assert.IsNotNull(a.Eras.Current, "the first age is named");
         }
 
         // ---------------------------------------------------------------- M4: thế lực

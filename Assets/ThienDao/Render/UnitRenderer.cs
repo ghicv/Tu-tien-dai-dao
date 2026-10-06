@@ -21,6 +21,7 @@ namespace ThienDao.Render
             public float X, Y, TX, TY, Wait;
             public Unit Look;
             public Cultivator Who; // the real sect member this stand-in shows; null for mortals
+            public int Id;         // stable, for who falls when the village is hurt
         }
 
         struct Token
@@ -28,7 +29,10 @@ namespace ThienDao.Render
             public float X, Y, TX, TY, Wait;
             public int Kind;
             public float Pinned; // real seconds left: spawned by the player, kept on screen beyond the usual cap
+            public int Id;
         }
+
+        int _nextId;
 
         const int ExtraSpawnTokens = 8;   // per region and kind, on top of MaxTokensPerRegion
         const float SpawnTokenSeconds = 60f;
@@ -141,6 +145,7 @@ namespace ThienDao.Render
                 Vector3 bl = cam.ViewportToWorldPoint(Vector3.zero), tr = cam.ViewportToWorldPoint(Vector3.one);
                 var view = Rect.MinMaxRect(bl.x - 2f, bl.y - 2f, tr.x + 2f, tr.y + 2f);
                 DrawCreatures(view);
+                DrawFights(view);
                 DrawWildlife(view);
                 if (pixelsPerCell >= VillagersFromPixelsPerCell) DrawVillagers(view);
                 else _villagers.Clear();
@@ -163,6 +168,8 @@ namespace ThienDao.Render
                 case Species.Deer: return Unit.Deer;
                 case Species.Rabbit: return Unit.Rabbit;
                 case Species.Wolf: return Unit.Wolf;
+                case Species.Beast: return Unit.Beast;
+                case Species.Caravan: return Unit.Caravan;
                 default: return Unit.Migrants;
             }
         }
@@ -175,7 +182,7 @@ namespace ThienDao.Render
             new Color32(220, 240, 255, 255), // Hóa Thần: silver
         };
 
-        static Unit CultivatorLook(Cultivator c)
+        public static Unit CultivatorLook(Cultivator c)
         {
             if (c.Demonic) return Unit.CultivatorDemonic;
             switch (c.Realm)
@@ -204,9 +211,19 @@ namespace ThienDao.Render
                 bool left = e.TX[id] < e.X[id] - 0.01f;
                 int frame = moving && !_sim.Paused ? ((int)(time * 6f) + id) & 1 : 0;
 
+                if (s == Species.Beast)
+                {
+                    // Yêu thú: a red aura from tứ giai up, gold for a Yêu Vương.
+                    var b = _sim.Beasts.ForEntity(id);
+                    if (b != null && (b.Grade >= 4 || b.IsKing))
+                        AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + 0.7f, b.IsKing ? new Color32(255, 214, 110, 255) : new Color32(255, 80, 70, 255));
+                    DrawFighter(Unit.Beast, frame, x, y, left, 255, FightScenes.HurtFlash(x, y, Time.unscaledTime, id, out _));
+                    AddHit(Unit.Beast, x, y, new Hit { Entity = id, Region = -1, Kind = -1 });
+                    continue;
+                }
                 if (s != Species.Cultivator)
                 {
-                    AddQuad(UnitFor(s), frame, x, y, left);
+                    DrawFighter(UnitFor(s), frame, x, y, left, 255, FightScenes.HurtFlash(x, y, Time.unscaledTime, id, out _));
                     AddHit(UnitFor(s), x, y, new Hit { Entity = id, Region = -1, Kind = -1 });
                     continue;
                 }
@@ -214,6 +231,7 @@ namespace ThienDao.Render
                 var c = _sim.Cultivation.ForEntity(id);
                 // Nhân vật chính are always drawn, meditating at home included.
                 if (c == null || (!_sim.Cultivation.IsShownOnMap(c) && !c.Watched)) continue;
+                if (FightScenes.Hides(c.Index)) continue; // drawn by the fight scene instead
                 bool flying = e.Flying[id] && moving;
                 if (!flying && !_sim.World.IsWalkable(x, y)) continue; // the sim moves them ashore within the month
                 // Hover above the ground while flying, with a gentle bob.
@@ -226,9 +244,62 @@ namespace ThienDao.Render
                     AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + lift + 0.7f, tint);
                 }
                 if (flying) AddQuadCentered(Unit.FlyingSword, ((int)(time * 8f) + id) & 1, x, y + lift - 0.1f, White, left);
-                AddQuad(CultivatorLook(c), flying ? 0 : frame, x, y + lift, left);
+                DrawFighter(CultivatorLook(c), flying ? 0 : frame, x, y + lift, left, 255, FightScenes.HurtFlash(x, y, Time.unscaledTime, id, out _));
                 AddHit(CultivatorLook(c), x, y + lift, new Hit { Cultivator = c, Entity = -1, Region = -1, Kind = -1 });
             }
+        }
+
+        // The fighters of each fight scene: they lunge when they strike, recoil and flash white when struck;
+        // after the last blow the loser sinks and fades away, or runs off.
+        void DrawFights(Rect view)
+        {
+            float now = Time.unscaledTime;
+            foreach (var f in FightScenes.Active)
+            {
+                if (now < f.Start || now > f.End || !view.Contains(f.LoserPos)) continue;
+                Vector2 w = f.WinnerPos, l = f.LoserPos;
+                float dir = f.WinnerRight ? 1f : -1f; // from the loser toward the winner
+                float lungeW = 0f, lungeL = 0f;
+                foreach (var (at, byWinner) in f.Blows)
+                {
+                    float k = now - at;
+                    if (k < 0f || k > FightScene.Flight) continue;
+                    float step = Mathf.Sin(k / FightScene.Flight * Mathf.PI) * 0.35f;
+                    if (byWinner) lungeW = step; else lungeL = step;
+                }
+                float flashW = f.Flash(true, now, out float recoilW), flashL = f.Flash(false, now, out float recoilL);
+                int frame = ((int)(now * 8f)) & 1;
+                // Winner: faces the loser.
+                float wx = w.x - dir * lungeW + dir * recoilW;
+                DrawFighter(f.WinnerLook, frame, wx, w.y, f.WinnerRight, 255, flashW);
+                // Loser: faces the winner until the end.
+                float lx = l.x + dir * lungeL - dir * recoilL, ly = l.y;
+                byte alpha = 255;
+                if (now > f.FinalBlow)
+                {
+                    if (f.LoserDies)
+                    {
+                        // Struck down: a last white flash, then gone in white smoke (FxRenderer).
+                        float t = Mathf.Clamp01((now - f.FinalBlow) / 0.25f);
+                        alpha = (byte)(255 * (1f - t));
+                    }
+                    else
+                    {
+                        float t = Mathf.Clamp01((now - f.FinalBlow) / FightScene.Aftermath);
+                        alpha = (byte)(255 * (1f - t * t));
+                        lx -= dir * 3.5f * t; // flees, away from the winner
+                    }
+                }
+                bool fleeing = !f.LoserDies && now > f.FinalBlow;
+                DrawFighter(f.LoserLook, f.LoserDies && now > f.FinalBlow ? 0 : frame, lx, ly, fleeing ? f.WinnerRight : !f.WinnerRight, alpha, flashL);
+            }
+        }
+
+        void DrawFighter(Unit look, int frame, float x, float y, bool faceLeft, byte alpha, float flash)
+        {
+            AddQuadAt(look, frame, x, y, faceLeft, new Color32(255, 255, 255, alpha), false);
+            if (flash > 0.01f) // the whole body flashes white where the blow landed
+                AddQuadAt(look, frame, x, y, faceLeft, new Color32(255, 255, 255, (byte)(255 * flash * alpha / 255f)), false, true);
         }
 
         void DrawVillagers(Rect view)
@@ -293,8 +364,16 @@ namespace ThienDao.Render
                     }
                     list[k] = v;
                     if (!view.Contains(new Vector2(v.X, v.Y))) continue;
+                    // Hurt by a raid, a quake, a bolt: blink white; some mortals fall (white smoke) and are gone.
+                    float hurt = FightScenes.HurtFlash(v.X, v.Y, Time.unscaledTime, v.Id, out bool dies);
+                    if (dies && v.Who == null)
+                    {
+                        FightScenes.Poofs.Add(new Vector2(v.X, v.Y));
+                        list.RemoveAt(k);
+                        continue;
+                    }
                     int frame = moving ? ((int)(time * 7f) + k) & 1 : 0;
-                    AddQuad(v.Look, frame, v.X, v.Y, dx < 0f);
+                    DrawFighter(v.Look, frame, v.X, v.Y, dx < 0f, 255, hurt);
                     AddHit(v.Look, v.X, v.Y, new Hit { Cultivator = v.Who, Settlement = s, Entity = -1, Region = -1, Kind = -1 });
                 }
             }
@@ -357,7 +436,7 @@ namespace ThienDao.Render
                 var look = want == Unit.Villager0 ? (Unit)((int)Unit.Villager0 + _rand.Next(4)) : want;
                 var p = RandomSpot(s, objects, look);
                 if (!_sim.World.IsWalkable(p.x, p.y)) continue; // no dry ground found this frame
-                list.Add(new Villager { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 2f, Look = look, Who = _wantWho[k] });
+                list.Add(new Villager { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 2f, Look = look, Who = _wantWho[k], Id = ++_nextId });
             }
         }
 
@@ -413,7 +492,7 @@ namespace ThienDao.Render
                     for (; have < want; have++)
                     {
                         if (!RandomWildSpot(rx * size, ry * size, size, out var p)) break;
-                        list.Add(new Token { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 3f, Kind = kind });
+                        list.Add(new Token { X = p.x, Y = p.y, TX = p.x, TY = p.y, Wait = (float)_rand.NextDouble() * 3f, Kind = kind, Id = ++_nextId });
                     }
                 }
 
@@ -454,8 +533,15 @@ namespace ThienDao.Render
                     }
                     list[k] = t;
                     if (!view.Contains(new Vector2(t.X, t.Y))) continue;
+                    float hurt = FightScenes.HurtFlash(t.X, t.Y, Time.unscaledTime, t.Id, out bool dies);
+                    if (dies)
+                    {
+                        FightScenes.Poofs.Add(new Vector2(t.X, t.Y));
+                        list.RemoveAt(k);
+                        continue;
+                    }
                     int frame = moving ? ((int)(time * 6f) + k) & 1 : 0;
-                    AddQuad(TokenLook[t.Kind], frame, t.X, t.Y, dx < 0f);
+                    DrawFighter(TokenLook[t.Kind], frame, t.X, t.Y, dx < 0f, 255, hurt);
                     AddHit(TokenLook[t.Kind], t.X, t.Y, new Hit { Entity = -1, Region = region, Kind = t.Kind });
                 }
             }
@@ -567,13 +653,17 @@ namespace ThienDao.Render
         void AddQuadCentered(Unit unit, int frame, float x, float y, Color32 color, bool flip = false) =>
             AddQuadAt(unit, frame, x, y, flip, color, true);
 
-        void AddQuadAt(Unit unit, int frame, float x, float y, bool flip, Color32 color, bool centered)
+        void AddQuadAt(Unit unit, int frame, float x, float y, bool flip, Color32 color, bool centered, bool white = false)
         {
             if (_verts.Count >= MaxQuads * 4) return;
+            // Pixel art: fades and flashes go in hard steps, and every sprite sits on the 8-px-per-cell grid.
+            color.a = color.a < 40 ? (byte)0 : color.a < 120 ? (byte)96 : color.a < 200 ? (byte)170 : (byte)255;
+            if (color.a == 0) return;
             var sp = SpriteLibrary.UnitSprite(unit, frame);
-            var uv = SpriteLibrary.UnitUv(unit, frame);
-            float w = sp.W / (float)WorldRenderer.CellPx, h = sp.H / (float)WorldRenderer.CellPx;
-            float x0 = x - w * 0.5f, y0 = centered ? y - h * 0.5f : y - 0.15f;
+            var uv = SpriteLibrary.UnitUv(unit, frame, white);
+            const float px = WorldRenderer.CellPx;
+            float w = sp.W / px, h = sp.H / px;
+            float x0 = Mathf.Round((x - w * 0.5f) * px) / px, y0 = Mathf.Round((centered ? y - h * 0.5f : y - 0.15f) * px) / px;
             _verts.Add(new Vector3(x0, y0, 0f));
             _verts.Add(new Vector3(x0, y0 + h, 0f));
             _verts.Add(new Vector3(x0 + w, y0 + h, 0f));

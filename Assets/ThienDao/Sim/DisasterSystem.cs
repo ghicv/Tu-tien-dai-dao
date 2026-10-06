@@ -494,11 +494,13 @@ namespace ThienDao.Sim
             _sim.Wildlife.LandChanged(x0, y0, x1, y1);
             _sim.ResolveFlood(x0, y0, x1, y1); // whoever stands in the lava burns
 
-            Landmarks.Add(new Landmark
+            var volcano = new Landmark
             {
                 Kind = Landmark.Volcano, Name = name, X = cx, Y = cy, R = cone + 2, Tick = tick,
                 Origin = divine ? $"núi lửa Thiên Đạo gọi lên năm {Year(tick)}" : $"núi lửa phun trào năm {Year(tick)}"
-            });
+            };
+            Landmarks.Add(volcano);
+            _sim.Relics?.OnLandmark(volcano, tick);
             _sim.Events.Add(tick, EventKind.Calamity, 3,
                 $"Núi lửa phun trào {where}{(divine ? " theo ý Thiên Đạo" : "")}, {name} mọc lên giữa trời đất: {dead} người chết vì tro bụi" +
                 (houses > 0 ? $", {houses} nhà bị thiêu rụi" : "") + ".", cx + 0.5f, cy + 0.5f, Fx.Eruption);
@@ -784,8 +786,15 @@ namespace ThienDao.Sim
 
         // ---------------------------------------------------------------- thú triều
 
+        // A yêu tộc led by its Yêu Vương comes down on the villages (BeastSystem).
+        public void TideOf(string clan, int x, int y, int wolves, long tick)
+        {
+            var rng = RngFor(tick, 0x700000 + x * 31 + y);
+            BeastTide(x, y, wolves, tick, false, ref rng, clan);
+        }
+
         // Wolves pour out of the wild onto the villages; a sect guarding the land beats them back.
-        void BeastTide(int cx, int cy, int wolves, long tick, bool divine, ref DetRandom rng)
+        void BeastTide(int cx, int cy, int wolves, long tick, bool divine, ref DetRandom rng, string clan = null)
         {
             string where = PlaceName(cx, cy);
             if (wolves > 0) _sim.Wildlife.Add(Species.Wolf, cx + 0.5f, cy + 0.5f, wolves);
@@ -816,7 +825,7 @@ namespace ThienDao.Sim
             }
             int imp = Mathf.Max(divine ? 2 : 1, dead >= 40 ? 2 : 1);
             _sim.Events.Add(tick, EventKind.Calamity, imp,
-                $"Thú triều! {(wolves > 0 ? "Hàng trăm yêu lang" : "Bầy sói đói")} tràn xuống {where}: {dead} người bị cắn chết" +
+                $"Thú triều! {(clan != null ? $"Yêu thú {clan}" : wolves > 0 ? "Hàng trăm yêu lang" : "Bầy sói đói")} tràn xuống {where}: {dead} người bị cắn chết" +
                 (guards.Count > 0 ? $"; {string.Join(", ", guards)} xuất thủ trấn áp" : "") + ".", cx + 0.5f, cy + 0.5f, Fx.Stampede);
         }
 
@@ -900,6 +909,7 @@ namespace ThienDao.Sim
             {
                 mark = new Landmark { Kind = Landmark.Thunder, Name = _thunderNames.Next(ref rng), X = cx, Y = cy, R = r, Tick = tick, Until = until, Origin = origin };
                 Landmarks.Add(mark);
+                _sim.Relics?.OnLandmark(mark, tick);
             }
             StampThunder(mark, true);
             RefreshZone(mark);
