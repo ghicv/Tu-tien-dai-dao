@@ -339,6 +339,26 @@ namespace ThienDao.Render
             return c;
         }
 
+        // ---------------------------------------------------------------- tường thành
+
+        static readonly Color32 WallStone = new Color32(170, 162, 148, 255);
+        public static readonly Color32 WallMap = new Color32(150, 142, 130, 255);
+
+        // One pixel of a city wall seen from above: the stone walkway in courses, merlons along every side that
+        // faces open ground, and the dark front face where the wall drops to the ground below it.
+        public static Color32 WallPixel(int px, int py, int wx, int wy, bool l, bool r, bool b, bool t, uint n)
+        {
+            if (!b && py <= 1) return SpriteLibrary.Shade(WallStone, py == 0 ? 0.48f : 0.6f);
+            var c = WallStone;
+            if (py % 3 == 0 || ((wx + ((wy / 3) & 1) * 2) & 3) == 0) c = SpriteLibrary.Shade(c, 0.86f);
+            if (((n >> 8) & 31) == 0) c = SpriteLibrary.Shade(c, 1.1f);
+            bool sideL = !l && px <= 1, sideR = !r && px >= 6;
+            bool sideT = !t && py >= 6, sideB = !b && py <= 3;
+            if (sideL || sideR) return ((wy >> 1) & 1) == 0 ? SpriteLibrary.Shade(WallStone, 1.16f) : SpriteLibrary.Shade(WallStone, 0.7f);
+            if (sideT || sideB) return ((wx >> 1) & 1) == 0 ? SpriteLibrary.Shade(WallStone, 1.16f) : SpriteLibrary.Shade(WallStone, 0.7f);
+            return c;
+        }
+
         // ---------------------------------------------------------------- per cell
 
         // Broad patches at cell scale, so the textures still read on the far map (one pixel per cell).

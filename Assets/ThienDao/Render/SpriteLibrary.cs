@@ -73,13 +73,29 @@ namespace ThienDao.Render
                 Blob(9, 7, 4.5f, 2.8f, 3.7f, 2.4f, C(196, 192, 186), C(150, 146, 140), C(108, 104, 100), false, 13),
                 Blob(9, 7, 4.5f, 2.8f, 3.7f, 2.4f, C(186, 164, 136), C(144, 122, 98), C(102, 86, 70), false, 14),
             };
-            s[(int)ObjectType.House] = new[]
+            // Houses: variant = style × 8 + shape × 4 + roof (SettlementSystem.HouseVariant).
+            // 0 nhà tranh of a thôn, 1 nhà ngói of a trấn, 2 nhà lầu of a thành, 3 phủ đệ of a capital.
+            var roofs = new[] { C(64, 112, 204), C(196, 72, 52), C(150, 96, 56), C(52, 140, 130) };
+            var straws = new[] { C(206, 172, 96), C(192, 160, 88), C(214, 184, 110), C(186, 150, 84) };
+            var houses = new PixelSprite[32];
+            for (int r = 0; r < 4; r++)
             {
-                House(C(64, 112, 204)),
-                House(C(196, 72, 52)),
-                House(C(150, 96, 56)),
-                House(C(52, 140, 130)),
-            };
+                houses[0 + r] = Hut(straws[r], false, (uint)(50 + r));
+                houses[4 + r] = Hut(straws[r], true, (uint)(60 + r));
+                houses[8 + r] = House(roofs[r]);
+                houses[12 + r] = LongHouse(roofs[r]);
+                houses[16 + r] = Lau(roofs[r], false);
+                houses[20 + r] = Lau(roofs[r], true);
+                houses[24 + r] = Mansion(Glazed(roofs[r]), false);
+                houses[28 + r] = Mansion(Glazed(roofs[r]), true);
+            }
+            s[(int)ObjectType.House] = houses;
+            s[(int)ObjectType.Well] = new[] { Well() };
+            s[(int)ObjectType.Shrine] = new[] { Shrine(C(170, 52, 44)), Shrine(C(52, 120, 104)), Shrine(C(170, 52, 44)), Shrine(C(120, 70, 150)) };
+            s[(int)ObjectType.Market] = new[] { Market() };
+            s[(int)ObjectType.Watchtower] = new[] { Watchtower() };
+            s[(int)ObjectType.Pagoda] = new[] { Pagoda(C(64, 112, 204)), Pagoda(C(196, 72, 52)), Pagoda(C(120, 84, 60)), Pagoda(C(52, 140, 130)) };
+            s[(int)ObjectType.Palace] = new[] { Palace() };
             s[(int)ObjectType.SectHall] = new[]
             {
                 SectHall(C(46, 96, 110)),
@@ -692,6 +708,370 @@ namespace ThienDao.Render
             cv.Outline(0.55f);
             cv.Shadow(cx, 0.9f, rx + 0.2f, 1f);
             return cv.ToSprite(0, 0, mid);
+        }
+
+        // ---------------------------------------------------------------- buildings by standing
+
+        // A tiled roof from row y0 up: `rows` courses, half-width hw0 shrinking by dhw a row; a dark eave, tile
+        // courses, the ridge in `ridge`; with `upturn` the eave corners flick up (đầu đao).
+        static void TiledRoof(Canvas cv, float cx, int y0, int rows, float hw0, float dhw, Color32 roof, Color32 ridge, bool upturn)
+        {
+            var eave = Shade(roof, 0.62f);
+            for (int r = 0; r < rows; r++)
+            {
+                float hw = hw0 - r * dhw;
+                if (hw < 0.5f) break;
+                bool top = r == rows - 1 || hw - dhw < 0.5f;
+                for (int x = 0; x < cv.W; x++)
+                {
+                    float d = x + 0.5f - cx;
+                    if (Mathf.Abs(d) > hw) continue;
+                    var c = d < 0f ? roof : Shade(roof, 0.84f);
+                    if (r == 0) c = eave;
+                    else if (r % 2 == 0) c = Shade(c, 0.88f);
+                    if (top && r > 0) c = ridge;
+                    cv.Set(x, y0 + r, c);
+                }
+            }
+            if (!upturn) return;
+            int l = Mathf.CeilToInt(cx - hw0 - 0.5f), rt = Mathf.FloorToInt(cx + hw0 - 0.5f);
+            cv.Set(l - 1, y0 + 1, eave);
+            cv.Set(l - 2, y0 + 2, eave);
+            cv.Set(rt + 1, y0 + 1, Shade(eave, 0.85f));
+            cv.Set(rt + 2, y0 + 2, Shade(eave, 0.85f));
+        }
+
+        // Lưu ly: the glazed, brighter tiles of the capital.
+        static Color32 Glazed(Color32 roof) =>
+            new Color32((byte)Mathf.Min(255, roof.r * 1.18f + 14), (byte)Mathf.Min(255, roof.g * 1.18f + 14), (byte)Mathf.Min(255, roof.b * 1.18f + 14), 255);
+
+        static void Lattice(Canvas cv, int x0, int y0, int x1, int y1, Color32 wood)
+        {
+            var dark = C(70, 48, 32);
+            for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+                cv.Set(x, y, ((x + y) & 1) == 0 ? wood : dark);
+        }
+
+        // Nhà tranh of a thôn: mud walls under a round thatch, sometimes a haystack by the door.
+        static PixelSprite Hut(Color32 straw, bool stack, uint seed)
+        {
+            var cv = new Canvas(24, 22);
+            var mud = C(176, 138, 96);
+            int x0 = stack ? 2 : 4, x1 = stack ? 15 : 19;
+            cv.Rect(x0, 2, x1, 8, mud);
+            cv.Rect(x0, 2, x1, 3, C(146, 110, 74));
+            int dx = (x0 + x1) / 2;
+            cv.Rect(dx - 1, 2, dx + 1, 6, C(92, 60, 36));
+            cv.Rect(x0 + 2, 5, x0 + 3, 6, C(60, 44, 30));
+            float cx = (x0 + x1 + 1) * 0.5f, hw0 = (x1 - x0 + 1) * 0.5f + 2f;
+            for (int y = 8; y <= 17; y++)
+            {
+                float t = (y - 8) / 9.5f;
+                float hw = hw0 * Mathf.Sqrt(1f - t * t);
+                for (int x = 0; x < 24; x++)
+                {
+                    if (Mathf.Abs(x + 0.5f - cx) > hw) continue;
+                    var c = x + 0.5f < cx ? straw : Shade(straw, 0.84f);
+                    if (Hash.U32(seed, x, y) % 6 == 0) c = Shade(c, 0.8f); // loose straw
+                    if (y == 8) c = Shade(straw, 0.68f);
+                    cv.Set(x, y, c);
+                }
+            }
+            for (int x = Mathf.CeilToInt(cx - hw0); x < cx + hw0; x++)
+                if (Hash.U32(seed, x, 0) % 3 == 0) cv.Set(x, 7, Shade(straw, 0.66f)); // ragged eave
+            if (stack)
+            {
+                var hay = C(222, 188, 100);
+                for (int y = 1; y <= 7; y++)
+                {
+                    float t = (y - 1) / 7f;
+                    float hw = 3.6f * Mathf.Sqrt(1f - t * t);
+                    for (int x = 16; x < 24; x++)
+                        if (Mathf.Abs(x + 0.5f - 20f) <= hw) cv.Set(x, y, (x + y) % 3 == 0 ? Shade(hay, 0.84f) : hay);
+                }
+            }
+            cv.Outline(0.45f);
+            cv.Shadow(12f, 1.2f, 11f, 1.6f);
+            return cv.ToSprite(0, 0, straw);
+        }
+
+        // Nhà ngói of a trấn, the long kind: two doors under one roof, a chimney.
+        static PixelSprite LongHouse(Color32 roof)
+        {
+            var cv = new Canvas(26, 24);
+            var plaster = C(226, 206, 164);
+            var beam = C(150, 104, 66);
+            cv.Rect(2, 2, 23, 9, plaster);
+            cv.Rect(2, 2, 23, 3, C(190, 170, 130));
+            foreach (int px in new[] { 2, 12, 23 }) cv.Rect(px, 2, px, 9, beam);
+            cv.Rect(5, 2, 7, 7, C(100, 62, 38));
+            cv.Rect(17, 2, 19, 7, C(100, 62, 38));
+            Lattice(cv, 14, 5, 15, 7, beam);
+            Lattice(cv, 9, 5, 10, 7, beam);
+            TiledRoof(cv, 13f, 10, 7, 12.5f, 1.1f, roof, Shade(roof, 0.55f), false);
+            cv.Rect(19, 14, 20, 17, C(160, 86, 64));
+            cv.Rect(19, 17, 20, 17, C(110, 60, 44));
+            cv.Outline(0.45f);
+            cv.Shadow(13f, 1.2f, 12f, 1.8f);
+            return cv.ToSprite(-1, 0, roof);
+        }
+
+        // Nhà lầu of a thành: two storeys, a balcony, upturned eaves; the shop kind has an awning and lanterns.
+        static PixelSprite Lau(Color32 roof, bool shop)
+        {
+            var cv = new Canvas(26, 34);
+            var plaster = C(232, 214, 176);
+            var wood = C(140, 92, 58);
+            cv.Rect(3, 2, 22, 9, plaster);
+            cv.Rect(3, 2, 22, 3, Shade(plaster, 0.85f));
+            cv.Rect(3, 2, 3, 9, wood);
+            cv.Rect(22, 2, 22, 9, wood);
+            if (shop)
+            {
+                cv.Rect(5, 2, 20, 6, C(64, 46, 34));
+                var goods = new[] { C(220, 70, 50), C(240, 200, 80), C(110, 180, 80), C(200, 150, 220) };
+                for (int x = 6; x <= 19; x += 2) cv.Set(x, 3 + (x / 2) % 2, goods[(x / 2) % 4]);
+                for (int x = 4; x <= 21; x++)
+                {
+                    cv.Set(x, 8, ((x / 2) & 1) == 0 ? roof : C(240, 236, 226));
+                    cv.Set(x, 7, Shade(((x / 2) & 1) == 0 ? roof : C(240, 236, 226), 0.8f));
+                }
+            }
+            else
+            {
+                cv.Rect(11, 2, 14, 7, C(96, 60, 38));
+                Lattice(cv, 5, 5, 8, 7, wood);
+                Lattice(cv, 17, 5, 20, 7, wood);
+            }
+            TiledRoof(cv, 13f, 10, 3, 12.5f, 0.7f, roof, Shade(roof, 0.62f), true);
+            cv.Rect(5, 13, 20, 19, plaster);
+            cv.Rect(5, 13, 5, 19, wood);
+            cv.Rect(20, 13, 20, 19, wood);
+            Lattice(cv, 8, 16, 11, 18, wood);
+            Lattice(cv, 14, 16, 17, 18, wood);
+            cv.Rect(4, 14, 21, 14, Shade(wood, 0.85f)); // balcony rail
+            for (int x = 4; x <= 21; x += 2) cv.Set(x, 13, wood);
+            TiledRoof(cv, 13f, 20, 9, 11.5f, 1.25f, roof, Shade(roof, 0.5f), true);
+            if (shop)
+                foreach (int lx in new[] { 2, 23 })
+                {
+                    cv.Rect(lx, 9, lx, 10, C(220, 56, 40));
+                    cv.Set(lx, 11, C(80, 50, 30));
+                }
+            cv.Outline(0.45f);
+            cv.Shadow(13f, 1.2f, 12f, 1.8f);
+            return cv.ToSprite(-1, 0, roof);
+        }
+
+        // Phủ đệ of the capital: a white-walled compound, a red-pillared hall under glazed tiles and a gold ridge;
+        // the pavilion kind has a double eave.
+        static PixelSprite Mansion(Color32 glazed, bool pavilion)
+        {
+            var cv = new Canvas(26, 32);
+            var gold = C(222, 178, 74);
+            var red = C(186, 58, 44);
+            var pillar = C(136, 36, 30);
+            cv.Rect(4, 5, 21, 12, red);
+            foreach (int px in new[] { 4, 9, 16, 21 }) cv.Rect(px, 5, px, 12, pillar);
+            cv.Rect(11, 5, 14, 10, C(78, 40, 30));
+            cv.Rect(11, 11, 14, 11, gold);
+            if (pavilion)
+            {
+                TiledRoof(cv, 13f, 13, 3, 12.5f, 0.6f, glazed, Shade(glazed, 0.62f), true);
+                cv.Rect(8, 16, 17, 18, red);
+                cv.Rect(8, 16, 8, 18, pillar);
+                cv.Rect(17, 16, 17, 18, pillar);
+                TiledRoof(cv, 13f, 19, 7, 10f, 1.3f, glazed, gold, true);
+            }
+            else TiledRoof(cv, 13f, 13, 8, 12.5f, 1.4f, glazed, gold, true);
+            // The compound wall in front, with its gate.
+            var white = C(238, 234, 224);
+            cv.Rect(0, 1, 25, 3, white);
+            cv.Rect(0, 1, 25, 1, C(204, 198, 186));
+            cv.Rect(0, 4, 25, 4, Shade(glazed, 0.6f));
+            cv.Rect(11, 1, 14, 4, C(168, 40, 32));
+            cv.Set(12, 2, gold);
+            cv.Set(13, 2, gold);
+            cv.Outline(0.45f);
+            cv.Shadow(13f, 1f, 13f, 1.6f);
+            return cv.ToSprite(-1, 0, glazed);
+        }
+
+        static PixelSprite Well()
+        {
+            var cv = new Canvas(10, 13);
+            var stone = C(160, 156, 150);
+            var wood = C(130, 90, 56);
+            cv.Rect(1, 1, 8, 3, stone);
+            cv.Rect(1, 3, 8, 3, C(196, 192, 186));
+            cv.Rect(3, 3, 6, 3, C(60, 110, 170));
+            cv.Rect(1, 4, 1, 8, wood);
+            cv.Rect(8, 4, 8, 8, wood);
+            cv.Rect(1, 8, 8, 8, wood);
+            cv.Rect(5, 5, 5, 7, C(204, 184, 140));
+            cv.Rect(4, 4, 5, 4, C(110, 74, 44));
+            TiledRoof(cv, 5f, 9, 3, 5f, 1.4f, C(168, 124, 72), C(120, 86, 50), false);
+            cv.Outline(0.5f);
+            cv.Shadow(5f, 1f, 4.5f, 1.2f);
+            return cv.ToSprite(-1, 0, stone);
+        }
+
+        // Miếu thổ địa: a small red temple on a stone platform, an incense burner before the steps.
+        static PixelSprite Shrine(Color32 roof)
+        {
+            var cv = new Canvas(24, 27);
+            var stone = C(178, 172, 162);
+            var gold = C(222, 178, 74);
+            cv.Rect(2, 1, 21, 2, stone);
+            cv.Rect(2, 1, 21, 1, Shade(stone, 0.8f));
+            cv.Rect(10, 0, 13, 2, C(206, 200, 190));
+            cv.Rect(5, 3, 18, 10, C(186, 58, 44));
+            foreach (int px in new[] { 5, 9, 14, 18 }) cv.Rect(px, 3, px, 10, C(136, 36, 30));
+            cv.Rect(10, 3, 13, 8, C(70, 40, 30));
+            cv.Rect(10, 9, 13, 9, gold);
+            cv.Rect(11, 1, 12, 3, C(150, 110, 50));
+            cv.Set(11, 4, C(200, 200, 200));
+            TiledRoof(cv, 12f, 11, 7, 10.5f, 1.3f, roof, gold, true);
+            cv.Rect(11, 18, 12, 19, gold);
+            cv.Outline(0.45f);
+            cv.Shadow(12f, 1f, 11f, 1.4f);
+            return cv.ToSprite(0, 0, roof);
+        }
+
+        // Chợ: three stalls under striped awnings, their wares on the counters.
+        static PixelSprite Market()
+        {
+            var cv = new Canvas(24, 15);
+            var wood = C(150, 104, 66);
+            var awnings = new[] { C(206, 60, 48), C(64, 112, 204), C(226, 184, 60) };
+            var goods = new[] { C(220, 70, 50), C(240, 200, 80), C(110, 180, 80), C(240, 236, 226), C(150, 96, 56) };
+            for (int k = 0; k < 3; k++)
+            {
+                int x0 = 1 + k * 8;
+                cv.Rect(x0, 1, x0 + 6, 3, wood);
+                cv.Rect(x0, 3, x0 + 6, 3, Shade(wood, 1.15f));
+                for (int x = x0 + 1; x <= x0 + 5; x++) cv.Set(x, 4, goods[(x + k) % goods.Length]);
+                cv.Rect(x0, 4, x0, 8, Shade(wood, 0.8f));
+                cv.Rect(x0 + 6, 4, x0 + 6, 8, Shade(wood, 0.8f));
+                for (int x = x0 - 1; x <= x0 + 7; x++)
+                for (int y = 9; y <= 11; y++)
+                {
+                    var c = ((x - x0) / 2 & 1) == 0 ? awnings[k] : C(240, 236, 226);
+                    cv.Set(x, y, y == 9 ? Shade(c, 0.78f) : c);
+                }
+            }
+            cv.Outline(0.45f);
+            cv.Shadow(12f, 1f, 11.5f, 1.2f);
+            return cv.ToSprite(0, 0, awnings[0]);
+        }
+
+        // Tháp canh at a corner of the walls: a stone base, a wooden lookout, a red banner.
+        static PixelSprite Watchtower()
+        {
+            var cv = new Canvas(18, 32);
+            var stone = C(150, 144, 134);
+            for (int y = 1; y <= 13; y++)
+            for (int x = 2; x <= 15; x++)
+            {
+                var c = x < 9 ? stone : Shade(stone, 0.86f);
+                if (y % 3 == 0 || (x + (y / 3) * 3) % 6 == 0) c = Shade(c, 0.82f); // block courses
+                cv.Set(x, y, c);
+            }
+            var wood = C(140, 96, 60);
+            cv.Rect(1, 14, 16, 20, wood);
+            cv.Rect(1, 20, 16, 20, Shade(wood, 0.8f));
+            foreach (int px in new[] { 4, 8, 12 }) cv.Rect(px, 16, px, 18, C(40, 28, 20));
+            TiledRoof(cv, 9f, 21, 6, 9.5f, 1.6f, C(70, 74, 88), C(48, 50, 60), true);
+            cv.Rect(9, 27, 9, 31, C(60, 44, 30));
+            cv.Rect(10, 29, 13, 31, C(204, 48, 40));
+            cv.Outline(0.45f);
+            cv.Shadow(9f, 1f, 8f, 1.4f);
+            return cv.ToSprite(-1, 0, stone);
+        }
+
+        // Bảo tháp: five tiers of upturned eaves and a golden spire.
+        static PixelSprite Pagoda(Color32 roof)
+        {
+            var cv = new Canvas(20, 44);
+            var plaster = C(226, 206, 164);
+            var pillar = C(150, 50, 40);
+            cv.Rect(2, 1, 17, 3, C(178, 172, 162));
+            cv.Rect(2, 1, 17, 1, C(140, 136, 128));
+            int yb = 4;
+            for (int k = 0; k < 5; k++)
+            {
+                float hw = 5.5f - k * 0.8f;
+                int x0 = Mathf.CeilToInt(10f - hw - 0.5f), x1 = Mathf.FloorToInt(10f + hw - 0.5f);
+                cv.Rect(x0, yb, x1, yb + 3, plaster);
+                cv.Rect(x0, yb, x0, yb + 3, pillar);
+                cv.Rect(x1, yb, x1, yb + 3, pillar);
+                cv.Rect(9, yb, 10, yb + 2, C(70, 44, 32));
+                TiledRoof(cv, 10f, yb + 4, 2, hw + 2.5f, 1f, roof, Shade(roof, 0.6f), true);
+                yb += 6;
+            }
+            var gold = C(226, 184, 70);
+            cv.Rect(9, yb, 10, yb + 5, gold);
+            cv.Rect(10, yb, 10, yb + 5, Shade(gold, 0.8f));
+            cv.Set(9, yb + 6, C(250, 224, 130));
+            cv.Outline(0.45f);
+            cv.Shadow(10f, 1f, 8.5f, 1.4f);
+            return cv.ToSprite(-2, 0, roof);
+        }
+
+        // Hoàng cung: a palace on a three-step marble terrace, a red hall under double golden roofs, two wings.
+        static PixelSprite Palace()
+        {
+            var cv = new Canvas(60, 62);
+            var marble = C(228, 226, 218);
+            var red = C(186, 52, 40);
+            var pillar = C(136, 34, 28);
+            var imperial = C(232, 180, 56);
+            var gold = C(214, 170, 70);
+            var goldLight = C(250, 222, 120);
+
+            cv.Rect(1, 1, 58, 3, marble);
+            cv.Rect(1, 1, 58, 1, Shade(marble, 0.8f));
+            cv.Rect(4, 4, 55, 6, marble);
+            cv.Rect(4, 4, 55, 4, Shade(marble, 0.84f));
+            cv.Rect(7, 7, 52, 8, marble);
+            cv.Rect(7, 7, 52, 7, Shade(marble, 0.88f));
+            for (int y = 1; y <= 8; y++) cv.Rect(26, y, 33, y, y % 2 == 0 ? Shade(marble, 0.86f) : C(240, 238, 232)); // the great stair
+
+            // Wings.
+            cv.Rect(0, 9, 9, 15, red);
+            cv.Rect(50, 9, 59, 15, red);
+            foreach (int px in new[] { 0, 4, 9, 50, 55, 59 }) cv.Rect(px, 9, px, 15, pillar);
+            TiledRoof(cv, 5f, 16, 4, 6f, 1.4f, imperial, Shade(imperial, 0.6f), true);
+            TiledRoof(cv, 55f, 16, 4, 6f, 1.4f, imperial, Shade(imperial, 0.6f), true);
+
+            // The great hall.
+            cv.Rect(10, 9, 49, 20, red);
+            for (int px = 10; px <= 49; px += 5) cv.Rect(px, 9, px, 20, pillar);
+            cv.Rect(27, 9, 32, 16, C(80, 40, 30));
+            cv.Rect(17, 9, 20, 14, C(80, 40, 30));
+            cv.Rect(39, 9, 42, 14, C(80, 40, 30));
+            cv.Rect(26, 17, 33, 17, gold);
+            cv.Rect(10, 20, 49, 20, gold);
+            TiledRoof(cv, 30f, 21, 4, 26.5f, 0.7f, imperial, Shade(imperial, 0.62f), true);
+            cv.Rect(16, 25, 43, 29, red);
+            for (int px = 16; px <= 43; px += 6) cv.Rect(px, 25, px, 29, pillar);
+            cv.Rect(16, 29, 43, 29, gold);
+            TiledRoof(cv, 30f, 30, 12, 24.5f, 1.9f, imperial, goldLight, true);
+            // Ridge beasts at both ends of the main ridge.
+            for (int y = 61; y >= 30; y--)
+            {
+                int l = -1, r = -1;
+                for (int x = 0; x < 60; x++)
+                    if (cv.P[y * 60 + x].a == 255) { if (l < 0) l = x; r = x; }
+                if (l < 0) continue;
+                cv.Set(l, y + 1, C(90, 60, 30));
+                cv.Set(r, y + 1, C(90, 60, 30));
+                break;
+            }
+            cv.Outline(0.45f);
+            cv.Shadow(30f, 1f, 29.5f, 1.8f);
+            return cv.ToSprite(-2, 0, imperial);
         }
 
         static PixelSprite House(Color32 roof)

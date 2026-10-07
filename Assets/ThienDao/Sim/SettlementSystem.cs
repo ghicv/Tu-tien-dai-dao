@@ -24,7 +24,11 @@ namespace ThienDao.Sim
         public readonly int[] Cohorts = new int[AgeGroups];
         public float Food;
         public readonly List<int> Houses = new List<int>();
+        public readonly List<int> Civic = new List<int>();  // công trình: giếng, miếu, chợ, tháp, hoàng cung (not homes)
         public readonly List<int> Farms = new List<int>(); // cell indices
+        public int WallX0 = -1, WallY0, WallX1, WallY1;    // the ring of its walls, if it has any
+        public long CivicRetry;                            // no room for its next công trình: look again from this tick
+        public int ClaimFrom = 2;                          // rings inside this have no free farmland (until land is freed nearby)
 
         // Caches (exact: same result as recomputing): fields are re-checked only after the land nearby changed,
         // and the harvest's fertility sum only when the fields or the number tended changed.
@@ -124,6 +128,7 @@ namespace ThienDao.Sim
                 int pop = site.Houses.Count * rng.Range(4, 6);
                 DistributeInitial(s, pop, ref rng);
                 s.Food = pop * 6f;
+                Develop(s, true); // its công trình and house styles before the fields take the ground around
                 ClaimFarmland(s, (int)(s.Workers * CellsPerWorker));
             }
         }
@@ -240,6 +245,7 @@ namespace ThienDao.Sim
                 _sim.Factions?.SectGone(s.Id, _sim.Clock.Tick);
                 _sim.Cultivation.DisbandSect(s.Id, _sim.Clock.Tick); // its hall stays behind as a ruin
             }
+            ClearDevelopment(s);
             for (int k = s.Houses.Count - 1; k >= 0; k--) _w.Objects.Remove(s.Houses[k]);
             ReleaseFarmland(s, s.Farms.Count);
         }
@@ -349,7 +355,9 @@ namespace ThienDao.Sim
                 var rng = RngFor(tick, s.Id);
                 if (s.FarmsCheck)
                 {
+                    long p0 = System.Diagnostics.Stopwatch.GetTimestamp();
                     PruneFarms(s);
+                    Prof(0, p0);
                     s.FarmsCheck = false;
                     s.FertilityTended = -1;
                 }
@@ -391,8 +399,9 @@ namespace ThienDao.Sim
                 }
 
                 int wantFarms = (int)(workers * CellsPerWorker);
-                if (s.Farms.Count < wantFarms && s.Food < pop * 6f) ClaimFarmland(s, Mathf.Min(8, wantFarms - s.Farms.Count));
-                else if (s.Farms.Count > wantFarms * 1.4f + 10) ReleaseFarmland(s, Mathf.Min(6, s.Farms.Count - wantFarms));
+                long p1 = System.Diagnostics.Stopwatch.GetTimestamp();
+                if (s.Farms.Count < wantFarms && s.Food < pop * 6f) { ClaimFarmland(s, Mathf.Min(8, wantFarms - s.Farms.Count)); Prof(1, p1); }
+                else if (s.Farms.Count > wantFarms * 1.4f + 10) { ReleaseFarmland(s, Mathf.Min(6, s.Farms.Count - wantFarms)); Prof(2, p1); }
             }
         }
 
@@ -440,6 +449,7 @@ namespace ThienDao.Sim
                 s.BirthsLastYear = births;
                 pop += births;
 
+                long p3 = System.Diagnostics.Stopwatch.GetTimestamp();
                 if (pop > s.HousingCapacity * 0.85f)
                 {
                     TryBuildHouse(s, ref rng);
@@ -449,11 +459,23 @@ namespace ThienDao.Sim
                 {
                     _w.Objects.Remove(s.Houses[s.Houses.Count - 1]);
                 }
+                Prof(3, p3);
+                p3 = System.Diagnostics.Stopwatch.GetTimestamp();
+                Develop(s, false);
+                Prof(4, p3);
 
+                p3 = System.Diagnostics.Stopwatch.GetTimestamp();
                 if (pop >= 70 && (pop > s.HousingCapacity || s.Food < pop * 3f) && AliveCount < MaxSettlements && rng.NextFloat() < 0.35f)
                     Emigrate(s, tick, ref rng);
+                Prof(5, p3);
             }
         }
+
+        // Where the villages' time goes, for the perf probe: not part of the world.
+        public static readonly string[] ProfNames = { "Kiểm ruộng", "Mở ruộng", "Bỏ ruộng", "Xây / bỏ nhà", "Phát triển (công trình, tường)", "Di dân" };
+        public static readonly double[] ProfMs = new double[6];
+        static readonly double ProfScale = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        static void Prof(int slot, long t0) => ProfMs[slot] += (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * ProfScale;
 
         // ---------------------------------------------------------------- flood / lava: villages and migrant groups engulfed
 
@@ -506,6 +528,7 @@ namespace ThienDao.Sim
         {
             var s = Owning(cell);
             if (s != null) { s.Farms.Remove(cell); s.FertilityTended = -1; }
+            Freed(cell % _w.W, cell / _w.W, cell % _w.W, cell / _w.W);
             _w.Owner[cell] = 0;
         }
 
@@ -557,10 +580,12 @@ namespace ThienDao.Sim
                 int old = _w.Objects.CellObject[_w.Idx(s.X, s.Y)];
                 if (old >= 0 && _w.Objects.Get(old).Type == ObjectType.SectHall) _w.Objects.Remove(old);
             }
+            ClearDevelopment(s);
             for (int k = s.Houses.Count - 1; k >= 0; k--) _w.Objects.Remove(s.Houses[k]);
             ReleaseFarmland(s, s.Farms.Count);
 
             s.X = nx;
+            s.ClaimFrom = 2;
             s.Y = ny;
             if (s.Sect)
             {
@@ -695,10 +720,21 @@ namespace ThienDao.Sim
             const int Reach = 40; // farmland is claimed within 30 cells of the centre
             foreach (var s in All)
             {
-                if (!s.Alive || s.FarmsCheck) continue;
+                if (!s.Alive) continue;
                 if (s.X + Reach < x0 || s.X - Reach > x1 || s.Y + Reach < y0 || s.Y - Reach > y1) continue;
                 s.FarmsCheck = true;
+                if (!_claiming) s.ClaimFrom = 2; // the land may have opened up; a claim only ever takes land
             }
+        }
+
+        bool _claiming;
+
+        // Land around (x0..x1, y0..y1) went back to nobody: villages near it must look at their inner rings again.
+        void Freed(int x0, int y0, int x1, int y1)
+        {
+            const int Reach = 31;
+            foreach (var s in All)
+                if (s.Alive && s.X + Reach >= x0 && s.X - Reach <= x1 && s.Y + Reach >= y0 && s.Y - Reach <= y1) s.ClaimFrom = 2;
         }
 
         void PruneFarms(Settlement s)
@@ -718,8 +754,10 @@ namespace ThienDao.Sim
             if (want <= 0) return;
             ushort owner = (ushort)(s.Id + 1);
             int radius = Mathf.Clamp(6 + (int)(Mathf.Sqrt(s.Population) * 1.2f), 6, 30);
-            int added = 0, x0 = int.MaxValue, y0 = int.MaxValue, x1 = int.MinValue, y1 = int.MinValue;
-            for (int r = 2; r <= radius && added < want; r++)
+            int added = 0, x0 = int.MaxValue, y0 = int.MaxValue, x1 = int.MinValue, y1 = int.MinValue, lastRing = 2;
+            // Rings inside ClaimFrom were found full last time and nothing has been freed near since: skip them.
+            // Same fields as scanning from ring 2, without walking over every field the village already has.
+            for (int r = Mathf.Max(2, s.ClaimFrom); r <= radius && added < want; r++)
             for (int dy = -r; dy <= r && added < want; dy++)
             for (int dx = -r; dx <= r && added < want; dx++)
             {
@@ -739,12 +777,20 @@ namespace ThienDao.Sim
                 _w.Owner[i] = owner;
                 s.Farms.Add(i);
                 added++;
+                lastRing = Mathf.Max(dx < 0 ? -dx : dx, dy < 0 ? -dy : dy);
                 x0 = Mathf.Min(x0, x);
                 y0 = Mathf.Min(y0, y);
                 x1 = Mathf.Max(x1, x);
                 y1 = Mathf.Max(y1, y);
             }
-            if (added > 0) _w.NotifyTerrainChanged(x0, y0, x1, y1);
+            // Filled: the last ring may still have room. Not filled: every ring out to the radius is taken.
+            s.ClaimFrom = added >= want ? lastRing : radius + 1;
+            if (added > 0)
+            {
+                _claiming = true;
+                _w.NotifyTerrainChanged(x0, y0, x1, y1);
+                _claiming = false;
+            }
         }
 
         void ReleaseFarmland(Settlement s, int n)
@@ -783,9 +829,12 @@ namespace ThienDao.Sim
         // Houses can disappear through the settlement itself or through Thiên Đạo; both land here.
         void OnObjectRemoved(int id, WorldObject o)
         {
+            // Any building gone frees its ground for the fields around, owned or a ruin.
+            if (ObjectInfo.IsBuilding(o.Type))
+                Freed(o.X, o.Y, o.X + ObjectInfo.FootprintW[(int)o.Type] - 1, o.Y + ObjectInfo.FootprintH[(int)o.Type] - 1);
             if (!_houseOwner.TryGetValue(id, out int sid)) return;
             _houseOwner.Remove(id);
-            All[sid].Houses.Remove(id);
+            if (!All[sid].Houses.Remove(id)) All[sid].Civic.Remove(id);
             SetFootprintOwner(o, 0);
         }
 
@@ -801,12 +850,204 @@ namespace ThienDao.Sim
                 for (int y = oy; y < oy + 3; y++)
                 for (int x = ox; x < ox + 3; x++)
                     _w.Objects.RemoveAtCell(x, y);
-                int id = _w.Objects.Place(ObjectType.House, ox, oy, s.Roof);
+                int id = _w.Objects.Place(ObjectType.House, ox, oy, HouseVariant(s, ox, oy));
                 if (id < 0) continue;
                 AdoptHouse(s, id);
                 return true;
             }
             return false;
+        }
+
+        // ---------------------------------------------------------------- standing: house styles, công trình, walls
+
+        // 0 thôn (nhà tranh), 1 trấn (nhà ngói), 2 thành (nhà lầu), 3 kinh thành (phủ đệ).
+        public static int Standing(Settlement s) => s.Capital ? 3 : s.Population >= 400 ? 2 : s.Population >= 150 ? 1 : 0;
+
+        // What each standing builds, in the order it builds them. A sect town only digs its well.
+        static readonly ObjectType[][] CivicFor =
+        {
+            new[] { ObjectType.Well },
+            new[] { ObjectType.Well, ObjectType.Shrine, ObjectType.Market },
+            new[] { ObjectType.Well, ObjectType.Shrine, ObjectType.Market, ObjectType.Pagoda },
+            new[] { ObjectType.Palace, ObjectType.Well, ObjectType.Shrine, ObjectType.Market, ObjectType.Pagoda },
+        };
+
+        // House sprite: style × shape × roof colour. The heart of a place is one style grander than its edge.
+        byte HouseVariant(Settlement s, int ox, int oy)
+        {
+            int standing = Standing(s);
+            int d = Mathf.Max(Mathf.Abs(ox + 1 - s.X), Mathf.Abs(oy + 1 - s.Y));
+            int style = d <= 7 ? standing : Mathf.Max(0, standing - 1);
+            int shape = (int)(Hash.U32(_w.Seed ^ 0x405Eu, ox, oy) & 1);
+            return (byte)(style * 8 + shape * 4 + (s.Roof & 3));
+        }
+
+        // Once a year a place grows into its standing: a new công trình, a few houses rebuilt, the walls moved out.
+        // No dice: what gets built follows from the place itself.
+        void Develop(Settlement s, bool initial)
+        {
+            long tick = _sim.Clock.Tick;
+            if (initial || tick >= s.CivicRetry)
+                if (!EnsureCivic(s, initial ? 8 : 1)) s.CivicRetry = tick + 10L * SimClock.DaysPerYear; // the search is costly; not every year
+            Restyle(s, initial ? int.MaxValue : 3);
+            UpdateWalls(s);
+        }
+
+        void Restyle(Settlement s, int max)
+        {
+            foreach (int id in s.Houses)
+            {
+                if (max <= 0) return;
+                var o = _w.Objects.Get(id);
+                byte v = HouseVariant(s, o.X, o.Y);
+                if (o.Variant == v) continue;
+                _w.Objects.SetVariant(id, v);
+                max--;
+            }
+        }
+
+        // False when something it needs found no ground.
+        bool EnsureCivic(Settlement s, int max)
+        {
+            var need = s.Sect ? CivicFor[0] : CivicFor[Standing(s)];
+            bool ok = true;
+            foreach (var type in need)
+            {
+                if (max <= 0) return ok;
+                if (HasCivic(s, type)) continue;
+                if (PlaceCivic(s, type, s.X, s.Y, 14, false)) max--;
+                else ok = false;
+            }
+            return ok;
+        }
+
+        bool HasCivic(Settlement s, ObjectType type)
+        {
+            foreach (int id in s.Civic)
+                if (_w.Objects.Get(id).Type == type) return true;
+            return false;
+        }
+
+        // The nearest free ground to (cx, cy), spiralling out to `reach`; trees and rocks are cleared for it.
+        bool PlaceCivic(Settlement s, ObjectType type, int cx, int cy, int reach, bool onWall)
+        {
+            int fw = ObjectInfo.FootprintW[(int)type], fh = ObjectInfo.FootprintH[(int)type];
+            ushort owner = (ushort)(s.Id + 1);
+            for (int r = 0; r <= reach; r++)
+            for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue;
+                int ox = cx + dx - fw / 2, oy = cy + dy - fh / 2;
+                if (!BuildingFits(ox, oy, fw, fh, owner, onWall)) continue;
+                for (int y = oy; y < oy + fh; y++)
+                for (int x = ox; x < ox + fw; x++)
+                    _w.Objects.RemoveAtCell(x, y);
+                int id = _w.Objects.Place(type, ox, oy, s.Roof);
+                if (id < 0) continue;
+                s.Civic.Add(id);
+                _houseOwner[id] = s.Id;
+                SetFootprintOwner(_w.Objects.Get(id), owner);
+                return true;
+            }
+            return false;
+        }
+
+        bool BuildingFits(int ox, int oy, int fw, int fh, ushort owner, bool onWall)
+        {
+            for (int y = oy; y < oy + fh; y++)
+            for (int x = ox; x < ox + fw; x++)
+            {
+                if (!_w.InBounds(x, y)) return false;
+                int i = _w.Idx(x, y);
+                if (_w.Owner[i] != 0 && _w.Owner[i] != owner) return false;
+                if (!ObjectInfo.CanStandOn(ObjectType.House, _w.Terrain[i])) return false;
+                if (!onWall && (_w.Zone[i] & ZoneFlags.Wall) != 0) return false;
+                int obj = _w.Objects.CellObject[i];
+                if (obj >= 0 && ObjectInfo.IsBuilding(_w.Objects.Get(obj).Type)) return false;
+            }
+            return true;
+        }
+
+        // Tường thành: a thành or a capital rings its houses with a wall, a gate in the middle of each side and
+        // wherever a road comes in, a tháp canh at each corner. The ring moves out as the place grows.
+        void UpdateWalls(Settlement s)
+        {
+            bool walled = !s.Sect && Standing(s) >= 2 && s.Houses.Count >= 6;
+            int x0 = int.MaxValue, y0 = int.MaxValue, x1 = int.MinValue, y1 = int.MinValue;
+            if (walled)
+            {
+                foreach (int id in s.Houses) Extend(s, id, ref x0, ref y0, ref x1, ref y1);
+                foreach (int id in s.Civic)
+                    if (_w.Objects.Get(id).Type != ObjectType.Watchtower) Extend(s, id, ref x0, ref y0, ref x1, ref y1);
+                x0 = Mathf.Max(1, x0 - 2);
+                y0 = Mathf.Max(1, y0 - 2);
+                x1 = Mathf.Min(_w.W - 2, x1 + 2);
+                y1 = Mathf.Min(_w.H - 2, y1 + 2);
+                if (x1 - x0 < 8 || y1 - y0 < 8) walled = false;
+            }
+            if (walled && s.WallX0 == x0 && s.WallY0 == y0 && s.WallX1 == x1 && s.WallY1 == y1) return;
+
+            for (int k = s.Civic.Count - 1; k >= 0; k--)
+                if (_w.Objects.Get(s.Civic[k]).Type == ObjectType.Watchtower) _w.Objects.Remove(s.Civic[k]);
+            if (s.WallX0 >= 0) StampWall(s, false);
+            s.WallX0 = -1;
+            if (!walled) return;
+
+            s.WallX0 = x0;
+            s.WallY0 = y0;
+            s.WallX1 = x1;
+            s.WallY1 = y1;
+            StampWall(s, true);
+            PlaceCivic(s, ObjectType.Watchtower, x0 + 1, y0 + 1, 1, true);
+            PlaceCivic(s, ObjectType.Watchtower, x1, y0 + 1, 1, true);
+            PlaceCivic(s, ObjectType.Watchtower, x0 + 1, y1, 1, true);
+            PlaceCivic(s, ObjectType.Watchtower, x1, y1, 1, true);
+        }
+
+        // Only what stands within the city proper (14 cells of its heart); stragglers beyond are its outskirts.
+        void Extend(Settlement s, int id, ref int x0, ref int y0, ref int x1, ref int y1)
+        {
+            var o = _w.Objects.Get(id);
+            int fw = ObjectInfo.FootprintW[(int)o.Type], fh = ObjectInfo.FootprintH[(int)o.Type];
+            if (Mathf.Abs(o.X + fw / 2 - s.X) > 14 || Mathf.Abs(o.Y + fh / 2 - s.Y) > 14) return;
+            x0 = Mathf.Min(x0, o.X);
+            y0 = Mathf.Min(y0, o.Y);
+            x1 = Mathf.Max(x1, o.X + fw - 1);
+            y1 = Mathf.Max(y1, o.Y + fh - 1);
+        }
+
+        void StampWall(Settlement s, bool on)
+        {
+            int x0 = s.WallX0, y0 = s.WallY0, x1 = s.WallX1, y1 = s.WallY1;
+            int mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+            for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+            {
+                if (x != x0 && x != x1 && y != y0 && y != y1) continue;
+                int i = _w.Idx(x, y);
+                if (!on)
+                {
+                    _w.Zone[i] &= unchecked((byte)~ZoneFlags.Wall);
+                    continue;
+                }
+                bool gate = ((y == y0 || y == y1) && (x == mx || x == mx + 1)) || ((x == x0 || x == x1) && (y == my || y == my + 1));
+                if (gate || (_w.Zone[i] & ZoneFlags.Road) != 0) continue;
+                var t = _w.Terrain[i];
+                if (!TerrainInfo.IsWalkable(t) || t == Terrain.Peak) continue; // rivers and cliffs make their own wall
+                int obj = _w.Objects.CellObject[i];
+                if (obj >= 0 && ObjectInfo.IsBuilding(_w.Objects.Get(obj).Type)) continue;
+                if (obj >= 0) _w.Objects.Remove(obj); // trees on the line are felled for the wall
+                _w.Zone[i] |= ZoneFlags.Wall;
+            }
+            _w.NotifyLookChanged(x0, y0, x1, y1);
+        }
+
+        void ClearDevelopment(Settlement s)
+        {
+            if (s.WallX0 >= 0) StampWall(s, false);
+            s.WallX0 = -1;
+            for (int k = s.Civic.Count - 1; k >= 0; k--) _w.Objects.Remove(s.Civic[k]);
         }
 
         bool HouseFits(int ox, int oy, ushort owner)
@@ -818,6 +1059,7 @@ namespace ThienDao.Sim
                 int i = _w.Idx(x, y);
                 if (_w.Owner[i] != 0 && _w.Owner[i] != owner) return false;
                 if (!ObjectInfo.CanStandOn(ObjectType.House, _w.Terrain[i])) return false;
+                if ((_w.Zone[i] & ZoneFlags.Wall) != 0) return false;
                 int obj = _w.Objects.CellObject[i];
                 if (obj >= 0 && ObjectInfo.IsBuilding(_w.Objects.Get(obj).Type)) return false;
             }

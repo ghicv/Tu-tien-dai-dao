@@ -49,7 +49,7 @@ namespace ThienDao.Sim
                 int s = Mathf.RoundToInt(Mathf.Lerp(centre, edge, r > 0f ? d / r : 0f));
                 any |= Set(_w.Idx(x, y), kind, s);
             }
-            if (any) _w.NotifyScarChanged(x0, y0, x1, y1);
+            if (any) _w.NotifyLookChanged(x0, y0, x1, y1);
         }
 
         // A crack or a trail wandering from (x, y): earthquake fissures, a storm's track.
@@ -75,7 +75,7 @@ namespace ThienDao.Sim
                 x1 = Mathf.Max(x1, ix + 1);
                 y1 = Mathf.Max(y1, iy);
             }
-            if (x1 >= x0) _w.NotifyScarChanged(Mathf.Max(0, x0), y0, Mathf.Min(_w.W - 1, x1), y1);
+            if (x1 >= x0) _w.NotifyLookChanged(Mathf.Max(0, x0), y0, Mathf.Min(_w.W - 1, x1), y1);
         }
 
         // One cell; the caller notifies. A stronger mark wins; the same kind keeps the deeper of the two.
@@ -111,7 +111,7 @@ namespace ThienDao.Sim
 
         public void SetAndNotify(int i, ScarKind kind, int strength)
         {
-            if (Set(i, kind, strength)) _w.NotifyScarChanged(i % _w.W, i / _w.W, i % _w.W, i / _w.W);
+            if (Set(i, kind, strength)) _w.NotifyLookChanged(i % _w.W, i / _w.W, i % _w.W, i / _w.W);
         }
 
         // Thiên Đạo reshapes a cell: whatever mark it carried is gone. The caller repaints.
@@ -134,7 +134,7 @@ namespace ThienDao.Sim
                 Count(i, -1);
                 any = true;
             }
-            if (any) _w.NotifyScarChanged(Mathf.Max(0, x0), Mathf.Max(0, y0), Mathf.Min(_w.W - 1, x1), Mathf.Min(_w.H - 1, y1));
+            if (any) _w.NotifyLookChanged(Mathf.Max(0, x0), Mathf.Max(0, y0), Mathf.Min(_w.W - 1, x1), Mathf.Min(_w.H - 1, y1));
         }
 
         void Count(int i, int d)
@@ -172,7 +172,7 @@ namespace ThienDao.Sim
                     if (scar[i] == 0) { _blockMarks[b]--; MarkedCells--; }
                     changed = true;
                 }
-                if (changed) _w.NotifyScarChanged(x0, y0, x1 - 1, y1 - 1);
+                if (changed) _w.NotifyLookChanged(x0, y0, x1 - 1, y1 - 1);
             }
         }
     }

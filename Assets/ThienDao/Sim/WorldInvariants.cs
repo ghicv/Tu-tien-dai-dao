@@ -42,6 +42,22 @@ namespace ThienDao.Sim
                         if (w.Owner[i] != owner) errors.Add($"{who} house cell ({x},{y}) not owned by it");
                     }
                 }
+                foreach (int c in s.Civic)
+                {
+                    if (!objects.IsAlive(c) || !ObjectInfo.IsCivic(objects.Get(c).Type))
+                    {
+                        errors.Add($"{who} lists a missing công trình {c}");
+                        continue;
+                    }
+                    var o = objects.Get(c);
+                    for (int y = o.Y; y < o.Y + ObjectInfo.FootprintH[(int)o.Type]; y++)
+                    for (int x = o.X; x < o.X + ObjectInfo.FootprintW[(int)o.Type]; x++)
+                    {
+                        int i = w.Idx(x, y);
+                        ownedByHouse.Add(i);
+                        if (w.Owner[i] != owner) errors.Add($"{who} công trình cell ({x},{y}) not owned by it");
+                    }
+                }
                 foreach (int i in s.Farms)
                     if (w.Terrain[i] != Terrain.Farmland || w.Owner[i] != owner) errors.Add($"{who} farm {i} is not its farmland");
             }

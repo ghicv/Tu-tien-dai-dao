@@ -32,6 +32,7 @@ namespace ThienDao.World
     {
         public const byte Thunder = 1; // lôi địa: where heaven's tribulation fell; thick lôi khí, no fields, no trees
         public const byte Road = 2;    // thương lộ: worn into the ground by caravans
+        public const byte Wall = 4;    // tường thành: the walls of a thành or a capital (SettlementSystem)
     }
 
     // Vết tích: what a calamity, a battle or a fire leaves on the ground (WorldData.Scar). The land heals slowly,
@@ -169,6 +170,13 @@ namespace ThienDao.World
         TreeBamboo, // trúc lâm
         TreeDead,   // cây khô of the ash plains
         TreePeach,  // đào hoa
+        // Công trình of a settlement, by its standing (SettlementSystem.Develop):
+        Well,       // giếng làng: every village
+        Shrine,     // miếu thổ địa: a trấn and up
+        Market,     // chợ: a trấn and up
+        Watchtower, // tháp canh: the corners of a walled thành
+        Pagoda,     // bảo tháp: a thành and up
+        Palace,     // hoàng cung: a kingdom's capital
         Count
     }
 
@@ -177,13 +185,15 @@ namespace ThienDao.World
         public static readonly string[] Names =
         {
             "", "Cây sồi", "Cây thu", "Cây rừng rậm", "Cây thông", "Thông tuyết", "Cây dừa", "Xương rồng",
-            "Bụi cây", "Đá", "Nhà dân", "Tông môn", "Trúc", "Cây khô", "Đào hoa"
+            "Bụi cây", "Đá", "Nhà dân", "Tông môn", "Trúc", "Cây khô", "Đào hoa",
+            "Giếng làng", "Miếu thổ địa", "Chợ", "Tháp canh", "Bảo tháp", "Hoàng cung"
         };
 
-        public static readonly byte[] FootprintW = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1 };
-        public static readonly byte[] FootprintH = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1 };
+        public static readonly byte[] FootprintW = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 3, 3, 2, 2, 7 };
+        public static readonly byte[] FootprintH = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 3, 3, 2, 2, 7 };
 
-        public static bool IsBuilding(ObjectType t) => t == ObjectType.House || t == ObjectType.SectHall;
+        public static bool IsBuilding(ObjectType t) => t == ObjectType.House || t == ObjectType.SectHall || IsCivic(t);
+        public static bool IsCivic(ObjectType t) => t >= ObjectType.Well && t <= ObjectType.Palace;
 
         public static bool CanStandOn(ObjectType t, Terrain terrain)
         {

@@ -58,7 +58,7 @@ namespace ThienDao.World
         // Inclusive cell rect. Rendering subscribes; simulation never calls the renderer directly.
         public event Action<int, int, int, int> TerrainChanged;
         public event Action<int, int, int, int> QiCapChanged;
-        public event Action<int, int, int, int> ScarChanged; // only the look of the ground; no system needs to react
+        public event Action<int, int, int, int> LookChanged; // only the look of the ground (scars, walls); no system needs to react
 
         public WorldData(uint seed, string seedText)
         {
@@ -95,6 +95,6 @@ namespace ThienDao.World
 
         public void NotifyTerrainChanged(int x0, int y0, int x1, int y1) => TerrainChanged?.Invoke(x0, y0, x1, y1);
         public void NotifyQiCapChanged(int x0, int y0, int x1, int y1) => QiCapChanged?.Invoke(x0, y0, x1, y1);
-        public void NotifyScarChanged(int x0, int y0, int x1, int y1) => ScarChanged?.Invoke(x0, y0, x1, y1);
+        public void NotifyLookChanged(int x0, int y0, int x1, int y1) => LookChanged?.Invoke(x0, y0, x1, y1);
     }
 }

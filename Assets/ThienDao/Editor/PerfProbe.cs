@@ -39,6 +39,8 @@ namespace ThienDao.Editor
             for (int c = 1; c <= 10; c++) breakdown.Append("---|");
             breakdown.AppendLine();
             var perSystem = new double[Simulation.SystemNames.Length, 10];
+            var perVillage = new double[SettlementSystem.ProfNames.Length, 10];
+            Array.Clear(SettlementSystem.ProfMs, 0, SettlementSystem.ProfMs.Length);
             for (int century = 1; century <= 10; century++)
             {
                 double simMs = 0;
@@ -51,6 +53,7 @@ namespace ThienDao.Editor
                 }
                 double msPerYear = simMs / 100.0;
                 for (int s = 0; s < Simulation.SystemNames.Length; s++) { perSystem[s, century - 1] = sim.SystemMs[s] / 100.0; sim.SystemMs[s] = 0; }
+                for (int s = 0; s < SettlementSystem.ProfNames.Length; s++) { perVillage[s, century - 1] = SettlementSystem.ProfMs[s] / 100.0; SettlementSystem.ProfMs[s] = 0; }
                 Row(sb, sim, century * 100, msPerYear, baseMem);
                 Debug.Log($"[ThienDao] perf: year {century * 100}, {msPerYear:0.0} ms/year");
             }
@@ -59,6 +62,22 @@ namespace ThienDao.Editor
             {
                 breakdown.Append($"| {Simulation.SystemNames[s]} |");
                 for (int c = 0; c < 10; c++) breakdown.Append($" {perSystem[s, c]:0.0} |");
+                breakdown.AppendLine();
+            }
+
+            breakdown.AppendLine();
+            breakdown.AppendLine("## Trong hệ Làng (ms/năm)");
+            breakdown.AppendLine();
+            breakdown.Append("| Phần |");
+            for (int c = 1; c <= 10; c++) breakdown.Append($" {c * 100} |");
+            breakdown.AppendLine();
+            breakdown.Append("|---|");
+            for (int c = 1; c <= 10; c++) breakdown.Append("---|");
+            breakdown.AppendLine();
+            for (int s = 0; s < SettlementSystem.ProfNames.Length; s++)
+            {
+                breakdown.Append($"| {SettlementSystem.ProfNames[s]} |");
+                for (int c = 0; c < 10; c++) breakdown.Append($" {perVillage[s, c]:0.0} |");
                 breakdown.AppendLine();
             }
 

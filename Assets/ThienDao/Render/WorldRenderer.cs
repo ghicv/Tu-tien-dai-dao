@@ -80,9 +80,10 @@ namespace ThienDao.Render
             _factions.TerritoryChanged += HandleTerritoryChanged;
             _world.Objects.Added += OnObjectAdded;
             _world.Objects.Removed += OnObjectRemoved;
+            _world.Objects.Changed += OnObjectChanged;
             _world.TerrainChanged += HandleTerrainChanged;
             _world.QiCapChanged += HandleQiCapChanged;
-            _world.ScarChanged += HandleTerrainChanged; // a scar repaints the ground like any change of land
+            _world.LookChanged += HandleTerrainChanged; // a scar repaints the ground like any change of land
             _qi.Changed += HandleQiChanged;
 
             if (_material == null)
@@ -126,9 +127,10 @@ namespace ThienDao.Render
             {
                 _world.Objects.Added -= OnObjectAdded;
                 _world.Objects.Removed -= OnObjectRemoved;
+                _world.Objects.Changed -= OnObjectChanged;
                 _world.TerrainChanged -= HandleTerrainChanged;
                 _world.QiCapChanged -= HandleQiCapChanged;
-                _world.ScarChanged -= HandleTerrainChanged;
+                _world.LookChanged -= HandleTerrainChanged;
             }
             if (_qi != null) _qi.Changed -= HandleQiChanged;
             if (_factions != null) _factions.TerritoryChanged -= HandleTerritoryChanged;
@@ -305,6 +307,7 @@ namespace ThienDao.Render
             var region = _world.Region;
             var buffer = _buffer;
             var scars = _world.Scar;
+            var zones = _world.Zone;
 
             // Rows of cells in parallel: the ground textures are pure functions of position, and each row writes
             // its own band of the buffer.
@@ -333,6 +336,11 @@ namespace ThienDao.Render
                     byte scarL = !water && x > 0 ? scars[i - 1] : (byte)0, scarR = !water && x < w - 1 ? scars[i + 1] : (byte)0;
                     byte scarB = !water && y > 0 ? scars[i - w] : (byte)0, scarT = !water && y < h - 1 ? scars[i + w] : (byte)0;
                     bool scarred = (scar | scarL | scarR | scarB | scarT) != 0;
+                    bool wall = !water && (zones[i] & ZoneFlags.Wall) != 0;
+                    bool wallL = wall && x > 0 && (zones[i - 1] & ZoneFlags.Wall) != 0;
+                    bool wallR = wall && x < w - 1 && (zones[i + 1] & ZoneFlags.Wall) != 0;
+                    bool wallB = wall && y > 0 && (zones[i - w] & ZoneFlags.Wall) != 0;
+                    bool wallT = wall && y < h - 1 && (zones[i + w] & ZoneFlags.Wall) != 0;
                     float amp = TerrainInfo.PixelNoiseAmp(t) * 2f;
                     Color32 baseC = _cellColor[i];
                     int rowBase = ly * CellPx * ChunkPx + lx * CellPx;
@@ -361,6 +369,7 @@ namespace ThienDao.Render
                             // Patterns run in world pixels, so dunes, cracks and crop rows flow across cells.
                             c = TerrainTexture.Paint(t, reg, baseC, f, wx, wy, n, seed);
                             if (scarred) c = TerrainTexture.Scarred(c, scar, scarL, scarR, scarB, scarT, px, py, wx, wy, n, seed);
+                            if (wall) c = TerrainTexture.WallPixel(px, py, wx, wy, wallL, wallR, wallB, wallT, n);
                             // Region borders: long dashes; kingdom borders: dots.
                             if (borderR != 0 && px == CellPx - 1 && (borderR == 2 ? (wy % 6) < 4 : (wy & 3) == 0))
                                 c = SpriteLibrary.Shade(c, borderR == 2 ? 0.55f : 0.72f);
@@ -526,6 +535,15 @@ namespace ThienDao.Render
             UpdateFootprintOverview(o);
         }
 
+        // A rebuilt house: its old sprite may reach other chunks than the new one.
+        void OnObjectChanged(int id, WorldObject old)
+        {
+            LinkObject(id, old, false);
+            var o = _world.Objects.Get(id);
+            LinkObject(id, o, true);
+            UpdateFootprintOverview(o);
+        }
+
         void OnObjectRemoved(int id, WorldObject o)
         {
             LinkObject(id, o, false);
@@ -617,6 +635,7 @@ namespace ThienDao.Render
             var c = _cellColor[i];
             byte scar = _world.Scar[i];
             if (scar != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = TerrainTexture.ScarTint(ScarInfo.Kind(scar), ScarInfo.Strength(scar), c);
+            if ((_world.Zone[i] & ZoneFlags.Wall) != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = TerrainTexture.WallMap;
             int id = _world.Objects.CellObject[i];
             if (id >= 0)
             {

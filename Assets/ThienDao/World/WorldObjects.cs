@@ -21,6 +21,7 @@ namespace ThienDao.World
 
         public event Action<int> Added;
         public event Action<int, WorldObject> Removed;
+        public event Action<int, WorldObject> Changed; // same object, new look (old state passed)
 
         public int Capacity => _count;
         public int AliveCount { get; private set; }
@@ -85,6 +86,15 @@ namespace ThienDao.World
             _free.Push(id);
             AliveCount--;
             Removed?.Invoke(id, obj);
+        }
+
+        // A house rebuilt in a grander style: same footprint, new variant.
+        public void SetVariant(int id, byte variant)
+        {
+            if (!IsAlive(id) || _items[id].Variant == variant) return;
+            var old = _items[id];
+            _items[id].Variant = variant;
+            Changed?.Invoke(id, old);
         }
 
         public void RemoveAtCell(int x, int y)
