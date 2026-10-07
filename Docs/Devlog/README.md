@@ -21,6 +21,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 14 | [14-ui-it-chu-nhieu-icon.md](14-ui-it-chu-nhieu-icon.md) | UI ít chữ, nhiều icon: HUD chip + cảnh báo, tin có icon, thẻ nhân vật dạng chip, thống kê/sự kiện/cường giả bằng icon | `5296fe5` |
 | 15 | [15-m7-chieu-sau-the-gioi.md](15-m7-chieu-sau-the-gioi.md) | M7 — Yêu thú & yêu tộc, bí cảnh từ lịch sử, kinh tế & thương lộ, thời đại & mạt pháp; hiệu ứng đánh nhau pixel, nháy trắng, khói trắng | `173fa71` |
 | 16 | [16-luu-tai-va-hieu-nang.md](16-luu-tai-va-hieu-nang.md) | Lưu / tải thế giới (F5/F9, tự lưu), đo hiệu năng 1000 năm, sửa lỗi bí cảnh, chuột phải bỏ chọn | `97b495f` |
+| 17 | [17-toi-uu-hieu-nang.md](17-toi-uu-hieu-nang.md) | Tối ưu: lưới tra cứu lười, cache ruộng, chunk chỉ trên GPU, job nền trong Editor (148 → 101 ms/năm ở năm 1000) | (commit này) |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Sim/Lore.cs`).

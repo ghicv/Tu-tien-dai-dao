@@ -17,6 +17,7 @@ namespace ThienDao.Sim
         readonly int _bw, _bh;
         readonly int[] _head;
         int[] _next = new int[1024];
+        bool _bucketsStale; // rebuilt on the first query of a tick, from where everyone stood when it began
 
         public CreatureSystem(Simulation sim)
         {
@@ -35,22 +36,26 @@ namespace ThienDao.Sim
             return by * _bw + bx;
         }
 
-        void RebuildBuckets()
+        // Buckets hold where entities stood at the start of the tick (PrevX/PrevY once Tick has run), exactly as
+        // when they were rebuilt eagerly every day; most days nobody queries, so they are rebuilt only on demand.
+        void RebuildBuckets(bool fromPrev = false)
         {
             if (_next.Length < _e.Species.Length) _next = new int[_e.Species.Length];
             for (int i = 0; i < _head.Length; i++) _head[i] = -1;
             for (int id = 0; id < _e.Count; id++)
             {
                 if (_e.Species[id] == Species.None) continue;
-                int b = Bucket(_e.X[id], _e.Y[id]);
+                int b = fromPrev ? Bucket(_e.PrevX[id], _e.PrevY[id]) : Bucket(_e.X[id], _e.Y[id]);
                 _next[id] = _head[b];
                 _head[b] = id;
             }
+            _bucketsStale = false;
         }
 
         // Nearest living entity within radius whose species bit is in the mask, using this tick's buckets.
         public int FindNearest(float x, float y, float radius, int speciesMask)
         {
+            if (_bucketsStale) RebuildBuckets(true);
             int best = -1;
             float bestD = radius * radius;
             int r = Mathf.CeilToInt(radius / BucketSize);
@@ -69,7 +74,7 @@ namespace ThienDao.Sim
 
         public void Tick(long tick)
         {
-            RebuildBuckets();
+            _bucketsStale = true;
             int n = _e.Count;
             for (int id = 0; id < n; id++)
             {

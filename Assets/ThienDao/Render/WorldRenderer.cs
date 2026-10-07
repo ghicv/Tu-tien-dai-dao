@@ -144,6 +144,7 @@ namespace ThienDao.Render
         {
             Clear();
             if (_material != null) Destroy(_material);
+            DestroyAsset(ref _staging);
         }
 
         static void DestroyAsset<T>(ref T obj) where T : UnityEngine.Object
@@ -230,6 +231,12 @@ namespace ThienDao.Render
 
         static float Sq(float v) => v * v;
 
+        // Chunks live on the GPU only: they are composed into one shared staging texture and copied across,
+        // so no chunk keeps a CPU copy of its pixels (half the memory). Falls back to readable chunks where the
+        // GPU cannot copy textures.
+        Texture2D _staging;
+        static bool GpuCopy => (SystemInfo.copyTextureSupport & UnityEngine.Rendering.CopyTextureSupport.Basic) != 0;
+
         void AllocateTexture(Chunk ch, int cx, int cy)
         {
             ch.Tex = new Texture2D(ChunkPx, ChunkPx, TextureFormat.RGBA32, true)
@@ -238,6 +245,7 @@ namespace ThienDao.Render
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp
             };
+            if (GpuCopy) ch.Tex.Apply(false, true); // drop the CPU copy; pixels arrive by CopyTexture
             ch.Sprite = Sprite.Create(ch.Tex, new Rect(0, 0, ChunkPx, ChunkPx), Vector2.zero, CellPx, 0, SpriteMeshType.FullRect);
             if (ch.Renderer == null)
             {
@@ -360,8 +368,19 @@ namespace ThienDao.Render
                 Blit(sp, o.X * CellPx + sp.OffX - chunkPx0, o.Y * CellPx + sp.OffY - chunkPy0);
             }
 
-            ch.Tex.SetPixelData(_buffer, 0);
-            ch.Tex.Apply(true);
+            if (GpuCopy)
+            {
+                if (_staging == null)
+                    _staging = new Texture2D(ChunkPx, ChunkPx, TextureFormat.RGBA32, true) { name = "ChunkStaging", filterMode = FilterMode.Point };
+                _staging.SetPixelData(_buffer, 0);
+                _staging.Apply(true);
+                Graphics.CopyTexture(_staging, ch.Tex);
+            }
+            else
+            {
+                ch.Tex.SetPixelData(_buffer, 0);
+                ch.Tex.Apply(true);
+            }
             ch.Renderer.enabled = true;
             ch.Dirty = false;
         }

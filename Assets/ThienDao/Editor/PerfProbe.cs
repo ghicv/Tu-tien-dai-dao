@@ -15,7 +15,9 @@ namespace ThienDao.Editor
     public static class PerfProbe
     {
         [MenuItem("Thiên Đạo/Đo hiệu năng 1000 năm → Docs/Perf_ThienDao.md")]
-        public static void Run()
+        public static void Run() => EditorJob.Start(Probe(), "đo hiệu năng 1000 năm");
+
+        static System.Collections.IEnumerator Probe()
         {
             var sb = new StringBuilder();
             sb.AppendLine("| Năm | ms/năm (mô phỏng) | Bộ nhớ managed (MB) | Tu sĩ sống / tổng từng có | Dòng sử sách | Entity (slot) | Phàm nhân | Tệp lưu (KB) |");
@@ -26,7 +28,6 @@ namespace ThienDao.Editor
             double genMs = genSw.Elapsed.TotalMilliseconds;
             long afterGen = GC.GetTotalMemory(true);
             Row(sb, sim, 0, 0, baseMem);
-            var sw = new Stopwatch();
             var breakdown = new StringBuilder();
             breakdown.AppendLine();
             breakdown.AppendLine("## ms/năm theo hệ thống (trung bình mỗi thế kỷ)");
@@ -40,15 +41,20 @@ namespace ThienDao.Editor
             var perSystem = new double[Simulation.SystemNames.Length, 10];
             for (int century = 1; century <= 10; century++)
             {
-                sw.Restart();
+                double simMs = 0;
                 for (int y = 0; y < 100; y++)
+                {
+                    var yearSw = Stopwatch.StartNew();
                     for (int d = 0; d < SimClock.DaysPerYear; d++) sim.Step();
-                double msPerYear = sw.Elapsed.TotalMilliseconds / 100.0;
+                    simMs += yearSw.Elapsed.TotalMilliseconds;
+                    yield return null;
+                }
+                double msPerYear = simMs / 100.0;
                 for (int s = 0; s < Simulation.SystemNames.Length; s++) { perSystem[s, century - 1] = sim.SystemMs[s] / 100.0; sim.SystemMs[s] = 0; }
                 Row(sb, sim, century * 100, msPerYear, baseMem);
-                if (EditorUtility.DisplayCancelableProgressBar("Thiên Đạo", $"Đo hiệu năng · năm {century * 100}", century / 10f)) break;
+                Debug.Log($"[ThienDao] perf: year {century * 100}, {msPerYear:0.0} ms/year");
             }
-            EditorUtility.ClearProgressBar();
+
             for (int s = 0; s < Simulation.SystemNames.Length; s++)
             {
                 breakdown.Append($"| {Simulation.SystemNames[s]} |");

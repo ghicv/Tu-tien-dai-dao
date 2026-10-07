@@ -24,6 +24,12 @@ namespace ThienDao.Sim
         public readonly List<int> Houses = new List<int>();
         public readonly List<int> Farms = new List<int>(); // cell indices
 
+        // Caches (exact: same result as recomputing): fields are re-checked only after the land nearby changed,
+        // and the harvest's fertility sum only when the fields or the number tended changed.
+        public bool FarmsCheck = true;
+        public int FertilityTended = -1;
+        public float FertilitySum;
+
         public float LastHarvest, LastHunt;
         public int BirthsLastYear, DeathsLastYear, StarvedThisYear;
 
@@ -98,6 +104,7 @@ namespace ThienDao.Sim
             _sim = sim;
             _w = sim.World;
             _w.Objects.Removed += OnObjectRemoved;
+            _w.TerrainChanged += HandleTerrainChanged;
 
             var rng = new DetRandom(_w.Seed ^ 0x5E771Eu);
             foreach (var site in _w.VillageSites)
@@ -331,7 +338,12 @@ namespace ThienDao.Sim
                 var s = All[k];
                 if (!s.Alive) continue;
                 var rng = RngFor(tick, s.Id);
-                PruneFarms(s);
+                if (s.FarmsCheck)
+                {
+                    PruneFarms(s);
+                    s.FarmsCheck = false;
+                    s.FertilityTended = -1;
+                }
                 int pop = s.Population;
                 if (pop == 0)
                 {
@@ -346,8 +358,14 @@ namespace ThienDao.Sim
 
                 int workers = s.Workers;
                 int tended = Mathf.Min(s.Farms.Count, (int)(workers * CellsPerWorker));
-                float harvest = 0f;
-                for (int f = 0; f < tended; f++) harvest += _w.Fertility(s.Farms[f]);
+                if (s.FertilityTended != tended)
+                {
+                    float sum = 0f;
+                    for (int f = 0; f < tended; f++) sum += _w.Fertility(s.Farms[f]);
+                    s.FertilitySum = sum;
+                    s.FertilityTended = tended;
+                }
+                float harvest = s.FertilitySum;
                 harvest *= YieldPerFertility * season * _sim.Disasters.HarvestFactor(s.X, s.Y); // đại hạn
                 float meat = _sim.Wildlife.Hunt(s.X, s.Y);
                 s.LastHarvest = harvest;
@@ -478,7 +496,7 @@ namespace ThienDao.Sim
         public void LoseField(int cell)
         {
             var s = Owning(cell);
-            if (s != null) s.Farms.Remove(cell);
+            if (s != null) { s.Farms.Remove(cell); s.FertilityTended = -1; }
             _w.Owner[cell] = 0;
         }
 
@@ -661,6 +679,18 @@ namespace ThienDao.Sim
         }
 
         // ---------------------------------------------------------------- land and houses
+
+        // Land changed somewhere: villages whose fields could reach that far re-check them next month.
+        void HandleTerrainChanged(int x0, int y0, int x1, int y1)
+        {
+            const int Reach = 40; // farmland is claimed within 30 cells of the centre
+            foreach (var s in All)
+            {
+                if (!s.Alive || s.FarmsCheck) continue;
+                if (s.X + Reach < x0 || s.X - Reach > x1 || s.Y + Reach < y0 || s.Y - Reach > y1) continue;
+                s.FarmsCheck = true;
+            }
+        }
 
         void PruneFarms(Settlement s)
         {

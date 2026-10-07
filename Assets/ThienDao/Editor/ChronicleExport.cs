@@ -16,23 +16,28 @@ namespace ThienDao.Editor
         const int Years = 1000;
 
         [MenuItem("Thiên Đạo/Mô phỏng 1000 năm → Docs/Chronicle_ThienDao.md")]
-        public static void Run() => Run("ThienDao", Years);
+        public static void Run() => EditorJob.Start(Export("ThienDao", Years), "biên niên 1000 năm");
 
-        public static string Run(string seed, int years)
+        // A year per slice, so the editor stays responsive while it runs.
+        static System.Collections.IEnumerator Export(string seed, int years)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var sim = new Simulation(MapGenerator.Generate(seed));
             for (int y = 0; y < years; y++)
             {
                 for (int d = 0; d < SimClock.DaysPerYear; d++) sim.Step();
-                if (y % 50 == 0 && EditorUtility.DisplayCancelableProgressBar("Thiên Đạo", $"Năm {y} / {years}", y / (float)years)) break;
+                if (y % 100 == 0) Debug.Log($"[ThienDao] chronicle: year {y}");
+                yield return null;
             }
-            EditorUtility.ClearProgressBar();
+            Write(sim, seed, sw.Elapsed.TotalSeconds);
+        }
 
-            string md = Markdown(sim, seed, sw.Elapsed.TotalSeconds);
+        static string Write(Simulation sim, string seed, double seconds)
+        {
+            string md = Markdown(sim, seed, seconds);
             string path = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Docs", $"Chronicle_{seed}.md");
             File.WriteAllText(path, md, new UTF8Encoding(false));
-            Debug.Log($"[ThienDao] Chronicle of '{seed}' ({sim.Clock.Year - 1} years, {sw.Elapsed.TotalSeconds:0} s) written to {path}");
+            Debug.Log($"[ThienDao] Chronicle of '{seed}' ({sim.Clock.Year - 1} years, {seconds:0} s) written to {path}");
             return path;
         }
 
