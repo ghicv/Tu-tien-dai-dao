@@ -38,6 +38,7 @@ namespace ThienDao.Sim
         public readonly HistoryLog History = new HistoryLog();
         public readonly StoryDetector Stories;
         public readonly ProtagonistAI Protagonists;
+        public readonly ScarSystem Scars;
         public readonly DisasterSystem Disasters;
         public readonly BeastSystem Beasts;
         public readonly RelicSystem Relics;
@@ -76,6 +77,7 @@ namespace ThienDao.Sim
             Combat = new CombatSystem(this);
             Stories = new StoryDetector(this);
             Protagonists = new ProtagonistAI(this);
+            Scars = new ScarSystem(this);
             Disasters = new DisasterSystem(this);
             Beasts = new BeastSystem(this);
             Relics = new RelicSystem(this);
@@ -138,7 +140,8 @@ namespace ThienDao.Sim
                 Cultivation.YearlyStep(tick); Mark(6, ref t);
                 Factions.YearlyStep(tick); Mark(12, ref t);
                 Combat.YearlyStep(tick); Mark(7, ref t);
-                Disasters.YearlyStep(tick); Mark(3, ref t);
+                Disasters.YearlyStep(tick);
+                Scars.YearlyStep(tick); Mark(3, ref t); // the land heals its scars
                 Beasts.YearlyStep(tick); Mark(8, ref t);
                 Relics.YearlyStep(tick); Mark(10, ref t);
                 Eras.YearlyStep(tick); Mark(13, ref t);
@@ -195,7 +198,7 @@ namespace ThienDao.Sim
             var w = World;
             for (int i = 0; i < w.Terrain.Length; i++)
             {
-                StateHash.Add(ref h, (int)w.Terrain[i] | (w.LeyLine[i] ? 256 : 0) | (w.QiCap[i] << 9) | ((long)w.Zone[i] << 24) | ((long)w.Owner[i] << 32));
+                StateHash.Add(ref h, (int)w.Terrain[i] | (w.LeyLine[i] ? 256 : 0) | (w.QiCap[i] << 9) | ((long)w.Zone[i] << 24) | ((long)w.Owner[i] << 32) | ((long)w.Scar[i] << 48));
             }
             var objs = w.Objects;
             for (int id = 0; id < objs.Capacity; id++)

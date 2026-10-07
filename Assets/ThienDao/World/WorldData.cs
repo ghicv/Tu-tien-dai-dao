@@ -34,6 +34,7 @@ namespace ThienDao.World
         public readonly byte[] WaterDist;     // cells to sea/lake at generation time; not refreshed by later edits
         public readonly ushort[] Owner;       // settlement id + 1, 0 = unclaimed
         public readonly byte[] Zone;          // ZoneFlags left by events (lôi địa, …)
+        public readonly byte[] Scar;          // vết tích: ScarKind in the low 4 bits, strength 1..15 in the high 4 (ScarInfo)
         public readonly byte[] Region;        // RegionKind of each land cell (None at sea)
         public readonly ushort[] KingdomOf;   // kingdom id + 1, 0 = no kingdom (sea, ice, wilds between)
         public readonly WorldObjects Objects;
@@ -57,6 +58,7 @@ namespace ThienDao.World
         // Inclusive cell rect. Rendering subscribes; simulation never calls the renderer directly.
         public event Action<int, int, int, int> TerrainChanged;
         public event Action<int, int, int, int> QiCapChanged;
+        public event Action<int, int, int, int> ScarChanged; // only the look of the ground; no system needs to react
 
         public WorldData(uint seed, string seedText)
         {
@@ -73,6 +75,7 @@ namespace ThienDao.World
             WaterDist = new byte[n];
             Owner = new ushort[n];
             Zone = new byte[n];
+            Scar = new byte[n];
             Region = new byte[n];
             KingdomOf = new ushort[n];
             Objects = new WorldObjects(this);
@@ -92,5 +95,6 @@ namespace ThienDao.World
 
         public void NotifyTerrainChanged(int x0, int y0, int x1, int y1) => TerrainChanged?.Invoke(x0, y0, x1, y1);
         public void NotifyQiCapChanged(int x0, int y0, int x1, int y1) => QiCapChanged?.Invoke(x0, y0, x1, y1);
+        public void NotifyScarChanged(int x0, int y0, int x1, int y1) => ScarChanged?.Invoke(x0, y0, x1, y1);
     }
 }

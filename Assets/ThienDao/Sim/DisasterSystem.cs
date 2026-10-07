@@ -113,6 +113,9 @@ namespace ThienDao.Sim
 
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0xCA1Au, (int)tick, salt));
 
+        // Scars draw from their own stream, so marking the ground never changes what else a calamity rolls.
+        DetRandom ScarRng(long tick, int x, int y) => new DetRandom(Hash.U32(_w.Seed ^ 0x5CA4u, (int)tick, x * 1031 + y));
+
         static int Stoch(float v, ref DetRandom rng)
         {
             int whole = (int)v;
@@ -251,6 +254,7 @@ namespace ThienDao.Sim
             float fx = x + 0.5f, fy = y + 0.5f;
             _ids.Clear();
             var hit = new List<Settlement>();
+            var srng = ScarRng(tick, x, y);
             for (int step = 0; step < len; step += 2)
             {
                 a += rng.Range(-0.25f, 0.25f);
@@ -258,6 +262,9 @@ namespace ThienDao.Sim
                 fy += Mathf.Sin(a) * 2f;
                 int cx = (int)fx, cy = (int)fy;
                 if (!_w.InBounds(cx, cy)) break;
+                // Lightning out of the storm leaves burnt spots along its track.
+                if (srng.NextFloat() < 0.08f)
+                    _sim.Scars.Disc(cx + srng.Range(-w, w + 1), cy + srng.Range(-w, w + 1), srng.Range(1f, 2.5f), ScarKind.Scorch, 12, 6, (uint)step);
                 for (int yy = cy - w; yy <= cy + w; yy++)
                 for (int xx = cx - w; xx <= cx + w; xx++)
                 {
@@ -324,9 +331,34 @@ namespace ThienDao.Sim
         public void WrathScar(int x, int y, int r, long tick, string origin)
         {
             var rng = RngFor(tick, 0x600000 + x * 31 + y);
+            Blasted(x, y, r + 3, tick);
             var mark = ThunderScar(x, y, r, tick, tick + rng.Range(300, 601) * (long)SimClock.DaysPerYear, origin, out bool merged, ref rng);
             if (!merged)
                 _sim.Events.Add(tick, EventKind.Calamity, 2, $"Nơi thiên phạt giáng xuống hóa thành lôi địa, người đời gọi là {mark.Name}.", x + 0.5f, y + 0.5f);
+        }
+
+        // Where heaven's lightning came down: a crater in the middle, scorched ground all around.
+        public void Blasted(int x, int y, int r, long tick)
+        {
+            uint salt = (uint)tick ^ (uint)(x * 31 + y);
+            _sim.Scars.Disc(x, y, r, ScarKind.Scorch, 15, 6, salt);
+            _sim.Scars.Disc(x, y, Mathf.Max(2f, r * 0.32f), ScarKind.Crater, 15, 9, salt + 7u);
+            // Trees left standing are burnt to black stumps.
+            var srng = ScarRng(tick, x, y);
+            var objs = _w.Objects;
+            for (int yy = y - r; yy <= y + r; yy++)
+            for (int xx = x - r; xx <= x + r; xx++)
+            {
+                if (!_w.InBounds(xx, yy)) continue;
+                float d = Mathf.Sqrt((xx - x) * (xx - x) + (yy - y) * (yy - y));
+                if (d > r) continue;
+                int id = objs.CellObject[_w.Idx(xx, yy)];
+                if (id < 0) continue;
+                var o = objs.Get(id);
+                if (!IsPlant(o.Type) || o.Type == ObjectType.TreeDead || srng.NextFloat() >= (d < r * 0.75f ? 0.95f : 0.5f)) continue;
+                objs.Remove(id);
+                if (d > r * 0.32f) objs.Place(ObjectType.TreeDead, o.X, o.Y, (byte)srng.Range(0, 256));
+            }
         }
 
         // What hangs over a cell right now, for the calamity overlay: 1 drought, 2 rain, 4 cold, 8 epidemic nearby.
@@ -392,6 +424,11 @@ namespace ThienDao.Sim
                 dead += _sim.Settlements.Kill(s, Stoch(s.Population * (0.12f * k + 0.01f), ref rng));
             }
             if (ley > 0) RebuildQi(cx - r - QiCap.LeyReach, cy - r - QiCap.LeyReach, cx + r + QiCap.LeyReach, cy + r + QiCap.LeyReach);
+            // The ground splits in long cracks running out from the epicentre.
+            var srng = ScarRng(tick, cx, cy);
+            int cracks = srng.Range(3, 5) + r / 20;
+            for (int k = 0; k < cracks; k++)
+                _sim.Scars.Trail(cx + 0.5f, cy + 0.5f, srng.Range(0f, Mathf.PI * 2f), srng.Range(r / 2, r + 1), 0.45f, ScarKind.Fissure, divine ? 15 : 13, ref srng);
             int imp = Mathf.Max(divine ? 2 : 1, dead >= 30 || ley >= 10 ? 2 : 1);
             _sim.Events.Add(tick, EventKind.Calamity, imp,
                 $"{(divine ? "Thiên Đạo nổi giận, địa long" : "Địa long")} trở mình {where}: {houses} nhà sập, {dead} người chết" +
@@ -487,6 +524,15 @@ namespace ThienDao.Sim
                 v.Food *= 1f - 0.5f * k;
             }
 
+            // Grey ash over the country around, the burnt ring at the foot, the cone itself black rock.
+            var scars = _sim.Scars;
+            uint salt = (uint)tick ^ (uint)(cx * 31 + cy);
+            scars.Disc(cx, cy, ash, ScarKind.Ash, 11, 2, salt);
+            scars.Disc(cx, cy, burn, ScarKind.Scorch, 14, 5, salt + 1u);
+            for (int y = cy - cone; y <= cy + cone; y++)
+            for (int x = cx - cone; x <= cx + cone; x++)
+                if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= cone * cone) scars.Set(_w.Idx(x, y), ScarKind.Basalt, 15);
+
             x0 = Mathf.Max(0, x0);
             y0 = Mathf.Max(0, y0);
             x1 = Mathf.Min(_w.W - 1, x1);
@@ -545,6 +591,7 @@ namespace ThienDao.Sim
                 if (_w.Terrain[l.Cell] != Terrain.Lava) continue; // Thiên Đạo already reshaped it
                 _w.Terrain[l.Cell] = l.Into;
                 _w.Height[l.Cell] = TerrainInfo.NominalHeight[(int)l.Into];
+                _sim.Scars.Set(l.Cell, ScarKind.Basalt, 15); // the flow sets into dark rock
                 int x = l.Cell % _w.W, y = l.Cell / _w.W;
                 x0 = Mathf.Min(x0, x);
                 y0 = Mathf.Min(y0, y);
@@ -638,6 +685,7 @@ namespace ThienDao.Sim
                 }
                 if (_w.Terrain[f.Cell] != Terrain.Shallow) continue;
                 _w.Terrain[f.Cell] = f.Was == Terrain.Farmland ? Terrain.Grass : f.Was;
+                _sim.Scars.Set(f.Cell, ScarKind.Silt, 12); // the water leaves its mud behind
                 int x = f.Cell % _w.W, y = f.Cell / _w.W;
                 x0 = Mathf.Min(x0, x);
                 y0 = Mathf.Min(y0, y);
@@ -661,6 +709,7 @@ namespace ThienDao.Sim
                 Place = PlaceName(x, y), StartPop = PopulationWithin(x, y, r)
             };
             _droughts.Add(d);
+            _sim.Scars.Disc(x, y, r * 0.8f, ScarKind.Parched, Mathf.Clamp(months / 3 + 3, 4, 9), 2, (uint)tick ^ (uint)(x * 31 + y));
             _sim.Events.Add(tick, EventKind.Calamity, 2,
                 $"{(divine ? "Thiên Đạo khóa mây, đ" : "Đ")}ại hạn {d.Place}: trời không mưa, ruộng đồng nứt nẻ.", x + 0.5f, y + 0.5f, Fx.None);
         }
@@ -800,6 +849,7 @@ namespace ThienDao.Sim
         {
             string where = PlaceName(cx, cy);
             if (wolves > 0) _sim.Wildlife.Add(Species.Wolf, cx + 0.5f, cy + 0.5f, wolves);
+            _sim.Scars.Disc(cx, cy, 16f, ScarKind.Trampled, 9, 3, (uint)tick ^ (uint)(cx * 31 + cy));
             int dead = 0;
             var guards = new List<string>();
             Within(cx, cy, TideReach);
@@ -885,6 +935,7 @@ namespace ThienDao.Sim
             if (houses + dead > 0)
                 _sim.Events.Add(tick, EventKind.Calamity, 1, $"Lôi kiếp của {c.Name} đánh sập {houses} nhà, {dead} phàm nhân thiệt mạng.", px, py, Fx.None, c.Index);
 
+            Blasted(cx, cy, r, tick);
             long years = divine ? rng.Range(300, 601) : rng.Range(200, 401);
             string origin = divine ? $"thiên kiếp Thiên Đạo giáng xuống {c.Name} năm {Year(tick)}" : $"thiên kiếp của {c.Name} năm {Year(tick)}";
             var mark = ThunderScar(cx, cy, Mathf.Max(3, r * 2 / 3), tick, tick + years * SimClock.DaysPerYear, origin, out bool merged, ref rng);

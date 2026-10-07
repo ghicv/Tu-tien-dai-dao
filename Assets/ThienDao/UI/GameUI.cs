@@ -1545,6 +1545,13 @@ namespace ThienDao.UI
                     ? $"<color=#c8a8ff>Lôi địa {mark.Name}</color>, {mark.Origin}; lôi khí còn khoảng {(mark.Until - sim.Clock.Tick) / SimClock.DaysPerYear} năm\n"
                     : $"<color=#ff9a6a>{mark.Name}</color>, {mark.Origin}\n");
             if (terrain == Terrain.Lava) sb.Append("Dung nham đang chảy: ai rơi vào là chết cháy, nguội dần thành đá\n");
+            byte scar = w.Scar[i];
+            if (scar != 0 && TerrainInfo.IsLand(terrain))
+            {
+                var kind = ScarInfo.Kind(scar);
+                int years = ScarInfo.Strength(scar) * ScarInfo.YearsPerStep[(int)kind];
+                sb.Append($"<color=#d8b894>Vết tích: {ScarInfo.Names[(int)kind]}</color> · đất lành lại sau khoảng {years} năm\n");
+            }
             int drought = sim.Disasters.DroughtMonthsLeft(x, y, sim.Clock.Tick);
             if (drought >= 0) sb.Append($"<color=#ffb060>Đang hạn hán</color>, còn khoảng {drought} tháng · mùa màng chỉ được một phần tư\n");
             int spell = sim.Disasters.WeatherMonthsLeft(x, y, sim.Clock.Tick, out var weather);

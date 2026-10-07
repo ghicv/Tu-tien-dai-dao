@@ -82,6 +82,7 @@ namespace ThienDao.Render
             _world.Objects.Removed += OnObjectRemoved;
             _world.TerrainChanged += HandleTerrainChanged;
             _world.QiCapChanged += HandleQiCapChanged;
+            _world.ScarChanged += HandleTerrainChanged; // a scar repaints the ground like any change of land
             _qi.Changed += HandleQiChanged;
 
             if (_material == null)
@@ -127,6 +128,7 @@ namespace ThienDao.Render
                 _world.Objects.Removed -= OnObjectRemoved;
                 _world.TerrainChanged -= HandleTerrainChanged;
                 _world.QiCapChanged -= HandleQiCapChanged;
+                _world.ScarChanged -= HandleTerrainChanged;
             }
             if (_qi != null) _qi.Changed -= HandleQiChanged;
             if (_factions != null) _factions.TerritoryChanged -= HandleTerritoryChanged;
@@ -302,6 +304,7 @@ namespace ThienDao.Render
             var foam = new Color32(236, 246, 255, 255);
             var region = _world.Region;
             var buffer = _buffer;
+            var scars = _world.Scar;
 
             // Rows of cells in parallel: the ground textures are pure functions of position, and each row writes
             // its own band of the buffer.
@@ -325,6 +328,11 @@ namespace ThienDao.Render
                     bool foamL = water && TerrainInfo.IsLand(tl);
                     bool foamR = water && TerrainInfo.IsLand(trr);
                     var reg = (RegionKind)region[i];
+                    // Scars bleed a pixel or two over into unscarred neighbours, so their rims are ragged, not square.
+                    byte scar = water ? (byte)0 : scars[i];
+                    byte scarL = !water && x > 0 ? scars[i - 1] : (byte)0, scarR = !water && x < w - 1 ? scars[i + 1] : (byte)0;
+                    byte scarB = !water && y > 0 ? scars[i - w] : (byte)0, scarT = !water && y < h - 1 ? scars[i + w] : (byte)0;
+                    bool scarred = (scar | scarL | scarR | scarB | scarT) != 0;
                     float amp = TerrainInfo.PixelNoiseAmp(t) * 2f;
                     Color32 baseC = _cellColor[i];
                     int rowBase = ly * CellPx * ChunkPx + lx * CellPx;
@@ -352,6 +360,7 @@ namespace ThienDao.Render
                             if (tierR < tr && px == CellPx - 1) f *= 0.86f;
                             // Patterns run in world pixels, so dunes, cracks and crop rows flow across cells.
                             c = TerrainTexture.Paint(t, reg, baseC, f, wx, wy, n, seed);
+                            if (scarred) c = TerrainTexture.Scarred(c, scar, scarL, scarR, scarB, scarT, px, py, wx, wy, n, seed);
                             // Region borders: long dashes; kingdom borders: dots.
                             if (borderR != 0 && px == CellPx - 1 && (borderR == 2 ? (wy % 6) < 4 : (wy & 3) == 0))
                                 c = SpriteLibrary.Shade(c, borderR == 2 ? 0.55f : 0.72f);
@@ -371,7 +380,9 @@ namespace ThienDao.Render
             {
                 ref var o = ref _world.Objects.Get(id);
                 var sp = SpriteLibrary.Get(o.Type, o.Variant);
-                Blit(sp, o.X * CellPx + sp.OffX - chunkPx0, o.Y * CellPx + sp.OffY - chunkPy0);
+                float wither = IsGreen(o.Type) ? Wither(o.X, o.Y) : 0f;
+                if (wither >= 0.8f) sp = SpriteLibrary.Get(ObjectType.TreeDead, o.Variant); // too close: only a dead trunk stands
+                Blit(sp, o.X * CellPx + sp.OffX - chunkPx0, o.Y * CellPx + sp.OffY - chunkPy0, wither);
             }
 
             if (GpuCopy)
@@ -391,7 +402,43 @@ namespace ThienDao.Render
             ch.Dirty = false;
         }
 
-        void Blit(PixelSprite sp, int ox, int oy)
+        static bool IsGreen(ObjectType t) => t != ObjectType.None && t != ObjectType.Rock && t != ObjectType.TreeDead && !ObjectInfo.IsBuilding(t);
+
+        // How sickly the plants on a cell look (0 lush .. 1 dead): fire and ash on the ground, lava close by,
+        // lôi khí in the air, the poisoned ash plains of Ma Đạo. Only the look; the simulation keeps its trees.
+        float Wither(int x, int y)
+        {
+            int i = _world.Idx(x, y);
+            float k = 0f;
+            byte scar = _world.Scar[i];
+            if (scar != 0) k = ScarWither[(int)ScarInfo.Kind(scar)] * Mathf.Min(1f, ScarInfo.Strength(scar) / 10f);
+            if ((_world.Zone[i] & ZoneFlags.Thunder) != 0) k = Mathf.Max(k, 0.5f);
+            var t = _world.Terrain[i];
+            if (t == Terrain.Ashland) k = Mathf.Max(k, 0.45f);
+            else if (t == Terrain.Badlands) k = Mathf.Max(k, 0.3f);
+            // Heat from lava within two cells.
+            for (int dy = -2; dy <= 2; dy++)
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                int xx = x + dx, yy = y + dy;
+                if (!_world.InBounds(xx, yy) || _world.Terrain[_world.Idx(xx, yy)] != Terrain.Lava) continue;
+                k = Mathf.Max(k, Mathf.Abs(dx) <= 1 && Mathf.Abs(dy) <= 1 ? 0.9f : 0.6f);
+            }
+            if (_world.Region[i] == (byte)RegionKind.MaDao) k = Mathf.Min(1f, k + 0.15f);
+            return k;
+        }
+
+        static readonly float[] ScarWither = { 0f, 1f, 0.7f, 1f, 0.3f, 0.9f, 0.25f, 0.1f, 0.6f, 0.2f };
+
+        // Leaves turn the dull brown-grey of a dying tree, keeping their light and shade.
+        static Color32 Withered(Color32 c, float k)
+        {
+            float lum = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+            var dry = new Color32((byte)Mathf.Min(255f, lum * 1.05f + 22f), (byte)Mathf.Min(255f, lum * 0.86f + 8f), (byte)(lum * 0.6f), c.a);
+            return Color32.Lerp(c, dry, k);
+        }
+
+        void Blit(PixelSprite sp, int ox, int oy, float wither = 0f)
         {
             for (int sy = 0; sy < sp.H; sy++)
             {
@@ -406,6 +453,7 @@ namespace ThienDao.Render
                     var c = sp.Px[srcRow + sx];
                     if (c.a == 0) continue;
                     int bi = dstRow + tx;
+                    if (c.a == 255 && wither > 0f) c = Withered(c, wither);
                     _buffer[bi] = c.a == 255 ? c : SpriteLibrary.Shade(_buffer[bi], 0.7f);
                 }
             }
@@ -429,7 +477,8 @@ namespace ThienDao.Render
                 _overviewPx[i] = OverviewColor(i);
             }
             _overviewDirty = true;
-            MarkChunks(x0 / ChunkCells, y0 / ChunkCells, x1 / ChunkCells, y1 / ChunkCells);
+            // Trees two cells away wither by lava's heat, so their chunks redraw too.
+            MarkChunks((x0 - 2) / ChunkCells, (y0 - 2) / ChunkCells, (x1 + 2) / ChunkCells, (y1 + 2) / ChunkCells);
             if (Overlay != OverlayMode.None) _overlayDirty = true;
         }
 
@@ -537,7 +586,7 @@ namespace ThienDao.Render
                 float amount = RegionLore.TintAmount[r];
                 if (amount > 0f) c = Color32.Lerp(c, RegionLore.Tint[r], amount);
             }
-            return c;
+            return c; // scars are laid on top per pixel (Compose) and per cell on the far map (OverviewColor)
         }
 
         // Borders on the ground: a dashed dark line between great regions, a dotted one between kingdoms.
@@ -566,6 +615,8 @@ namespace ThienDao.Render
         Color32 OverviewColor(int i)
         {
             var c = _cellColor[i];
+            byte scar = _world.Scar[i];
+            if (scar != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = TerrainTexture.ScarTint(ScarInfo.Kind(scar), ScarInfo.Strength(scar), c);
             int id = _world.Objects.CellObject[i];
             if (id >= 0)
             {

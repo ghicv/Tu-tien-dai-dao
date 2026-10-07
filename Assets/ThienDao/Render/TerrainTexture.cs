@@ -235,6 +235,110 @@ namespace ThienDao.Render
             return SpriteLibrary.Shade(c, f);
         }
 
+        // ---------------------------------------------------------------- vết tích
+
+        static readonly Color32[] ScarColor =
+        {
+            new Color32(0, 0, 0, 0),
+            new Color32(34, 28, 26, 255),    // cháy sém
+            new Color32(170, 166, 160, 255), // tro núi lửa
+            new Color32(56, 46, 42, 255),    // hố
+            new Color32(66, 52, 46, 255),    // khe nứt
+            new Color32(60, 58, 68, 255),    // đá nham
+            new Color32(112, 70, 56, 255),   // chiến trường
+            new Color32(118, 94, 62, 255),   // phù sa
+            new Color32(198, 170, 110, 255), // đất nứt nẻ
+            new Color32(138, 110, 78, 255),  // giày xéo
+        };
+
+        static readonly float[] ScarAmount = { 0f, 0.88f, 0.65f, 0.85f, 0.35f, 0.85f, 0.5f, 0.55f, 0.55f, 0.45f };
+        static readonly Color32 Bone = new Color32(234, 228, 208, 255);
+        static readonly Color32 Rust = new Color32(132, 76, 52, 255);
+        static readonly Color32 Blood = new Color32(96, 30, 28, 255);
+        static readonly Color32 Chasm = new Color32(26, 20, 18, 255);
+        static readonly Color32 Rubble = new Color32(152, 128, 104, 255);
+
+        // One pixel of scarred ground. The cell's own mark, or a neighbour's bleeding in over the last two pixels
+        // toward it; the strength jitters per pixel so a fading scar breaks up instead of dimming evenly.
+        public static Color32 Scarred(Color32 c, byte own, byte l, byte r, byte b, byte t, int px, int py, int wx, int wy, uint n, uint seed)
+        {
+            byte s = own;
+            if (px < 2) s = Bleed(s, l, px, n);
+            else if (px > 5) s = Bleed(s, r, 7 - px, n);
+            if (py < 2) s = Bleed(s, b, py, n >> 2);
+            else if (py > 5) s = Bleed(s, t, 7 - py, n >> 2);
+            if (s == 0) return c;
+            var kind = ScarInfo.Kind(s);
+            int str = Mathf.Min(15, ScarInfo.Strength(s) + (int)((n >> 4) & 3) - 1);
+            if (str <= 0) return c;
+            return PaintScar(kind, str, ScarTint(kind, str, c), wx, wy, n, seed);
+        }
+
+        static byte Bleed(byte own, byte nb, int dist, uint n)
+        {
+            if (nb == 0) return own;
+            int sn = ScarInfo.Strength(nb) - 3 - dist * 3;
+            if (sn <= ScarInfo.Strength(own) || (int)((n >> 6) & 3) <= dist) return own;
+            return ScarInfo.Pack(ScarInfo.Kind(nb), sn);
+        }
+
+        // The scar's colour over the whole cell (also what the far map shows).
+        public static Color32 ScarTint(ScarKind kind, int strength, Color32 c) =>
+            Color32.Lerp(c, ScarColor[(int)kind], ScarAmount[(int)kind] * strength / 15f);
+
+        // Its detail up close. Details thin out as the scar fades: a pixel keeps its speck while its hash is
+        // under the remaining strength.
+        public static Color32 PaintScar(ScarKind kind, int s, Color32 c, int wx, int wy, uint n, uint seed)
+        {
+            bool on = ((n >> 24) & 15) < s;
+            switch (kind)
+            {
+                case ScarKind.Scorch:
+                    if (s >= 12 && ((n >> 12) & 255) < 2) return Color32.Lerp(c, Ember, 0.8f); // still smouldering
+                    if (!on) return c;
+                    if (((n >> 12) & 15) == 0) return SpriteLibrary.Shade(c, 0.6f);  // burnt stubble
+                    if (((n >> 16) & 31) == 0) return SpriteLibrary.Shade(c, 1.35f); // flakes of ash
+                    return c;
+
+                case ScarKind.Ash:
+                    if (Value(seed + 50u, wx, wy, 3) > 0.62f) c = SpriteLibrary.Shade(c, 1.1f); // drifts
+                    return on && ((n >> 12) & 31) == 0 ? SpriteLibrary.Shade(c, 0.75f) : c;
+
+                case ScarKind.Crater:
+                    if (s >= 13 && Crack(seed + 51u, wx, wy, 4) < 0.8f) return SpriteLibrary.Shade(c, 0.6f); // shattered floor
+                    if (s <= 11) return Color32.Lerp(c, Rubble, ((n >> 12) & 3) == 0 ? 0.75f : 0.5f); // the thrown-up rim
+                    return c;
+
+                case ScarKind.Fissure:
+                    if (Crack(seed + 52u, wx, wy, 4) < 0.25f + s * 0.06f) return Color32.Lerp(c, Chasm, 0.5f + s * 0.03f);
+                    return c;
+
+                case ScarKind.Basalt:
+                    if (Crack(seed + 53u, wx, wy, 5) < 0.7f) return SpriteLibrary.Shade(c, 1.25f); // seams between the columns
+                    return SpriteLibrary.Shade(c, 0.92f + Value(seed + 54u, wx, wy, 2) * 0.14f);
+
+                case ScarKind.Battlefield:
+                {
+                    uint h = (n >> 12) & 255;
+                    if (on && h < 3) return Bone;
+                    if (on && h < 6) return Rust; // broken blades
+                    float v = Value(seed + 55u, wx, wy, 2);
+                    return v > 0.72f ? Color32.Lerp(c, Blood, 0.45f * s / 15f) : c;
+                }
+
+                case ScarKind.Silt:
+                    if ((wy + (int)(Value(seed + 56u, wx, wy, 3) * 4f)) % 4 == 0) return SpriteLibrary.Shade(c, 0.9f);
+                    return on && ((n >> 12) & 63) == 0 ? SpriteLibrary.Shade(c, 1.25f) : c; // a puddle catching the light
+
+                case ScarKind.Parched:
+                    return on && Crack(seed + 57u, wx, wy, 5) < 0.7f ? SpriteLibrary.Shade(c, 0.7f) : c;
+
+                case ScarKind.Trampled:
+                    return on && ((n >> 12) & 15) == 0 ? SpriteLibrary.Shade(c, 0.75f) : c; // hoof prints
+            }
+            return c;
+        }
+
         // ---------------------------------------------------------------- per cell
 
         // Broad patches at cell scale, so the textures still read on the far map (one pixel per cell).

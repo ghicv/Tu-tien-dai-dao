@@ -156,6 +156,31 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void CalamitiesScarTheLandAndTheLandHeals()
+        {
+            var sim = new Simulation(MapGenerator.Generate("life"));
+            var s = sim.Settlements.All[0];
+            int cx = s.X + 8, cy = s.Y;
+            sim.Disasters.Blasted(cx, cy, 6, sim.Clock.Tick);
+            // Only the blast's own ground: the world keeps scarring itself elsewhere meanwhile.
+            int Burnt()
+            {
+                int n = 0;
+                for (int y = cy - 6; y <= cy + 6; y++)
+                for (int x = cx - 6; x <= cx + 6; x++)
+                    if (sim.Scars.KindAt(sim.World.Idx(x, y)) == ScarKind.Scorch) n++;
+                return n;
+            }
+            int burnt = Burnt();
+            Assert.Greater(burnt, 20, "lightning should leave burnt ground");
+            int centre = sim.World.Idx(cx, cy);
+            Assert.AreEqual(ScarKind.Crater, sim.Scars.KindAt(centre));
+            Run(sim, SimClock.DaysPerYear * 25);
+            Assert.Less(Burnt(), burnt, "the faint rim of the burn heals within decades");
+            Assert.AreEqual(ScarKind.Crater, sim.Scars.KindAt(centre), "a crater outlasts a lifetime");
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));

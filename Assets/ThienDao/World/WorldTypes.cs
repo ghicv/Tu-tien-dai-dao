@@ -34,6 +34,39 @@ namespace ThienDao.World
         public const byte Road = 2;    // thương lộ: worn into the ground by caravans
     }
 
+    // Vết tích: what a calamity, a battle or a fire leaves on the ground (WorldData.Scar). The land heals slowly,
+    // each kind at its own pace; while it lasts the ground shows it.
+    public enum ScarKind : byte
+    {
+        None,
+        Scorch,      // cháy sém: burnt ground and stubble after fire and lightning
+        Ash,         // tro bụi: volcanic ash fallen over the land
+        Crater,      // hố sâu: where a tribulation or Thiên Đạo's wrath struck
+        Fissure,     // khe nứt: the earth split by an earthquake
+        Basalt,      // đá nham: lava cooled into dark rock
+        Battlefield, // chiến trường cổ: blood, bones and broken blades where sects fought
+        Silt,        // phù sa: mud left behind when a flood recedes
+        Parched,     // nứt nẻ: fields cracked by a great drought
+        Trampled,    // giày xéo: the ground churned by a beast tide
+        Count
+    }
+
+    public static class ScarInfo
+    {
+        public static readonly string[] Names =
+        {
+            "", "Đất cháy sém", "Tro núi lửa", "Hố thiên kiếp", "Khe nứt địa chấn", "Đá nham nguội",
+            "Chiến trường cổ", "Phù sa sau lũ", "Đất nứt nẻ vì hạn", "Đất bị thú triều giày xéo"
+        };
+
+        // Years for the mark to lose one step of its 15: fire scars heal within a lifetime, a crater takes ages.
+        public static readonly int[] YearsPerStep = { 1, 3, 2, 40, 12, 60, 8, 1, 1, 1 };
+
+        public static ScarKind Kind(byte s) => (ScarKind)(s & 15);
+        public static int Strength(byte s) => s >> 4;
+        public static byte Pack(ScarKind k, int strength) => strength <= 0 || k == ScarKind.None ? (byte)0 : (byte)((int)k | (System.Math.Min(15, strength) << 4));
+    }
+
     public static class TerrainInfo
     {
         public static readonly string[] Names =

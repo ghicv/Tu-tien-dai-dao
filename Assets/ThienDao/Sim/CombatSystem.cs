@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ThienDao.Core;
+using ThienDao.World;
 using UnityEngine;
 
 namespace ThienDao.Sim
@@ -35,6 +36,12 @@ namespace ThienDao.Sim
             var e = _sim.Entities;
             float x = e.X[loser.Entity], y = e.Y[loser.Entity];
             int imp = Mathf.Max(ImportanceOf(winner), ImportanceOf(loser));
+            // Kim Đan and above fight with spells that scorch the ground; the stronger, the wider.
+            if (winner.Realm >= Realm.KetDan && loser.Realm >= Realm.KetDan)
+            {
+                int r = (int)loser.Realm - (int)Realm.KetDan + 2;
+                _sim.Scars.Disc((int)x, (int)y, r, ScarKind.Scorch, 11 + r, 4, (uint)tick ^ (uint)(winner.Index * 977 + loser.Index));
+            }
             if (rng.NextFloat() < p)
             {
                 Kill(winner, loser, tick, $"{winner.Title} ({Sect(winner)}) {context}, chém giết {loser.Title} ({Sect(loser)}).", imp);

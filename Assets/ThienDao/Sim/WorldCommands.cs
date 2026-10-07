@@ -50,6 +50,7 @@ namespace ThienDao.Sim
                 if (w.Terrain[i] == Terrain) return;
                 w.Terrain[i] = Terrain;
                 w.Height[i] = TerrainInfo.NominalHeight[(int)Terrain];
+                sim.Scars.Clear(i); // new ground, no old marks
                 int id = w.Objects.CellObject[i];
                 if (id >= 0 && !ObjectInfo.CanStandOn(w.Objects.Get(id).Type, Terrain)) w.Objects.Remove(id);
                 any = true;
@@ -296,6 +297,7 @@ namespace ThienDao.Sim
             }
             if (c != null)
             {
+                sim.Disasters.Blasted((int)sim.Entities.X[c.Entity], (int)sim.Entities.Y[c.Entity], 3, tick);
                 sim.Cultivation.Smite(c, tick);
                 return;
             }
@@ -309,6 +311,7 @@ namespace ThienDao.Sim
                 if (id >= 0 && !ObjectInfo.IsBuilding(w.Objects.Get(id).Type)) w.Objects.Remove(id);
             }
             sim.Settlements.Strike(X, Y, tick);
+            sim.Disasters.Blasted(X, Y, 3, tick);
             sim.Events.Add(tick, EventKind.Divine, 0, "Thiên lôi giáng xuống.", X + 0.5f, Y + 0.5f, Fx.Lightning);
         }
     }

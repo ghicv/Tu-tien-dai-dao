@@ -459,6 +459,7 @@ namespace ThienDao.Sim
             _sim.Events.Add(tick, EventKind.Destruction, 3,
                 $"{(winner != null ? NameOf(winner.Id) + " công phá sơn môn, " : "")}{NameOf(loser.Id)} bị diệt môn!" +
                 (surrendered > 0 ? $" {surrendered} đệ tử quy hàng." : ""), hx, hy, Fx.Explosion, -1, -1, winner?.Id ?? -1, loser.Id);
+            _sim.Scars.Disc(s.X, s.Y, 7f, ScarKind.Scorch, 14, 5, (uint)tick ^ 0xD3u); // the mountain gate burns
             _sim.Stories?.OnFactionDestroyed(winner, loser, tick);
             _sim.Relics?.OnSectDestroyed(s, NameOf(loser.Id), tick);
             SectGone(loser.Id, tick);
@@ -920,6 +921,10 @@ namespace ThienDao.Sim
             winner.BattlesWon++;
             loser.BattlesLost++;
             r.Opinion = Mathf.Max(-100f, r.Opinion - 8f * dead);
+            // The field remembers: churned earth, blood and broken blades; a great fight scorches it with spells.
+            int fieldR = 3 + Mathf.Min(7, dead + fa.Count / 3);
+            _sim.Scars.Disc((int)b.X, (int)b.Y, fieldR, ScarKind.Battlefield, Mathf.Min(15, 9 + dead), 4, (uint)tick ^ (uint)b.Tile);
+            if (greatLoss) _sim.Scars.Disc((int)b.X, (int)b.Y, 2f + fieldR * 0.4f, ScarKind.Scorch, 13, 7, (uint)tick ^ 0xB0u);
 
             _sim.Events.Add(tick, EventKind.Battle, b.Siege ? 3 : greatLoss ? 2 : 1,
                 $"{NameOf(winner.Id)} đánh bại {NameOf(loser.Id)} trong trận tranh {place}{(dead > 0 ? $", {dead} tu sĩ vẫn lạc" : "")}.",
