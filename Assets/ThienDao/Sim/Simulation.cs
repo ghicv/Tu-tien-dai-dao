@@ -95,37 +95,54 @@ namespace ThienDao.Sim
             }
         }
 
+        // Per-system CPU time (ms, accumulated) for the Stats window and the perf probe; not part of the world.
+        public static readonly string[] SystemNames =
+        {
+            "Di chuyển", "Linh khí", "Cỏ", "Thiên tai", "Thú hoang", "Làng", "Tu sĩ", "Đấu pháp", "Yêu thú", "Nhân vật chính",
+            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ"
+        };
+        [System.NonSerialized] public readonly double[] SystemMs = new double[SystemNames.Length];
+        static readonly double MsPerTick = 1000.0 / Stopwatch.Frequency;
+
+        void Mark(int system, ref long t0)
+        {
+            long now = Stopwatch.GetTimestamp();
+            SystemMs[system] += (now - t0) * MsPerTick;
+            t0 = now;
+        }
+
         public void Step()
         {
             Clock.Advance();
             long tick = Clock.Tick;
-            Creatures.Tick(tick);
+            long t = Stopwatch.GetTimestamp();
+            Creatures.Tick(tick); Mark(0, ref t);
             if (Clock.IsMonthStart)
             {
-                Qi.MonthlyStep(RegenMultiplier(Clock.Season), QiScale);
-                Forage.MonthlyStep(Clock.Season);
-                Disasters.MonthlyStep(tick); // floods recede, droughts wither the grass, epidemics run their course
-                Wildlife.MonthlyStep(Clock.Season, Rules[Rule.Births]);
-                Settlements.MonthlyStep(tick);
-                Cultivation.MonthlyStep(tick);
-                Combat.MonthlyStep(tick);
-                Beasts.MonthlyStep(tick);
-                Protagonists.MonthlyStep(tick);
-                Relics.MonthlyStep(tick);
-                Trade.MonthlyStep(tick);
-                Factions.MonthlyStep(tick);
+                Qi.MonthlyStep(RegenMultiplier(Clock.Season), QiScale); Mark(1, ref t);
+                Forage.MonthlyStep(Clock.Season); Mark(2, ref t);
+                Disasters.MonthlyStep(tick); Mark(3, ref t); // floods recede, droughts wither the grass, epidemics run their course
+                Wildlife.MonthlyStep(Clock.Season, Rules[Rule.Births]); Mark(4, ref t);
+                Settlements.MonthlyStep(tick); Mark(5, ref t);
+                Cultivation.MonthlyStep(tick); Mark(6, ref t);
+                Combat.MonthlyStep(tick); Mark(7, ref t);
+                Beasts.MonthlyStep(tick); Mark(8, ref t);
+                Protagonists.MonthlyStep(tick); Mark(9, ref t);
+                Relics.MonthlyStep(tick); Mark(10, ref t);
+                Trade.MonthlyStep(tick); Mark(11, ref t);
+                Factions.MonthlyStep(tick); Mark(12, ref t);
             }
             if (Clock.IsYearStart)
             {
-                Settlements.YearlyStep(tick);
-                Cultivation.YearlyStep(tick);
-                Factions.YearlyStep(tick);
-                Combat.YearlyStep(tick);
-                Disasters.YearlyStep(tick);
-                Beasts.YearlyStep(tick);
-                Relics.YearlyStep(tick);
-                Eras.YearlyStep(tick);
-                Stories.YearlyStep(tick);
+                Settlements.YearlyStep(tick); Mark(5, ref t);
+                Cultivation.YearlyStep(tick); Mark(6, ref t);
+                Factions.YearlyStep(tick); Mark(12, ref t);
+                Combat.YearlyStep(tick); Mark(7, ref t);
+                Disasters.YearlyStep(tick); Mark(3, ref t);
+                Beasts.YearlyStep(tick); Mark(8, ref t);
+                Relics.YearlyStep(tick); Mark(10, ref t);
+                Eras.YearlyStep(tick); Mark(13, ref t);
+                Stories.YearlyStep(tick); Mark(14, ref t);
             }
         }
 

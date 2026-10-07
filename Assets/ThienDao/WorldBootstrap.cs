@@ -119,11 +119,21 @@ namespace ThienDao
             if (string.IsNullOrWhiteSpace(seedText)) seedText = "0";
             SeedText = seedText.Trim();
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            World = MapGenerator.Generate(SeedText);
-            ClearSelection();
+            var world = MapGenerator.Generate(SeedText);
             int speed = Sim?.SpeedIndex ?? 1;
-            Sim = new Simulation(World) { SpeedIndex = speed };
+            var sim = new Simulation(world) { SpeedIndex = speed };
             GenerationMs = (float)sw.Elapsed.TotalMilliseconds;
+            Attach(sim, true);
+            Debug.Log($"[ThienDao] World '{SeedText}' (seed {World.Seed}) generated in {GenerationMs:0} ms: {World.Objects.AliveCount} objects, " +
+                      $"{Sim.Settlements.AliveCount} villages ({Sim.Settlements.TotalPopulation} people), {Sim.Cultivation.AliveCount} cultivators.");
+        }
+
+        // Hooks a (new or loaded) simulation up to the renderers, the brush, the camera and the UI.
+        void Attach(Simulation sim, bool focusStart)
+        {
+            ClearSelection();
+            World = sim.World;
+            Sim = sim;
             _renderer.Init(World, Sim);
             _units.Init(Sim);
             _fx.Init(Sim);
@@ -138,12 +148,93 @@ namespace ThienDao
             }
 
             _cam.WorldSize = new Vector2(World.W, World.H);
-            var focus = new Vector2(World.W * 0.5f, World.H * 0.5f);
-            if (Sim.Settlements.All.Count > 0) focus = new Vector2(Sim.Settlements.All[0].X, Sim.Settlements.All[0].Y);
-            _cam.Focus(focus, Screen.height / (2f * StartPixelsPerCell));
+            if (focusStart)
+            {
+                var focus = new Vector2(World.W * 0.5f, World.H * 0.5f);
+                if (Sim.Settlements.All.Count > 0) focus = new Vector2(Sim.Settlements.All[0].X, Sim.Settlements.All[0].Y);
+                _cam.Focus(focus, Screen.height / (2f * StartPixelsPerCell));
+            }
             _ui?.OnWorldChanged();
-            Debug.Log($"[ThienDao] World '{SeedText}' (seed {World.Seed}) generated in {GenerationMs:0} ms: {World.Objects.AliveCount} objects, " +
-                      $"{Sim.Settlements.AliveCount} villages ({Sim.Settlements.TotalPopulation} people), {Sim.Cultivation.AliveCount} cultivators.");
+        }
+
+        // ---------------------------------------------------------------- lưu / tải
+
+        public const string QuickSlot = "nhanh", AutoSlot = "tudong";
+        public static readonly string[] Slots = { "1", "2", "3", QuickSlot, AutoSlot };
+        const float AutosaveSeconds = 300f;
+        float _autosaveTimer = AutosaveSeconds;
+        Vector2 _rightDownAt;
+
+        public static string SaveDir => System.IO.Path.Combine(Application.persistentDataPath, "Saves");
+
+        static string SlotPath(string slot) => System.IO.Path.Combine(SaveDir, $"{slot}.tdsave");
+
+        public static string SlotName(string slot) => slot == QuickSlot ? "Lưu nhanh (F5)" : slot == AutoSlot ? "Tự động" : $"Ô {slot}";
+
+        // Header of a slot, or null if empty / unreadable.
+        public static SaveGame.Header SlotHeader(string slot)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(SlotPath(slot))) return null;
+                using var f = System.IO.File.OpenRead(SlotPath(slot));
+                return SaveGame.ReadHeader(f);
+            }
+            catch (System.Exception) { return null; }
+        }
+
+        public bool SaveTo(string slot, out string message)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(SaveDir);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                string tmp = SlotPath(slot) + ".tmp";
+                using (var f = System.IO.File.Create(tmp)) SaveGame.Save(Sim, SeedText, SlotName(slot), f);
+                if (System.IO.File.Exists(SlotPath(slot))) System.IO.File.Delete(SlotPath(slot));
+                System.IO.File.Move(tmp, SlotPath(slot)); // never leave a half-written save behind
+                message = $"Đã lưu thế giới \"{SeedText}\" năm {Sim.Clock.Year} vào {SlotName(slot)} ({sw.ElapsedMilliseconds} ms).";
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogException(e);
+                message = $"Lưu thất bại: {e.Message}";
+                return false;
+            }
+        }
+
+        public bool LoadFrom(string slot, out string message)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(SlotPath(slot))) { message = $"{SlotName(slot)} còn trống."; return false; }
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                Simulation sim;
+                SaveGame.Header header;
+                using (var f = System.IO.File.OpenRead(SlotPath(slot))) sim = SaveGame.Load(f, out header);
+                if (sim.ComputeStateHash() != header.StateHash) Debug.LogWarning("[ThienDao] Loaded world hash differs from the saved one.");
+                sim.SpeedIndex = 0; // start paused so the player can look around first
+                SeedText = header.Seed;
+                Attach(sim, false);
+                message = $"Đã tải thế giới \"{header.Seed}\" năm {header.Year} ({sw.ElapsedMilliseconds} ms).";
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogException(e);
+                message = e is System.IO.InvalidDataException ? e.Message : $"Tải thất bại: {e.Message}";
+                return false;
+            }
+        }
+
+        void TickAutosave()
+        {
+            if (Sim == null || Sim.Paused) return;
+            _autosaveTimer -= Time.unscaledDeltaTime;
+            if (_autosaveTimer > 0f) return;
+            _autosaveTimer = AutosaveSeconds;
+            if (SaveTo(AutoSlot, out var msg)) _ui?.ShowToast("Tự động lưu · " + msg);
         }
 
         public static string RandomSeed() => Random.Range(0, int.MaxValue).ToString();
@@ -162,9 +253,18 @@ namespace ThienDao
             HoverY = Mathf.FloorToInt(wp.y);
 
             HandleKeys();
+            TickAutosave();
 
             bool overUI = _ui != null && _ui.PointerOverUI;
             Hovered = overUI || !World.InBounds(HoverX, HoverY) ? default : PickAt(wp);
+            // Right click (a click, not the right-drag that pans the camera): drop the selection; with nothing
+            // selected, put the current power down and go back to Xem.
+            if (mouse.rightButton.wasPressedThisFrame) _rightDownAt = mp;
+            if (mouse.rightButton.wasReleasedThisFrame && !overUI && (mp - _rightDownAt).sqrMagnitude < 36f)
+            {
+                if (Selection.Kind != InspectKind.None) ClearSelection();
+                else Brush.Tool = BrushTool.Inspect;
+            }
             if (!overUI && mouse.leftButton.wasPressedThisFrame && Brush.Tool == BrushTool.Inspect) Select(Hovered);
             if (!overUI && mouse.leftButton.wasPressedThisFrame && WorldBrush.IsDivineTool(Brush.Tool)) ActOn(WorldBrush.ActFor(Brush.Tool), Hovered);
             if (!overUI && mouse.leftButton.isPressed)
@@ -414,6 +514,16 @@ namespace ThienDao
             var kb = Keyboard.current;
             if (kb == null) return;
             if (kb.f1Key.wasPressedThisFrame) _ui?.ToggleVisible();
+            if (kb.f5Key.wasPressedThisFrame)
+            {
+                SaveTo(QuickSlot, out var saved);
+                _ui?.ShowToast(saved);
+            }
+            if (kb.f9Key.wasPressedThisFrame)
+            {
+                LoadFrom(QuickSlot, out var loaded);
+                _ui?.ShowToast(loaded);
+            }
             if (kb.hKey.wasPressedThisFrame && !(_ui != null && _ui.KeyboardBlocked)) _ui?.ToggleChronicle();
             if (_ui != null && _ui.KeyboardBlocked) return;
             if (kb.leftBracketKey.wasPressedThisFrame) Brush.Size = Mathf.Max(1, Brush.Size - 1);

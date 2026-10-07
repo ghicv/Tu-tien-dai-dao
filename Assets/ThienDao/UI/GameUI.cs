@@ -472,6 +472,16 @@ namespace ThienDao.UI
             Size(random.Frame, 58f, 58f);
             _labelsToggle = Ui.Button(_toolsRow, Icons.Tag, "Hiện/ẩn tên làng và cường giả trên bản đồ", () => ShowLabels = !ShowLabels, 58f);
             Size(_labelsToggle.Frame, 58f, 58f);
+            var saves = Ui.Button(_toolsRow, Icons.SaveSlip, "Lưu / tải thế giới (F5 lưu nhanh, F9 tải nhanh; tự lưu 5 phút một lần)", ToggleSaves, 58f);
+            Size(saves.Frame, 58f, 58f);
+        }
+
+        SaveWindow _saves;
+
+        public void ToggleSaves()
+        {
+            if (_saves == null) _saves = new SaveWindow(_root, _game, this);
+            _saves.Toggle();
         }
 
         // Quy luật: one box per law of the world, − / + (or a switch); every change is a command, so it replays.

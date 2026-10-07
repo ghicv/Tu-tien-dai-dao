@@ -303,6 +303,23 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Jade slip being written to: lưu / tải thế giới.
+        public static Sprite SaveSlip => Glyph("saveslip", new[]
+        {
+            "............",
+            "..kkkkkkkk..",
+            "..kggggggk..",
+            "..kgkkkkgk..",
+            "..kggggggk..",
+            "..kgkkkkgk..",
+            "..kggggggk..",
+            "..kgkkkkgk..",
+            "..kggggggk..",
+            "..kkkkkkkk..",
+            "....kyyk....",
+            ".....kk.....",
+        }, P);
+
         // Bound history book: the Biên niên sử window.
         public static Sprite Book => Glyph("book", new[]
         {

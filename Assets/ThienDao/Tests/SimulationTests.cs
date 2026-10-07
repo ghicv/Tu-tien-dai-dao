@@ -340,6 +340,47 @@ namespace ThienDao.Tests
             Assert.IsEmpty(WorldInvariants.Check(sim));
         }
 
+        // ---------------------------------------------------------------- lưu / tải
+
+        [Test]
+        public void SaveAndLoadRestoresTheWholeWorld()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var hero = sim.Cultivation.All.Find(c => c.Alive && c.Realm == Realm.TrucCo);
+            sim.Enqueue(new WatchCommand(hero.Index, true));
+            sim.Enqueue(new InfuseQiCommand(500, 500, 30, 0.5f));
+            sim.Enqueue(new PaintTerrainCommand(600, 400, 10, Terrain.Mountain));
+            Run(sim, SimClock.DaysPerYear * 60);
+
+            var bytes = SaveGame.SaveToBytes(sim, "ThienDao", "test");
+            var loaded = SaveGame.LoadFromBytes(bytes, out var header);
+            Assert.AreEqual("ThienDao", header.Seed);
+            Assert.AreEqual(sim.Clock.Tick, loaded.Clock.Tick);
+            Assert.AreEqual(sim.ComputeStateHash(), loaded.ComputeStateHash(), "the loaded world differs from the saved one");
+            Assert.AreEqual(sim.History.All.Count, loaded.History.All.Count);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(loaded));
+
+            // Hidden state (counters, grudges, plans) must come back too: both worlds must keep living the same life.
+            Run(sim, SimClock.DaysPerYear * 25);
+            Run(loaded, SimClock.DaysPerYear * 25);
+            Assert.AreEqual(sim.ComputeStateHash(), loaded.ComputeStateHash(), "the loaded world drifted apart after 25 more years");
+            Assert.AreEqual(sim.Stories.All.Count, loaded.Stories.All.Count);
+        }
+
+        [Test]
+        public void LoadedWorldKeepsItsEventWiring()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 5);
+            var loaded = SaveGame.LoadFromBytes(SaveGame.SaveToBytes(sim, "ThienDao"), out _);
+            // Painting land must still reach the forage grid and the factions through their subscriptions.
+            loaded.Enqueue(new PaintTerrainCommand(300, 300, 20, Terrain.Desert));
+            sim.Enqueue(new PaintTerrainCommand(300, 300, 20, Terrain.Desert));
+            Run(loaded, 400);
+            Run(sim, 400);
+            Assert.AreEqual(sim.ComputeStateHash(), loaded.ComputeStateHash());
+        }
+
         [Test]
         public void CalendarRollsOver()
         {

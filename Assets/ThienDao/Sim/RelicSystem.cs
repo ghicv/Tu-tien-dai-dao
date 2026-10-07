@@ -119,8 +119,10 @@ namespace ThienDao.Sim
         public void MonthlyStep(long tick)
         {
             var e = _sim.Entities;
-            foreach (var r in All)
+            // By index over a fixed count: an explorer who dies leaves a new bí cảnh behind (All grows mid-loop).
+            for (int k = 0, n = All.Count; k < n; k++)
             {
+                var r = All[k];
                 if (r.Discovered || !r.Open) continue;
                 int id = _sim.Creatures.FindNearest(r.X + 0.5f, r.Y + 0.5f, FindReach, 1 << (int)Species.Cultivator);
                 var c = _sim.Cultivation.ForEntity(id);
@@ -140,9 +142,10 @@ namespace ThienDao.Sim
 
         public void YearlyStep(long tick)
         {
-            // Word of a known bí cảnh draws the strong from far around.
-            foreach (var r in All)
+            // Word of a known bí cảnh draws the strong from far around. By index: Explore can add a new one.
+            for (int k = 0, n = All.Count; k < n; k++)
             {
+                var r = All[k];
                 if (!r.Discovered || !r.Open) continue;
                 var rng = RngFor(tick, 400000 + r.Index);
                 if (rng.NextFloat() >= 0.3f) continue;
