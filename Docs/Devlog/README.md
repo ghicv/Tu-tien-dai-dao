@@ -22,7 +22,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 15 | [15-m7-chieu-sau-the-gioi.md](15-m7-chieu-sau-the-gioi.md) | M7 — Yêu thú & yêu tộc, bí cảnh từ lịch sử, kinh tế & thương lộ, thời đại & mạt pháp; hiệu ứng đánh nhau pixel, nháy trắng, khói trắng | `173fa71` |
 | 16 | [16-luu-tai-va-hieu-nang.md](16-luu-tai-va-hieu-nang.md) | Lưu / tải thế giới (F5/F9, tự lưu), đo hiệu năng 1000 năm, sửa lỗi bí cảnh, chuột phải bỏ chọn | `97b495f` |
 | 17 | [17-toi-uu-hieu-nang.md](17-toi-uu-hieu-nang.md) | Tối ưu: lưới tra cứu lười, cache ruộng, chunk chỉ trên GPU, job nền trong Editor (148 → 101 ms/năm ở năm 1000) | `38b64a4` |
-| 18 | [18-dai-vuc-va-kho-lore.md](18-dai-vuc-va-kho-lore.md) | Đại vực kiểu Thiên Nam, nước phàm nhân, kho lore JSON chia loại (mỗi map bốc thăm), texture riêng cho từng loại đất và từng vùng | _(chờ)_ |
+| 18 | [18-dai-vuc-va-kho-lore.md](18-dai-vuc-va-kho-lore.md) | Đại vực kiểu Thiên Nam, nước phàm nhân, kho lore JSON chia loại (mỗi map bốc thăm), texture riêng cho từng loại đất và từng vùng | `fe5faa3` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).
