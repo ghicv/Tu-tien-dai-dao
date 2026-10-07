@@ -23,7 +23,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 16 | [16-luu-tai-va-hieu-nang.md](16-luu-tai-va-hieu-nang.md) | Lưu / tải thế giới (F5/F9, tự lưu), đo hiệu năng 1000 năm, sửa lỗi bí cảnh, chuột phải bỏ chọn | `97b495f` |
 | 17 | [17-toi-uu-hieu-nang.md](17-toi-uu-hieu-nang.md) | Tối ưu: lưới tra cứu lười, cache ruộng, chunk chỉ trên GPU, job nền trong Editor (148 → 101 ms/năm ở năm 1000) | `38b64a4` |
 | 18 | [18-dai-vuc-va-kho-lore.md](18-dai-vuc-va-kho-lore.md) | Đại vực kiểu Thiên Nam, nước phàm nhân, kho lore JSON chia loại (mỗi map bốc thăm), texture riêng cho từng loại đất và từng vùng | `fe5faa3` |
-| 19 | [19-vet-seo-thien-tai.md](19-vet-seo-thien-tai.md) | Vết sẹo thiên tai trên mặt đất (cháy sém, tro, hố, khe nứt, đá nham, chiến trường cổ, phù sa, đất hạn) lành dần theo năm; cây héo úa gần vùng đặc biệt | _(chờ)_ |
+| 19 | [19-vet-seo-thien-tai.md](19-vet-seo-thien-tai.md) | Vết sẹo thiên tai trên mặt đất (cháy sém, tro, hố, khe nứt, đá nham, chiến trường cổ, phù sa, đất hạn) lành dần theo năm; cây héo úa gần vùng đặc biệt | `52bb698` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).
