@@ -96,6 +96,12 @@ namespace ThienDao.Render
             s[(int)ObjectType.Watchtower] = new[] { Watchtower() };
             s[(int)ObjectType.Pagoda] = new[] { Pagoda(C(64, 112, 204)), Pagoda(C(196, 72, 52)), Pagoda(C(120, 84, 60)), Pagoda(C(52, 140, 130)) };
             s[(int)ObjectType.Palace] = new[] { Palace() };
+            // Bí cảnh: [0] sealed, [1] plundered.
+            s[(int)ObjectType.RelicCave] = new[] { RelicCave(false), RelicCave(true) };
+            s[(int)ObjectType.RelicRuins] = new[] { RelicRuins(false), RelicRuins(true) };
+            s[(int)ObjectType.RelicTomb] = new[] { RelicTomb(false), RelicTomb(true) };
+            s[(int)ObjectType.RelicAncient] = new[] { RelicAncient(false), RelicAncient(true) };
+            s[(int)ObjectType.RelicTreasure] = new[] { RelicTreasure(false), RelicTreasure(true) };
             s[(int)ObjectType.SectHall] = new[]
             {
                 SectHall(C(46, 96, 110)),
@@ -1072,6 +1078,185 @@ namespace ThienDao.Render
             cv.Outline(0.45f);
             cv.Shadow(30f, 1f, 29.5f, 1.8f);
             return cv.ToSprite(-2, 0, imperial);
+        }
+
+        // ---------------------------------------------------------------- bí cảnh
+
+        // A rounded heap of rock, lit from the top-left (for caves and mounds).
+        static void RockMound(Canvas cv, float cx, float cy, float rx, float ry, Color32 hi, Color32 mid, Color32 dark, uint seed)
+        {
+            for (int y = 0; y < cv.H; y++)
+            for (int x = 0; x < cv.W; x++)
+            {
+                float dx = (x + 0.5f - cx) / rx, dy = (y + 0.5f - cy) / ry;
+                if (dx * dx + dy * dy > 1f || y < 1) continue;
+                float light = -dx + dy;
+                var c = light > 0.45f ? hi : light < -0.35f ? dark : mid;
+                if (Hash.U32(seed, x, y) % 9 == 0) c = Shade(c, 0.85f);
+                cv.Set(x, y, c);
+            }
+        }
+
+        // Động phủ: a cave in a rock outcrop; sealed by a stone door with a glowing talisman, or gaping open.
+        static PixelSprite RelicCave(bool plundered)
+        {
+            var cv = new Canvas(18, 20);
+            RockMound(cv, 9f, 3f, 8.5f, 15f, C(156, 150, 142), C(118, 112, 106), C(84, 80, 78), 71);
+            if (plundered)
+            {
+                cv.Rect(6, 1, 11, 8, C(26, 22, 22));
+                cv.Rect(7, 9, 10, 9, C(26, 22, 22));
+                cv.Set(4, 1, C(140, 134, 126));
+                cv.Set(13, 1, C(110, 104, 98));
+                cv.Set(12, 2, C(140, 134, 126));
+            }
+            else
+            {
+                cv.Rect(6, 1, 11, 9, C(96, 92, 90));
+                cv.Rect(6, 1, 6, 9, C(70, 66, 64));
+                cv.Rect(8, 3, 9, 7, C(240, 210, 90));   // the seal's talisman
+                cv.Set(8, 5, C(200, 60, 40));
+                cv.Set(9, 5, C(200, 60, 40));
+            }
+            cv.Outline(0.45f);
+            cv.Shadow(9f, 1f, 8.5f, 1.4f);
+            return cv.ToSprite(-1, 0, C(118, 112, 106));
+        }
+
+        // Di tích of a fallen sect: broken red pillars, a collapsed roof, steps leading nowhere.
+        static PixelSprite RelicRuins(bool plundered)
+        {
+            var cv = new Canvas(26, 22);
+            var stone = C(170, 164, 154);
+            var red = plundered ? C(120, 60, 52) : C(150, 64, 52);
+            cv.Rect(2, 1, 23, 3, stone);
+            cv.Rect(2, 1, 23, 1, Shade(stone, 0.78f));
+            cv.Rect(10, 0, 15, 3, Shade(stone, 1.1f));
+            int[] tops = plundered ? new[] { 8, 5, 4, 9 } : new[] { 14, 10, 15, 8 };
+            int[] xs = { 4, 9, 16, 21 };
+            for (int k = 0; k < 4; k++)
+            {
+                cv.Rect(xs[k], 4, xs[k] + 1, tops[k], red);
+                cv.Rect(xs[k] + 1, 4, xs[k] + 1, tops[k], Shade(red, 0.75f));
+                cv.Set(xs[k] + (k % 2), tops[k] + 1, Shade(red, 0.85f)); // the broken top
+            }
+            // What is left of the roof: a slab of tiles slid down at an angle.
+            var tile = plundered ? C(70, 76, 70) : C(52, 110, 96);
+            for (int x = 3; x <= 14; x++) cv.Set(x, 15 - (x - 3) / 3, tile);
+            for (int x = 4; x <= 13; x++) cv.Set(x, 16 - (x - 3) / 3, Shade(tile, 1.2f));
+            if (!plundered) cv.Rect(18, 4, 19, 5, C(222, 178, 74)); // a gilded plaque in the rubble
+            for (int k = 0; k < 6; k++) cv.Set(3 + k * 4, 4, Shade(stone, 0.7f));
+            cv.Outline(0.45f);
+            cv.Shadow(13f, 1f, 12.5f, 1.4f);
+            return cv.ToSprite(-1, 0, red);
+        }
+
+        // Cổ mộ: a grassed mound with a stone stele and two guardian statues; ghost-fire hovers while it is sealed.
+        static PixelSprite RelicTomb(bool plundered)
+        {
+            var cv = new Canvas(26, 22);
+            RockMound(cv, 13f, 5f, 11f, 10f, C(118, 140, 92), C(90, 112, 72), C(64, 82, 56), 73);
+            var stone = C(176, 172, 164);
+            cv.Rect(11, 2, 14, 11, stone);
+            cv.Rect(14, 2, 14, 11, Shade(stone, 0.8f));
+            cv.Rect(10, 12, 15, 12, Shade(stone, 0.9f));
+            for (int y = 4; y <= 9; y += 2) cv.Rect(12, y, 13, y, C(90, 86, 82)); // carved lines
+            foreach (int gx in new[] { 3, 20 })
+            {
+                cv.Rect(gx, 1, gx + 2, 3, Shade(stone, 0.85f));
+                cv.Rect(gx, 4, gx + 2, 6, stone);
+                cv.Set(gx + 1, 7, stone);
+            }
+            if (plundered)
+            {
+                cv.Rect(6, 6, 9, 9, C(30, 26, 24)); // dug open
+                cv.Set(5, 5, C(110, 96, 76));
+                cv.Set(10, 5, C(110, 96, 76));
+            }
+            else
+            {
+                var ghost = C(120, 250, 200);
+                cv.Set(6, 15, ghost);
+                cv.Set(7, 16, ghost);
+                cv.Set(19, 17, ghost);
+                cv.Set(18, 16, Shade(ghost, 0.8f));
+            }
+            cv.Outline(0.45f);
+            cv.Shadow(13f, 1f, 12.5f, 1.4f);
+            return cv.ToSprite(-1, 0, C(90, 112, 72));
+        }
+
+        // Thượng cổ di tích: a colossal stone gate on a cracked plaza; its runes glow while the seal holds.
+        static PixelSprite RelicAncient(bool plundered)
+        {
+            var cv = new Canvas(34, 36);
+            var stone = C(150, 146, 156);
+            var dark = C(100, 96, 110);
+            for (int y = 1; y <= 4; y++)
+            for (int x = 1; x <= 32; x++)
+                cv.Set(x, y, (x * 7 + y * 3) % 11 == 0 ? Shade(stone, 0.75f) : (y == 1 ? Shade(stone, 0.8f) : stone));
+            foreach (int px in new[] { 6, 24 })
+            {
+                cv.Rect(px, 5, px + 3, 27, stone);
+                cv.Rect(px + 3, 5, px + 3, 27, dark);
+                for (int y = 8; y <= 26; y += 4) cv.Rect(px, y, px + 3, y, Shade(stone, 0.86f));
+            }
+            var rune = plundered ? C(80, 76, 90) : C(190, 140, 255);
+            if (plundered)
+            {
+                // The lintel lies broken across the plaza.
+                cv.Rect(10, 5, 23, 7, dark);
+                cv.Rect(10, 7, 23, 7, stone);
+                cv.Rect(3, 28, 9, 30, stone);
+            }
+            else
+            {
+                cv.Rect(3, 28, 30, 31, stone);
+                cv.Rect(3, 28, 30, 28, dark);
+                cv.Rect(5, 32, 28, 32, Shade(stone, 1.1f));
+                for (int x = 6; x <= 27; x += 3) cv.Set(x, 30, rune);
+                // The portal itself: a faint violet shimmer between the pillars.
+                for (int y = 5; y <= 27; y++)
+                for (int x = 10; x <= 23; x++)
+                    if (((x + y) & 3) == 0) cv.Set(x, y, C(120, 90, 200));
+            }
+            foreach (int px in new[] { 7, 25 })
+                for (int y = 10; y <= 24; y += 5) cv.Set(px + 1, y, rune);
+            cv.Outline(0.45f);
+            cv.Shadow(17f, 1f, 16.5f, 1.6f);
+            return cv.ToSprite(-1, 0, rune);
+        }
+
+        // Thiên địa linh vật on a rock altar: a glowing crystal lotus; once taken, only the empty altar stays.
+        static PixelSprite RelicTreasure(bool plundered)
+        {
+            var cv = new Canvas(18, 22);
+            var stone = C(150, 144, 136);
+            cv.Rect(2, 1, 15, 4, stone);
+            cv.Rect(2, 1, 15, 1, Shade(stone, 0.75f));
+            cv.Rect(4, 5, 13, 6, Shade(stone, 1.12f));
+            cv.Rect(4, 5, 13, 5, Shade(stone, 0.9f));
+            if (!plundered)
+            {
+                var glow = C(255, 236, 140);
+                var petal = C(250, 170, 210);
+                var leaf = C(110, 200, 120);
+                cv.Rect(3, 7, 6, 8, leaf);
+                cv.Rect(11, 7, 14, 8, leaf);
+                cv.Rect(8, 7, 9, 16, glow);
+                cv.Rect(5, 9, 7, 12, petal);
+                cv.Rect(10, 9, 12, 12, petal);
+                cv.Rect(6, 13, 7, 14, Shade(petal, 1.1f));
+                cv.Rect(10, 13, 11, 14, Shade(petal, 1.1f));
+                cv.Set(4, 10, Shade(petal, 0.85f));
+                cv.Set(13, 10, Shade(petal, 0.85f));
+                cv.Set(8, 17, C(255, 255, 230));
+                cv.Set(9, 18, C(255, 255, 230));
+                cv.Set(8, 19, C(255, 250, 200));
+            }
+            cv.Outline(0.45f);
+            cv.Shadow(9f, 1f, 7.5f, 1.2f);
+            return cv.ToSprite(-5, 0, plundered ? stone : C(255, 236, 140));
         }
 
         static PixelSprite House(Color32 roof)

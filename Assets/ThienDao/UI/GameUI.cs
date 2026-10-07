@@ -822,6 +822,10 @@ namespace ThienDao.UI
                 var icon = Ui.Icon(row, watched ? Icons.Star : Icons.ForEvent(ev.Kind, ev.Fx), 26f);
                 var t = Ui.Label(row, ev.Text, 19, TextAnchor.UpperLeft, watched ? WatchColor : ev.Importance >= 3 ? Ui.Gold : Ui.Ink);
                 Element(t).preferredWidth = 524f; // height follows the wrapped text
+                // Click the news to fly there.
+                row.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
+                var evCopy = ev;
+                row.gameObject.AddComponent<Button>().onClick.AddListener(() => FocusEvent(evCopy));
                 _tickerLines.Add((t, icon, Time.unscaledTime));
                 if (_tickerLines.Count > 4)
                 {
@@ -857,6 +861,27 @@ namespace ThienDao.UI
         readonly Ui.IconButton[] _watchRows = new Ui.IconButton[WatchRows];
         readonly Ui.IconButton[] _watchRemove = new Ui.IconButton[WatchRows];
         readonly Cultivator[] _watchWho = new Cultivator[WatchRows];
+
+        // Where an event happened, or where the one it is about is now; the camera glides there and the
+        // cultivator (if any) is shown on the card.
+        public void FocusEvent(WorldEvent ev)
+        {
+            var sim = _game.Sim;
+            var all = sim.Cultivation.All;
+            var c = ev.A >= 0 && ev.A < all.Count ? all[ev.A] : null;
+            Vector2 at;
+            if (ev.X >= 0f) at = new Vector2(ev.X, ev.Y);
+            else if (c != null && sim.Cultivation.IsShownOnMap(c)) at = new Vector2(sim.Entities.X[c.Entity], sim.Entities.Y[c.Entity]);
+            else if (c != null) at = new Vector2(c.HomeX, c.HomeY);
+            else
+            {
+                ShowToast("Sự kiện này không gắn với một nơi nào trên bản đồ.");
+                return;
+            }
+            var cam = _game.Camera;
+            cam.GlideTo(at, Mathf.Min(cam.Cam.orthographicSize, 28f));
+            if (c != null) _game.Inspect(c);
+        }
 
         bool IsWatchedEvent(WorldEvent ev)
         {
@@ -1099,6 +1124,7 @@ namespace ThienDao.UI
 
         const int EventRows = 8;
         readonly (Image icon, Text text)[] _eventRows = new (Image, Text)[EventRows];
+        readonly WorldEvent[] _eventRowEvents = new WorldEvent[EventRows];
 
         void BuildEventRows()
         {
@@ -1111,6 +1137,9 @@ namespace ThienDao.UI
                 var t = Ui.Label(row, "", 17);
                 Element(t).preferredWidth = 380f;
                 _eventRows[k] = (icon, t);
+                int slot = k;
+                row.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
+                row.gameObject.AddComponent<Button>().onClick.AddListener(() => FocusEvent(_eventRowEvents[slot])); // click to fly there
                 row.gameObject.SetActive(false); // shown once there is news to fill it
             }
         }
@@ -1123,6 +1152,7 @@ namespace ThienDao.UI
             {
                 var ev = events[k];
                 if (ev.Importance < 1) continue;
+                _eventRowEvents[shown] = ev;
                 var (icon, text) = _eventRows[shown++];
                 icon.sprite = Icons.ForEvent(ev.Kind, ev.Fx);
                 string color = ev.Importance >= 3 ? "#ffd873" : ev.Importance == 2 ? "#ffffff" : "#b8bccc";
@@ -1377,6 +1407,7 @@ namespace ThienDao.UI
             var kingdom = s.Kingdom >= 0 && s.Kingdom < wd.Kingdoms.Count ? wd.Kingdoms[s.Kingdom] : null;
             string regionName = wd.Lore.RegionNames[wd.Region[wd.Idx(s.X, s.Y)]];
             body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#e8d8a8>{(s.Capital ? "Kinh thành của " : "")}{(kingdom != null ? kingdom.Name + " · " : "")}{regionName}</color>");
+            body.Append(BuildingsLine(s));
             body.Append("\n").Append($"<color=#8890a8>Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" +
                         (s.ParentId >= 0 ? $" · di dân từ {sim.Settlements.All[s.ParentId].Name}" : "") + "</color>");
             _cardBody.text = body.ToString();
@@ -1387,6 +1418,22 @@ namespace ThienDao.UI
             ShowDivineButtons(s.Alive, true, s.Sect);
             ShowRevive(false);
             _watchButton.Frame.gameObject.SetActive(false);
+        }
+
+        // What a place has built and what each thing does for it, so the player can see why one town weathers
+        // a beast tide that wipes out the next.
+        string BuildingsLine(Settlement s)
+        {
+            var st = _game.Sim.Settlements;
+            var parts = new List<string>();
+            string[] standing = { "thôn", "trấn", "thành", "kinh thành" };
+            if (s.Walled) parts.Add("tường thành (thú triều giết ít hơn, dân tị nạn tìm về)");
+            if (st.HasCivic(s, ObjectType.Market)) parts.Add("chợ (thương nhân tấp nập)");
+            if (st.HasCivic(s, ObjectType.Shrine)) parts.Add("miếu (ôn dịch nhẹ hơn)");
+            if (st.HasCivic(s, ObjectType.Pagoda)) parts.Add("bảo tháp");
+            if (st.HasCivic(s, ObjectType.Palace)) parts.Add("hoàng cung");
+            string line = $"\n<color=#c8d0a0>Quy mô {standing[SettlementSystem.Standing(s)]}" + (parts.Count > 0 ? ": " + string.Join(", ", parts) : "") + "</color>";
+            return s.Sect ? "" : line;
         }
 
         void ShowRevive(bool on)
@@ -1506,7 +1553,8 @@ namespace ThienDao.UI
                     {
                         var o = w.Objects.Get(t.ObjectId);
                         sb.Append($"Chiếm {ObjectInfo.FootprintW[(int)o.Type]}×{ObjectInfo.FootprintH[(int)o.Type]} ô tại ({o.X}, {o.Y})");
-                        if (ObjectInfo.IsBuilding(o.Type)) sb.Append(" · <color=#8890a8>không thuộc làng nào</color>");
+                        if (ObjectInfo.IsRelic(o.Type)) AppendRelic(sb, t.ObjectId);
+                        else if (ObjectInfo.IsBuilding(o.Type)) sb.Append(" · <color=#8890a8>không thuộc làng nào</color>");
                         sb.Append("\n\n");
                     }
                     AppendCell(sb, t.CellX, t.CellY);
@@ -1517,6 +1565,26 @@ namespace ThienDao.UI
                     break;
             }
             return sb.ToString().TrimEnd();
+        }
+
+        // Thiên Đạo sees what mortals do not: what a bí cảnh holds and whether anyone has found it yet.
+        void AppendRelic(StringBuilder sb, int objectId)
+        {
+            var sim = _game.Sim;
+            Relic r = null;
+            foreach (var x in sim.Relics.All)
+                if (x.ObjectId == objectId) { r = x; break; }
+            if (r == null) return;
+            sb.Append($"\n<color=#9fe0d0>{r.Name}</color> · {r.Origin} · nguy hiểm cấp {r.Tier}/5");
+            if (!r.Open) { sb.Append("\nĐã bị vét sạch."); return; }
+            var inside = new List<string>();
+            if (r.Treasure != null) inside.Add(r.Kind == RelicKind.Treasure ? $"linh vật {r.Treasure}" : $"pháp bảo {r.Treasure}");
+            if (r.Stones > 0f) inside.Add($"{r.Stones:0} linh thạch");
+            if (r.Pills > 0) inside.Add($"{r.Pills} viên đan");
+            inside.Add(r.Kind == RelicKind.Treasure ? "thọ nguyên" : "truyền thừa");
+            sb.Append($"\nBên trong: {string.Join(", ", inside)} · còn {r.Layers} tầng");
+            sb.Append(sim.Relics.Contested(r) ? "\n<color=#ff8070>Các thế lực đang tranh đoạt cơ duyên nơi đây.</color>"
+                : r.Discovered ? "\nThiên hạ đã biết đến nơi này." : "\n<color=#8890a8>Chưa ai phát hiện, chờ người có cơ duyên.</color>");
         }
 
         void AppendCell(StringBuilder sb, int x, int y)
@@ -1543,6 +1611,8 @@ namespace ThienDao.UI
             if (mark != null)
                 sb.Append(mark.Kind == Landmark.Thunder
                     ? $"<color=#c8a8ff>Lôi địa {mark.Name}</color>, {mark.Origin}; lôi khí còn khoảng {(mark.Until - sim.Clock.Tick) / SimClock.DaysPerYear} năm\n"
+                    : mark.Kind == Landmark.Battlefield
+                    ? $"<color=#d07070>{mark.Name}</color>, {mark.Origin}; oán khí của {mark.Toll} người vẫn còn, tan sau khoảng {(mark.Until - sim.Clock.Tick) / SimClock.DaysPerYear} năm · ma tu tu luyện nhanh hơn, lâu ngày sinh yêu thú\n"
                     : $"<color=#ff9a6a>{mark.Name}</color>, {mark.Origin}\n");
             if (terrain == Terrain.Lava) sb.Append("Dung nham đang chảy: ai rơi vào là chết cháy, nguội dần thành đá\n");
             byte scar = w.Scar[i];
@@ -1550,7 +1620,8 @@ namespace ThienDao.UI
             {
                 var kind = ScarInfo.Kind(scar);
                 int years = ScarInfo.Strength(scar) * ScarInfo.YearsPerStep[(int)kind];
-                sb.Append($"<color=#d8b894>Vết tích: {ScarInfo.Names[(int)kind]}</color> · đất lành lại sau khoảng {years} năm\n");
+                string effect = ScarInfo.EffectText(scar);
+                sb.Append($"<color=#d8b894>Vết tích: {ScarInfo.Names[(int)kind]}</color>{(effect.Length > 0 ? " · " + effect : "")} · đất lành lại sau khoảng {years} năm\n");
             }
             int drought = sim.Disasters.DroughtMonthsLeft(x, y, sim.Clock.Tick);
             if (drought >= 0) sb.Append($"<color=#ffb060>Đang hạn hán</color>, còn khoảng {drought} tháng · mùa màng chỉ được một phần tư\n");
@@ -1606,7 +1677,7 @@ namespace ThienDao.UI
                     PlaceLabel(ref used, cam, new Vector3(world.SeaLabelX, world.SeaLabelY, 0f), Spaced(world.Lore.Sea), new Color(0.82f, 0.9f, 1f, 0.85f), 36);
                 if (ppc >= 1.2f)
                     foreach (var k in world.Kingdoms)
-                        PlaceLabel(ref used, cam, new Vector3(k.CapitalX + 0.5f, k.CapitalY - 6f, 0f), k.Name, new Color(1f, 0.88f, 0.62f, 0.95f), 26);
+                        PlaceLabel(ref used, cam, new Vector3(k.CapitalX + 0.5f, k.CapitalY - 6f, 0f), k.Fallen ? "Cố " + k.Name : k.Name, k.Fallen ? new Color(0.75f, 0.72f, 0.66f, 0.8f) : new Color(1f, 0.88f, 0.62f, 0.95f), 26);
             }
             if (ShowLabels && ppc >= 3f)
             {
@@ -1625,7 +1696,8 @@ namespace ThienDao.UI
                 // Known bí cảnh, and the Yêu Vương with the name of their yêu tộc.
                 foreach (var r in sim.Relics.All)
                     if (r.Discovered && r.Open)
-                        PlaceLabel(ref used, cam, new Vector3(r.X + 0.5f, r.Y + 1.5f, 0f), $"[{r.Name}]", new Color(0.55f, 0.95f, 0.85f), 17);
+                        PlaceLabel(ref used, cam, new Vector3(r.X + 0.5f, r.Y + 3f, 0f), sim.Relics.Contested(r) ? $"[{r.Name}] · đang tranh đoạt" : $"[{r.Name}]",
+                            sim.Relics.Contested(r) ? new Color(1f, 0.55f, 0.45f) : new Color(0.55f, 0.95f, 0.85f), 17);
                 var ent = sim.Entities;
                 foreach (var b in sim.Beasts.All)
                     if (b.Alive && (b.IsKing || b.Grade >= 5))

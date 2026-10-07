@@ -31,6 +31,7 @@ namespace ThienDao.World
         public string Name;
         public RegionKind Region;
         public int CapitalX, CapitalY;
+        public bool Fallen;          // no town of it is left: the kingdom is gone, only its name on old maps
         public int LandCells;
         public string CapitalName => Name.EndsWith(" Bộ") ? Name.Substring(0, Name.Length - 3) + " Vương Đình" : Name.Replace(" Quốc", " Kinh");
     }

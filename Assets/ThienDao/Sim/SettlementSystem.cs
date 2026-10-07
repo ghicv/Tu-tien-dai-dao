@@ -50,7 +50,12 @@ namespace ThienDao.Sim
         }
 
         // A sect town carries its sect's name; other places are styled Thôn / Trấn / Thành by size.
-        public string Name => Sect || Capital ? BaseName : BaseName + " " + Lore.Tier(Population);
+        // A capital that moved to an ordinary town is called that town's Thành.
+        public string Name => Sect ? BaseName
+            : Capital ? (BaseName.EndsWith(" Kinh") || BaseName.EndsWith(" Vương Đình") ? BaseName : BaseName + " Thành")
+            : BaseName + " " + Lore.Tier(Population);
+
+        public bool Walled => WallX0 >= 0;
 
         public int Workers => Sum(3, 11);       // 15–59
         public int FertileAdults => Sum(3, 8);  // 15–44
@@ -112,6 +117,7 @@ namespace ThienDao.Sim
             _w = sim.World;
             _w.Objects.Removed += OnObjectRemoved;
             _w.TerrainChanged += HandleTerrainChanged;
+            _w.LookChanged += HandleLookChanged;
             _placeNames = new Lore.Picker(_w.Lore.Places, _w.Lore.Syllables);
             _sectNames = new Lore.Picker(_w.Lore.RighteousSects, _w.Lore.Syllables);
             _demonicSectNames = new Lore.Picker(_w.Lore.DemonicSects, _w.Lore.Syllables);
@@ -238,8 +244,10 @@ namespace ThienDao.Sim
 
         void Abandon(Settlement s)
         {
+            string name = s.Name;
             s.Alive = false;
             AliveCount--;
+            if (s.Capital) CapitalFalls(s, name, _sim.Clock.Tick);
             if (s.Sect)
             {
                 _sim.Factions?.SectGone(s.Id, _sim.Clock.Tick);
@@ -250,6 +258,42 @@ namespace ThienDao.Sim
             ReleaseFarmland(s, s.Farms.Count);
         }
 
+        // The capital is gone: the court moves to the largest town left in the kingdom (which then raises its
+        // palace and walls), or, with no town left, the kingdom is no more.
+        void CapitalFalls(Settlement old, string oldName, long tick)
+        {
+            old.Capital = false;
+            var k = old.Kingdom >= 0 && old.Kingdom < _w.Kingdoms.Count ? _w.Kingdoms[old.Kingdom] : null;
+            if (k == null) return;
+            Settlement best = null;
+            foreach (var s in All)
+                if (s.Alive && !s.Sect && s.Kingdom == k.Id && (best == null || s.Population > best.Population)) best = s;
+            if (best == null)
+            {
+                k.Fallen = true;
+                _sim.Events.Add(tick, EventKind.Destruction, 3, $"Kinh đô {oldName} hoang phế, {k.Name} không còn một thành trì nào: {k.Name} diệt vong.",
+                    old.X + 0.5f, old.Y + 0.5f);
+                return;
+            }
+            best.Capital = true;
+            best.CivicRetry = 0;
+            k.CapitalX = best.X;
+            k.CapitalY = best.Y;
+            _sim.Events.Add(tick, EventKind.Succession, 2, $"{k.Name} mất kinh đô {oldName}, dời đô về {best.Name}.", best.X + 0.5f, best.Y + 0.5f);
+        }
+
+        // Settlers on the land of a fallen kingdom raise it again.
+        void Restore(Settlement s, long tick)
+        {
+            var k = s.Kingdom >= 0 && s.Kingdom < _w.Kingdoms.Count ? _w.Kingdoms[s.Kingdom] : null;
+            if (k == null || !k.Fallen || s.Sect) return;
+            k.Fallen = false;
+            s.Capital = true;
+            k.CapitalX = s.X;
+            k.CapitalY = s.Y;
+            _sim.Events.Add(tick, EventKind.Founding, 2, $"Di dân dựng {s.Name} trên đất cũ của {k.Name}: {k.Name} phục quốc.", s.X + 0.5f, s.Y + 0.5f);
+        }
+
         public Settlement FoundVillage(int x, int y, byte roof, int people, long tick)
         {
             if (!_w.InBounds(x, y) || !TerrainInfo.IsWalkable(_w.Terrain[_w.Idx(x, y)]) || AliveCount >= MaxSettlements) return null;
@@ -257,6 +301,7 @@ namespace ThienDao.Sim
             var s = Create(x, y, roof, false, tick, ref rng);
             DistributeInitial(s, people, ref rng);
             s.Food = people * 6f;
+            Restore(s, tick);
             for (int k = 0; k < 3; k++) TryBuildHouse(s, ref rng);
             ClaimFarmland(s, (int)(s.Workers * CellsPerWorker));
             return s;
@@ -562,7 +607,7 @@ namespace ThienDao.Sim
             string oldName = s.Name;
             if (!FindRefuge(s, out int nx, out int ny))
             {
-                var host = NearestAlive(s.X, s.Y, s);
+                var host = RefugeHost(s); // behind walls if any are in reach
                 if (host != null)
                 {
                     for (int b = 0; b < Settlement.AgeGroups; b++) host.Cohorts[b] += s.Cohorts[b];
@@ -633,6 +678,20 @@ namespace ThienDao.Sim
             foreach (var o in All)
                 if (o != self && o.Alive && (o.X - x) * (o.X - x) + (o.Y - y) * (o.Y - y) < dist * dist) return true;
             return false;
+        }
+
+        // Where the homeless go: the nearest walled town within 100 cells, else the nearest place at all.
+        Settlement RefugeHost(Settlement s)
+        {
+            Settlement walled = null;
+            int bestD = 100 * 100;
+            foreach (var o in All)
+            {
+                if (!o.Alive || o == s || !o.Walled) continue;
+                int d = (o.X - s.X) * (o.X - s.X) + (o.Y - s.Y) * (o.Y - s.Y);
+                if (d < bestD) { bestD = d; walled = o; }
+            }
+            return walled ?? NearestAlive(s.X, s.Y, s);
         }
 
         Settlement NearestAlive(int x, int y, Settlement except)
@@ -728,6 +787,14 @@ namespace ThienDao.Sim
         }
 
         bool _claiming;
+
+        // A scar came or faded near some villages: their fields yield differently now (Fertility reads scars).
+        void HandleLookChanged(int x0, int y0, int x1, int y1)
+        {
+            const int Reach = 31;
+            foreach (var s in All)
+                if (s.Alive && s.X + Reach >= x0 && s.X - Reach <= x1 && s.Y + Reach >= y0 && s.Y - Reach <= y1) s.FertilityTended = -1;
+        }
 
         // Land around (x0..x1, y0..y1) went back to nobody: villages near it must look at their inner rings again.
         void Freed(int x0, int y0, int x1, int y1)
@@ -921,7 +988,7 @@ namespace ThienDao.Sim
             return ok;
         }
 
-        bool HasCivic(Settlement s, ObjectType type)
+        public bool HasCivic(Settlement s, ObjectType type)
         {
             foreach (int id in s.Civic)
                 if (_w.Objects.Get(id).Type == type) return true;
@@ -1097,17 +1164,33 @@ namespace ThienDao.Sim
 
         bool FindSite(int fromX, int fromY, ref DetRandom rng, out int tx, out int ty)
         {
-            for (int attempt = 0; attempt < 40; attempt++)
+            // Settlers weigh a few good sites and take the richest soil: they find the silt a flood left and the
+            // old ash of a volcano long before anyone tells them.
+            tx = ty = 0;
+            float best = -1f;
+            int found = 0;
+            for (int attempt = 0; attempt < 40 && found < 3; attempt++)
             {
                 float angle = rng.Range(0f, Mathf.PI * 2f), dist = rng.Range(30f, 110f);
                 int x = fromX + (int)(Mathf.Cos(angle) * dist), y = fromY + (int)(Mathf.Sin(angle) * dist);
                 if (!SiteOk(x, y, true) || !PathClear(fromX, fromY, x, y)) continue;
+                found++;
+                float soil = SoilAround(x, y);
+                if (soil <= best) continue;
+                best = soil;
                 tx = x;
                 ty = y;
-                return true;
             }
-            tx = ty = 0;
-            return false;
+            return found > 0;
+        }
+
+        float SoilAround(int x, int y)
+        {
+            float sum = 0f;
+            for (int dy = -6; dy <= 6; dy += 3)
+            for (int dx = -6; dx <= 6; dx += 3)
+                if (_w.InBounds(x + dx, y + dy)) sum += _w.Fertility(_w.Idx(x + dx, y + dy));
+            return sum;
         }
 
         bool SiteOk(int x, int y, bool needWater)
@@ -1158,6 +1241,7 @@ namespace ThienDao.Sim
                 s.ParentId = group.From;
                 System.Array.Copy(group.Cohorts, s.Cohorts, Settlement.AgeGroups);
                 s.Food = group.Food;
+                Restore(s, tick);
                 TryBuildHouse(s, ref rng);
                 TryBuildHouse(s, ref rng);
                 ClaimFarmland(s, (int)(s.Workers * CellsPerWorker));

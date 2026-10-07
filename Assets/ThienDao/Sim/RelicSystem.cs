@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using ThienDao.Core;
 using ThienDao.World;
 using UnityEngine;
+using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao.Sim
 {
-    public enum RelicKind : byte { Cave, Ruins, Treasure } // động phủ of the dead, di tích of a fallen sect, thiên địa linh vật
+    // động phủ of the dead, di tích of a fallen sect, thiên địa linh vật, cổ mộ and thượng cổ di tích from before history
+    public enum RelicKind : byte { Cave, Ruins, Treasure, Tomb, Ancient }
 
     public sealed class Relic
     {
@@ -25,6 +27,7 @@ namespace ThienDao.Sim
         public int DiscoveredBy = -1;
         public int Layers = 1;       // explorations left before it is empty
         public bool Open => Layers > 0;
+        public int ObjectId = -1;    // its building on the map (RelicCave … RelicTreasure), -1 if none stands
     }
 
     // Bí cảnh (GDD §11): the past becomes the present. Strong cultivators who die leave their caves (and whatever
@@ -44,6 +47,111 @@ namespace ThienDao.Sim
         {
             _sim = sim;
             _w = sim.World;
+            _w.Objects.Removed += OnObjectRemoved;
+            SeedAncient();
+        }
+
+        // ---------------------------------------------------------------- on the map
+
+        static ObjectType ArtOf(RelicKind k) =>
+            k == RelicKind.Cave ? ObjectType.RelicCave : k == RelicKind.Ruins ? ObjectType.RelicRuins :
+            k == RelicKind.Tomb ? ObjectType.RelicTomb : k == RelicKind.Ancient ? ObjectType.RelicAncient : ObjectType.RelicTreasure;
+
+        // The site stands on the land whether or not anyone knows what it is: the nearest free ground to where it
+        // came to be. Trees and rocks give way; fields, houses and walls do not.
+        void PlaceArt(Relic r)
+        {
+            var type = ArtOf(r.Kind);
+            int fw = ObjectInfo.FootprintW[(int)type], fh = ObjectInfo.FootprintH[(int)type];
+            for (int ring = 0; ring <= 12; ring++) // out past a sect town's fields if need be
+            for (int dy = -ring; dy <= ring; dy++)
+            for (int dx = -ring; dx <= ring; dx++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != ring) continue;
+                int ox = r.X + dx - fw / 2, oy = r.Y + dy - fh / 2;
+                if (!Fits(ox, oy, fw, fh, type)) continue;
+                for (int y = oy; y < oy + fh; y++)
+                for (int x = ox; x < ox + fw; x++)
+                    _w.Objects.RemoveAtCell(x, y);
+                int id = _w.Objects.Place(type, ox, oy, 0);
+                if (id < 0) continue;
+                r.ObjectId = id;
+                r.X = ox + fw / 2;
+                r.Y = oy + fh / 2;
+                return;
+            }
+        }
+
+        bool Fits(int ox, int oy, int fw, int fh, ObjectType type)
+        {
+            for (int y = oy; y < oy + fh; y++)
+            for (int x = ox; x < ox + fw; x++)
+            {
+                if (!_w.InBounds(x, y)) return false;
+                int i = _w.Idx(x, y);
+                if (_w.Owner[i] != 0 || (_w.Zone[i] & ZoneFlags.Wall) != 0) return false;
+                if (!ObjectInfo.CanStandOn(type, _w.Terrain[i])) return false;
+                int obj = _w.Objects.CellObject[i];
+                if (obj >= 0 && ObjectInfo.IsBuilding(_w.Objects.Get(obj).Type)) return false;
+            }
+            return true;
+        }
+
+        // Plundered: the seal broken, the doors open, nothing left inside.
+        void Emptied(Relic r)
+        {
+            if (r.ObjectId >= 0) _w.Objects.SetVariant(r.ObjectId, 1);
+        }
+
+        void OnObjectRemoved(int id, WorldObject o)
+        {
+            if (!ObjectInfo.IsRelic(o.Type)) return;
+            foreach (var r in All)
+                if (r.ObjectId == id) { r.ObjectId = -1; return; }
+        }
+
+        // Cổ mộ and thượng cổ di tích: older than any sect, deep in the wilds, sealed and strong. A world starts
+        // with a few; finding them is the work of luck.
+        void SeedAncient()
+        {
+            var rng = new DetRandom(_w.Seed ^ 0xA9C1E9u);
+            var lore = _w.Lore;
+            int tombs = Mathf.Min(lore.AncientTombs.Length, rng.Range(3, 5));
+            int ruins = Mathf.Min(lore.AncientRuins.Length, rng.Range(3, 5));
+            for (int k = 0; k < tombs + ruins; k++)
+            {
+                bool tomb = k < tombs;
+                if (!WildSite(tomb, ref rng, out int x, out int y)) continue;
+                int tier = rng.Range(3, 6);
+                var r = Add(tomb ? RelicKind.Tomb : RelicKind.Ancient, tomb ? lore.AncientTombs[k] : lore.AncientRuins[k - tombs], x, y, tier, 0);
+                if (r == null) continue;
+                r.Origin = tomb ? "mộ phần của cổ tu sĩ thời thượng cổ" : "di tích từ thời thượng cổ, trước cả các tông môn";
+                r.Treasure = _w.Lore.Treasures[rng.Range(0, _w.Lore.Treasures.Length)];
+                r.Stones = rng.Range(600f, 1800f) * tier / 3f;
+                r.Pills = rng.Range(1, 5);
+                r.Layers = 3;
+            }
+        }
+
+        // Far from every village, on ground a building can stand on: tombs in the hills, ruins wherever.
+        bool WildSite(bool tomb, ref DetRandom rng, out int x, out int y)
+        {
+            for (int attempt = 0; attempt < 300; attempt++)
+            {
+                x = rng.Range(24, _w.W - 24);
+                y = rng.Range(24, _w.H - 24);
+                var t = _w.Terrain[_w.Idx(x, y)];
+                if (!ObjectInfo.CanStandOn(ObjectType.RelicAncient, t)) continue;
+                if (tomb && t != Terrain.Hills && attempt < 200) continue;
+                bool alone = true;
+                foreach (var s in _sim.Settlements.All)
+                    if (s.Alive && (s.X - x) * (s.X - x) + (s.Y - y) * (s.Y - y) < 50 * 50) { alone = false; break; }
+                foreach (var r in All)
+                    if ((r.X - x) * (r.X - x) + (r.Y - y) * (r.Y - y) < 80 * 80) { alone = false; break; }
+                if (alone) return true;
+            }
+            x = y = 0;
+            return false;
         }
 
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0x2E11Cu, (int)tick, salt));
@@ -63,6 +171,7 @@ namespace ThienDao.Sim
             if (OpenCount() >= MaxOpen || !_w.InBounds((int)x, (int)y)) return null;
             var r = new Relic { Index = All.Count, Kind = kind, Name = name, X = (int)x, Y = (int)y, Tier = Mathf.Clamp(tier, 1, 5), Tick = tick };
             All.Add(r);
+            PlaceArt(r);
             return r;
         }
 
@@ -118,6 +227,12 @@ namespace ThienDao.Sim
 
         public void MonthlyStep(long tick)
         {
+            ResolveContests(tick);
+            Discover(tick);
+        }
+
+        void Discover(long tick)
+        {
             var e = _sim.Entities;
             // By index over a fixed count: an explorer who dies leaves a new bí cảnh behind (All grows mid-loop).
             for (int k = 0, n = All.Count; k < n; k++)
@@ -142,13 +257,16 @@ namespace ThienDao.Sim
 
         public void YearlyStep(long tick)
         {
+            Emerge(tick);
             // Word of a known bí cảnh draws the strong from far around. By index: Explore can add a new one.
             for (int k = 0, n = All.Count; k < n; k++)
             {
                 var r = All[k];
-                if (!r.Discovered || !r.Open) continue;
+                if (!r.Discovered || !r.Open || ContestOver(r) != null) continue;
                 var rng = RngFor(tick, 400000 + r.Index);
                 if (rng.NextFloat() >= 0.3f) continue;
+                // A great cơ duyên is not left to one: every sect around sends someone, and they fight for it.
+                if (Worthy(r) && StartContest(r, tick)) continue;
                 Cultivator best = null;
                 foreach (var c in _sim.Cultivation.All)
                 {
@@ -161,6 +279,182 @@ namespace ThienDao.Sim
                 _sim.Events.Add(tick, EventKind.Relic, 1, $"{best.Title} nghe tin {r.Name} xuất thế, lên đường thám hiểm.",
                     r.X + 0.5f, r.Y + 0.5f, Fx.None, best.Index, r.Owner, best.SectId, r.Sect);
                 Explore(best, r, tick);
+            }
+        }
+
+        // ---------------------------------------------------------------- thiên tài địa bảo xuất thế
+
+        // Now and then the richest qi in the world condenses into a linh vật, and its light rises to the sky for
+        // all to see. Where the qi is, the sects are; so they come.
+        void Emerge(long tick)
+        {
+            var rng = RngFor(tick, 600000);
+            if (rng.NextFloat() >= 0.12f * _sim.Rules[Rule.Calamities] + 0.06f) return;
+            int bx = -1, by = -1;
+            float best = 0f;
+            for (int k = 0; k < 48; k++)
+            {
+                int x = rng.Range(16, _w.W - 16), y = rng.Range(16, _w.H - 16);
+                int i = _w.Idx(x, y);
+                if (!_w.IsWalkable(x + 0.5f, y + 0.5f) || _w.Owner[i] != 0) continue;
+                float q = _w.QiCap[i];
+                if (q > best) { best = q; bx = x; by = y; }
+            }
+            if (bx < 0 || best < 3000f) return;
+            string what = _w.Lore.NaturalTreasures[rng.Range(0, _w.Lore.NaturalTreasures.Length)];
+            int tier = best >= 7000f ? 4 : best >= 5000f ? 3 : 2;
+            var r = Add(RelicKind.Treasure, what, bx, by, tier, tick);
+            if (r == null || r.ObjectId < 0) return;
+            r.Treasure = what;
+            r.Origin = $"xuất thế năm {Year(tick)}";
+            r.Stones = rng.Range(80f, 240f) * tier;
+            r.Discovered = true;
+            _sim.Events.Add(tick, EventKind.Relic, 3, $"Bảo quang xung thiên: {what} xuất thế giữa chốn linh khí nồng đậm, cả thiên hạ chấn động!",
+                r.X + 0.5f, r.Y + 0.5f, Fx.LightPillar);
+            StartContest(r, tick);
+        }
+
+        // ---------------------------------------------------------------- tranh đoạt cơ duyên
+
+        const float ContestReach = 260f;
+        const int MaxContenders = 5;
+
+        const int PerSect = 3;
+
+        sealed class Contest
+        {
+            public int Relic;
+            public long Resolve;
+            public readonly List<int> Who = new List<int>();
+            public readonly List<int> Side = new List<int>(); // sect id, or -1 - index for a lone tán tu / ma tu
+        }
+
+        readonly List<Contest> _contests = new List<Contest>();
+
+        public bool Worthy(Relic r) => r.Tier >= 3 || r.Kind == RelicKind.Treasure || r.Kind == RelicKind.Tomb || r.Kind == RelicKind.Ancient;
+
+        Contest ContestOver(Relic r)
+        {
+            foreach (var c in _contests)
+                if (c.Relic == r.Index) return c;
+            return null;
+        }
+
+        public bool Contested(Relic r) => ContestOver(r) != null;
+
+        // Every sect in reach sends its strongest (up to three, Trúc Cơ and above, free to go); the boldest tán tu
+        // and the boldest ma tu come alone. They fly to the site for real and the fight happens there.
+        bool StartContest(Relic r, long tick)
+        {
+            if (ContestOver(r) != null) return true;
+            var sects = new List<List<Cultivator>>();
+            Cultivator rogue = null, devil = null;
+            foreach (var c in _sim.Cultivation.All)
+            {
+                if (!c.Alive || c.Watched || c.AtWar || c.HuntTarget >= 0 || !_sim.Cultivation.IsAtHome(c) || c.Realm < Realm.TrucCo) continue;
+                float dx = c.HomeX - r.X, dy = c.HomeY - r.Y;
+                if (dx * dx + dy * dy > ContestReach * ContestReach) continue;
+                if (c.SectId < 0)
+                {
+                    if (c.Demonic) { if (devil == null || c.Rank > devil.Rank) devil = c; }
+                    else if (rogue == null || c.Rank > rogue.Rank) rogue = c;
+                    continue;
+                }
+                int k = sects.FindIndex(p => p[0].SectId == c.SectId);
+                if (k < 0) sects.Add(new List<Cultivator> { c });
+                else sects[k].Add(c);
+            }
+            foreach (var side in sects)
+            {
+                side.Sort((a, b) => b.Rank.CompareTo(a.Rank));
+                if (side.Count > PerSect) side.RemoveRange(PerSect, side.Count - PerSect);
+            }
+            if (rogue != null) sects.Add(new List<Cultivator> { rogue });
+            if (devil != null) sects.Add(new List<Cultivator> { devil });
+            if (sects.Count < 2) return false;
+            sects.Sort((a, b) => b[0].Rank.CompareTo(a[0].Rank));
+            if (sects.Count > MaxContenders) sects.RemoveRange(MaxContenders, sects.Count - MaxContenders);
+
+            var contest = new Contest { Relic = r.Index, Resolve = tick + 45 };
+            var rng = RngFor(tick, 700000 + r.Index);
+            var names = new List<string>();
+            foreach (var side in sects)
+            {
+                int key = side[0].SectId >= 0 ? side[0].SectId : -1 - side[0].Index;
+                foreach (var c in side)
+                {
+                    _sim.Cultivation.SendToBattle(c, r.X + 0.5f + rng.Range(-3f, 3f), r.Y + 0.5f + rng.Range(-3f, 3f), tick + 150);
+                    contest.Who.Add(c.Index);
+                    contest.Side.Add(key);
+                }
+                var head = side[0];
+                names.Add(head.SectId >= 0 ? $"{_sim.Cultivation.SectName(head)} ({side.Count} người)" : $"{(head.Demonic ? "ma tu" : "tán tu")} {head.Name}");
+            }
+            _contests.Add(contest);
+            r.Discovered = true;
+            _sim.Events.Add(tick, EventKind.Relic, 3, $"Tin {r.Name} truyền khắp thiên hạ: {string.Join(", ", names)} kéo đến tranh đoạt cơ duyên.",
+                r.X + 0.5f, r.Y + 0.5f, Fx.LightPillar);
+            return true;
+        }
+
+        // A melee at the site, fought as đấu pháp: the two strongest sides send their best at each other; the loser
+        // dies or flees, and a side with no one left is out. The last side standing takes the cơ duyên. Every
+        // death or rout leaves the losing sect hating the winner's (and enough of that is how wars start).
+        void ResolveContests(long tick)
+        {
+            for (int k = _contests.Count - 1; k >= 0; k--)
+            {
+                var contest = _contests[k];
+                if (tick < contest.Resolve) continue;
+                _contests.RemoveAt(k);
+                var r = All[contest.Relic];
+                var all = _sim.Cultivation.All;
+                var sides = new List<(int key, List<Cultivator> people)>();
+                for (int j = 0; j < contest.Who.Count; j++)
+                {
+                    var c = all[contest.Who[j]];
+                    if (!c.Alive || !c.AtWar) continue; // fell on the way, or was called off
+                    int s = sides.FindIndex(x => x.key == contest.Side[j]);
+                    if (s < 0) sides.Add((contest.Side[j], new List<Cultivator> { c }));
+                    else sides[s].people.Add(c);
+                }
+                if (sides.Count == 0) continue;
+                if (!r.Open)
+                {
+                    foreach (var side in sides)
+                    foreach (var c in side.people) _sim.Cultivation.ReturnHome(c);
+                    continue;
+                }
+                foreach (var side in sides) side.people.Sort((a, b) => b.Rank.CompareTo(a.Rank));
+                var rng = RngFor(tick, 800000 + r.Index);
+                int duels = 0, dead = 0, startSides = sides.Count;
+                while (sides.Count > 1 && duels < 16)
+                {
+                    sides.Sort((a, b) => b.people[0].Rank.CompareTo(a.people[0].Rank));
+                    var a = sides[0].people[0];
+                    var b = sides[1].people[0];
+                    var winner = _sim.Combat.Duel(a, b, tick, 0.2f, $"tranh đoạt {r.Name}", ref rng);
+                    var loser = winner == a ? b : a;
+                    duels++;
+                    if (!loser.Alive) dead++;
+                    if (winner.SectId >= 0 && loser.SectId >= 0) _sim.Factions.Grievance(winner.SectId, loser.SectId, loser.Alive ? 12f : 30f);
+                    int ls = winner == a ? 1 : 0;
+                    sides[ls].people.RemoveAt(0); // dead, or fled home wounded (Duel sends them)
+                    if (sides[ls].people.Count == 0) sides.RemoveAt(ls);
+                }
+                // Whoever still stands from the losing sides when the fighting stops goes home empty-handed.
+                for (int s = 1; s < sides.Count; s++)
+                    foreach (var c in sides[s].people) _sim.Cultivation.ReturnHome(c);
+                var victors = sides[0].people;
+                var champion = victors[0];
+                if (startSides > 1)
+                    _sim.Events.Add(tick, EventKind.Relic, 3,
+                        $"Đại chiến tranh đoạt {r.Name}: {duels} trận đấu pháp, {dead} tu sĩ vẫn lạc. " +
+                        $"{(champion.SectId >= 0 ? _sim.Cultivation.SectName(champion) : champion.Title)} trụ lại sau cùng, {champion.Title} tiến vào bí cảnh.",
+                        r.X + 0.5f, r.Y + 0.5f, Fx.Blessing, champion.Index, -1, champion.SectId);
+                Explore(champion, r, tick);
+                foreach (var c in victors)
+                    if (c.Alive) _sim.Cultivation.ReturnHome(c);
             }
         }
 
@@ -226,22 +520,71 @@ namespace ThienDao.Sim
             // Truyền thừa: the Dao of the one who lived here; a natural wonder feeds the body instead.
             float insight = r.Kind == RelicKind.Treasure ? 0.6f : 0.4f * r.Tier;
             c.Progress += Realms.Need(c.Realm, c.Stage) * insight;
+            // What the sect gets: a tithe of the stones, the truyền thừa copied into its library, and a linh vật
+            // either refined by the one who found it (the ambitious, and the sect master) or offered to the sect.
+            var sect = c.SectId >= 0 ? _sim.Factions.Get(c.SectId) : null;
+            if (sect != null && !sect.Alive) sect = null;
+            if (sect != null && stones >= 10f)
+            {
+                float tithe = stones * 0.4f;
+                c.Stones -= tithe;
+                sect.Treasury += tithe;
+                gains.Add($"nộp {tithe:0} linh thạch vào kho tông môn");
+            }
             if (r.Kind == RelicKind.Treasure)
             {
-                gains.Add($"luyện hóa {r.Treasure}");
-                c.BonusYears += 10 * r.Tier;
+                bool keeps = sect == null || c.Ambition > 0.6f || _sim.Cultivation.MasterOf(c.SectId) == c;
+                if (keeps)
+                {
+                    gains.Add($"luyện hóa {r.Treasure}");
+                    c.BonusYears += 10 * r.Tier;
+                }
+                else
+                {
+                    Enshrine(_sim.Settlements.All[c.SectId], r.Tier);
+                    gains.Add($"dâng {r.Treasure} về làm trấn phái linh vật, linh khí sơn môn dồi dào hẳn lên");
+                }
             }
             else
             {
                 c.Comprehension = Mathf.Min(1f, c.Comprehension + 0.05f * r.Tier);
                 gains.Add("truyền thừa của người xưa");
+                if (sect != null)
+                {
+                    float lift = 0.01f * r.Tier;
+                    foreach (var m in _sim.Cultivation.All)
+                        if (m.Alive && m.SectId == c.SectId && m != c) m.Comprehension = Mathf.Min(1f, m.Comprehension + lift);
+                    gains.Add("chép truyền thừa vào Tàng Kinh Các, ngộ tính đệ tử cả tông đều tăng");
+                }
             }
             var owner = r.Owner >= 0 ? _sim.Cultivation.All[r.Owner] : null;
             bool heir = owner != null && IsHeir(c, owner);
             _sim.Events.Add(tick, EventKind.Relic, r.Tier >= 3 || r.Treasure != null ? 3 : 2,
                 $"{who} {(heir ? "trở về" : "thám hiểm")} {r.Name}{(owner != null ? $" ({r.Origin})" : "")}, thu được {string.Join(", ", gains)}." +
                 (r.Open ? "" : " Bí cảnh từ đây trống rỗng."), px, py, Fx.Blessing, c.Index, r.Owner, c.SectId, r.Sect);
+            if (!r.Open) Emptied(r);
             _sim.Stories?.OnRelic(c, r, owner, heir, tick);
+        }
+
+        // Trấn phái linh vật: set in the sect's hall, it lifts the ground's qi for good (QiBase, not a passing gust),
+        // so the sect's disciples cultivate faster ever after; and the place becomes worth taking.
+        void Enshrine(Settlement seat, int tier)
+        {
+            const int Reach = 12;
+            float lift = 450f * tier;
+            for (int y = seat.Y - Reach; y <= seat.Y + Reach; y++)
+            for (int x = seat.X - Reach; x <= seat.X + Reach; x++)
+            {
+                if (!_w.InBounds(x, y)) continue;
+                float d = Mathf.Sqrt((x - seat.X) * (x - seat.X) + (y - seat.Y) * (y - seat.Y));
+                if (d > Reach) continue;
+                int i = _w.Idx(x, y);
+                _w.QiBase[i] = (ushort)Mathf.Min(WorldData.MaxQi, _w.QiBase[i] + lift * (1f - d / Reach));
+            }
+            int x0 = seat.X - Reach, y0 = seat.Y - Reach, x1 = seat.X + Reach, y1 = seat.Y + Reach;
+            QiCap.Recompute(_w, x0, y0, x1, y1);
+            _sim.Qi.RebuildCapBlocks(x0, y0, x1, y1);
+            _w.NotifyQiCapChanged(x0, y0, x1, y1);
         }
 
         // Lineage: the dead was their master, their master's master, or of their sect.

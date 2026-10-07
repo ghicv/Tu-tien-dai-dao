@@ -898,16 +898,18 @@ namespace ThienDao.Tests
         {
             var sim = new Simulation(MapGenerator.Generate("ThienDao"));
             var all = sim.Cultivation.All;
+            int ancient = sim.Relics.All.Count; // cổ mộ and thượng cổ di tích the world starts with
             // Kết Đan elders die until one leaves a cave behind.
             foreach (var c in all.FindAll(x => x.Alive && x.Realm >= Realm.KetDan))
             {
                 c.Treasures = 1;
                 c.TreasureName = "Thanh Trúc Phong Vân Kiếm";
                 sim.Cultivation.Perish(c, sim.Clock.Tick, "test", 2, Fx.None);
-                if (sim.Relics.All.Count > 0) break;
+                if (sim.Relics.All.Count > ancient) break;
             }
-            Assert.Greater(sim.Relics.All.Count, 0, "a strong cultivator's death leaves a cave");
-            var relic = sim.Relics.All[0];
+            Assert.Greater(sim.Relics.All.Count, ancient, "a strong cultivator's death leaves a cave");
+            var relic = sim.Relics.All[ancient];
+            Assert.AreEqual(RelicKind.Cave, relic.Kind);
             Assert.AreEqual("Thanh Trúc Phong Vân Kiếm", relic.Treasure, "with the treasure nobody took from them");
             var explorer = all.Find(x => x.Alive && x.Realm >= Realm.KetDan);
             if (explorer == null) Assert.Inconclusive("no Kết Đan left to explore");

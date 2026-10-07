@@ -344,7 +344,13 @@ namespace ThienDao.Sim
             float qi = _sim.Qi.SampleQi((int)x, (int)y);
             float qiFactor = Mathf.Clamp(qi / Realms.RequiredQi[(int)c.Realm], 0f, 1.5f);
             float gain = SpiritRoots.SpeedMultiplier(c.Roots) * qiFactor * (0.6f + 0.8f * c.Comprehension) * (0.7f + 0.6f * c.DaoHeart);
-            if (c.Demonic) gain *= 1.5f; // ma đạo: fast, at a price
+            if (c.Demonic)
+            {
+                gain *= 1.5f; // ma đạo: fast, at a price
+                // Oán khí of an old battlefield feeds ma công. The scar byte is a cheap first test.
+                int cell = _sim.World.Idx(Mathf.Clamp((int)x, 0, _sim.World.W - 1), Mathf.Clamp((int)y, 0, _sim.World.H - 1));
+                if (ScarInfo.Kind(_sim.World.Scar[cell]) == ScarKind.Battlefield) gain *= 1f + _sim.Disasters.GrudgeAt(x, y);
+            }
             if (c.Watched && c.Goal == Goal.Seclusion && IsAtHome(c)) gain *= 1.3f; // bế quan khổ tu
             c.Progress += gain;
             // Drawing qi depletes the spot; crowded caves run dry and push cultivators to look elsewhere.
@@ -682,9 +688,20 @@ namespace ThienDao.Sim
                 float score = _sim.Qi.SampleQi((int)tx, (int)ty);
                 if (score > bestScore) { bestScore = score; bx = tx; by = ty; }
             }
+            // A ma tu who hears of an old battlefield goes where the oán khí is thick.
+            Landmark field = null;
+            if (c.Demonic && (field = _sim.Disasters.HeaviestBattlefield(x, y, reach)) != null)
+            {
+                float fx = field.X + 0.5f, fy = field.Y + 0.5f;
+                float score = _sim.Qi.SampleQi(field.X, field.Y) * (1f + _sim.Disasters.GrudgeAt(fx, fy));
+                if (score > bestScore && _w.IsWalkable(fx, fy)) { bestScore = score; bx = fx; by = fy; }
+                else field = null;
+            }
             if (bx < 0f) return;
             SendTo(c, bx, by, Trip.Relocate);
-            if (c.Realm >= Realm.KetDan)
+            if (field != null && c.Realm >= Realm.TrucCo)
+                _sim.Events.Add(tick, EventKind.Relocation, 1, $"{c.Title} tìm đến {field.Name} luyện ma công giữa oán khí.", -1f, -1f, Fx.None, c.Index);
+            else if (c.Realm >= Realm.KetDan)
                 _sim.Events.Add(tick, EventKind.Relocation, 1, $"{c.Title} rời đi tìm động phủ có linh khí dồi dào hơn.", -1f, -1f, Fx.None, c.Index);
         }
 

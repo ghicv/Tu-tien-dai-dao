@@ -18,7 +18,7 @@ namespace ThienDao.World
     [Serializable] public sealed class WorldNames { public string[] continents; public string[] seas; public RegionPool[] regions; }
     [Serializable] public sealed class SectNames { public string[] righteousSects; public string[] demonicSects; public string[] sectSuffixes; }
     [Serializable] public sealed class PeopleNames { public string[] surnames; public string[] givenNames; }
-    [Serializable] public sealed class PlaceNames { public string[] places; public string[] volcanoes; public string[] thunderPlaces; public string[] syllables; }
+    [Serializable] public sealed class PlaceNames { public string[] places; public string[] volcanoes; public string[] thunderPlaces; public string[] ancientRuins; public string[] ancientTombs; public string[] syllables; }
     [Serializable] public sealed class ItemNames { public string[] herbs; public string[] treasures; public string[] naturalTreasures; }
     [Serializable] public sealed class BeastNames
     {
@@ -84,7 +84,7 @@ namespace ThienDao.World
         public string[][] Kingdoms = new string[(int)RegionKind.Count][];
         public string[] RighteousSects, DemonicSects, SectSuffixes;
         public string[] Surnames, GivenNames;
-        public string[] Places, Volcanoes, ThunderPlaces, Syllables;
+        public string[] Places, Volcanoes, ThunderPlaces, AncientRuins, AncientTombs, Syllables;
         public string[] Herbs, Treasures, NaturalTreasures;
         public string[] Beasts, BeastEpithets, BeastFromWolf, BeastFromDeer, BeastFromRabbit, BeastClans;
 
@@ -105,6 +105,8 @@ namespace ThienDao.World
                 Places = Some(LoreDatabase.Places.places, 0.7f, 50, ref rng),
                 Volcanoes = Some(LoreDatabase.Places.volcanoes, 0.7f, 6, ref rng),
                 ThunderPlaces = Some(LoreDatabase.Places.thunderPlaces, 0.7f, 6, ref rng),
+                AncientRuins = Some(LoreDatabase.Places.ancientRuins, 0.5f, 4, ref rng),
+                AncientTombs = Some(LoreDatabase.Places.ancientTombs, 0.5f, 4, ref rng),
                 Syllables = LoreDatabase.Places.syllables,
                 Herbs = Some(LoreDatabase.Items.herbs, 0.6f, 8, ref rng),
                 Treasures = Some(LoreDatabase.Items.treasures, 0.6f, 10, ref rng),

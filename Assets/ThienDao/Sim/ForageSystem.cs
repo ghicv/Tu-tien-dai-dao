@@ -36,7 +36,11 @@ namespace ThienDao.Sim
                 float sum = 0f;
                 for (int y = by * Block; y < (by + 1) * Block; y++)
                 for (int x = bx * Block; x < (bx + 1) * Block; x++)
-                    sum += TerrainInfo.ForageCapacity[(int)_w.Terrain[y * _w.W + x]];
+                {
+                    int i0 = y * _w.W + x;
+                    float c = TerrainInfo.ForageCapacity[(int)_w.Terrain[i0]];
+                    sum += _w.Scar[i0] == 0 ? c : c * ScarInfo.ForageFactor(_w.Scar[i0]); // burnt grass, ash, …
+                }
                 int i = by * BW + bx;
                 _cap[i] = sum;
                 if (_forage[i] > sum) _forage[i] = sum;

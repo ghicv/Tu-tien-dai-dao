@@ -358,6 +358,7 @@ namespace ThienDao.Render
                 DrawEffect(e, t, now);
             }
             DrawFights(now);
+            DrawRelicBeacons(view, now);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
             FightScenes.Hurt.RemoveAll(z => now - z.Start > FightScenes.HurtTime);
@@ -520,6 +521,39 @@ namespace ThienDao.Render
                         _particles.Add(new Particle { Sprite = Sprite.Spark, X = e.X + Rand(-0.4f, 0.4f), Y = e.Y + Rand(0f, 1f), VY = Rand(3f, 6f),
                             Life = Rand(0.6f, 1f), Size = 1f, Color = new Color32(255, 240, 170, 255) });
                     break;
+                }
+            }
+        }
+
+        // Bí cảnh the world knows of stand out from afar: a column of light in their colour pulsing in hard steps,
+        // motes rising off them; while sects fight over one, a red ring beats around it.
+        void DrawRelicBeacons(Rect view, float now)
+        {
+            foreach (var r in _sim.Relics.All)
+            {
+                if (!r.Discovered || !r.Open || r.ObjectId < 0) continue;
+                float x = r.X + 0.5f, y = r.Y + 0.5f;
+                if (!view.Contains(new Vector2(x, y))) continue;
+                Color32 col = r.Kind == RelicKind.Treasure ? new Color32(255, 230, 120, 255)
+                    : r.Kind == RelicKind.Tomb ? new Color32(120, 250, 200, 255)
+                    : r.Kind == RelicKind.Ancient ? new Color32(190, 140, 255, 255)
+                    : r.Kind == RelicKind.Ruins ? new Color32(255, 170, 110, 255)
+                    : new Color32(140, 220, 255, 255);
+                float pulse = 0.5f + 0.5f * Mathf.Sin(now * 2.2f + r.Index * 1.7f);
+                col.a = (byte)(150 + 105 * pulse);
+                QuadBottom(Sprite.Beam, x, y + 0.5f, 1f + (r.Tier >= 4 ? 1f : 0f), col, 2f);
+                // A halo at its foot, beating with the light.
+                Quad(Sprite.Ring, x, y + 0.4f, 2f + pulse * 2f, 1f + pulse, new Color32(col.r, col.g, col.b, (byte)(120 + 100 * pulse)));
+                if (_rand.NextDouble() < 0.15 + 0.05 * r.Tier)
+                    _particles.Add(new Particle
+                    {
+                        Sprite = Sprite.Spark, X = x + Rand(-1f, 1f), Y = y + Rand(0f, 1f), VY = Rand(1.2f, 2.6f), Life = Rand(1.2f, 2.2f), Size = 1f,
+                        Color = new Color32(col.r, col.g, col.b, 230)
+                    });
+                if (_sim.Relics.Contested(r))
+                {
+                    float k = (now * 0.8f + r.Index * 0.3f) % 1f;
+                    Quad(Sprite.Ring, x, y + 0.2f, 1f + k * 5f, 0.6f + k * 2.5f, new Color32(255, 80, 60, (byte)(220 * (1f - k))));
                 }
             }
         }

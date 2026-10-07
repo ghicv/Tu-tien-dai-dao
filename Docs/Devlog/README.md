@@ -25,6 +25,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 18 | [18-dai-vuc-va-kho-lore.md](18-dai-vuc-va-kho-lore.md) | Đại vực kiểu Thiên Nam, nước phàm nhân, kho lore JSON chia loại (mỗi map bốc thăm), texture riêng cho từng loại đất và từng vùng | `fe5faa3` |
 | 19 | [19-vet-seo-thien-tai.md](19-vet-seo-thien-tai.md) | Vết sẹo thiên tai trên mặt đất (cháy sém, tro, hố, khe nứt, đá nham, chiến trường cổ, phù sa, đất hạn) lành dần theo năm; cây héo úa gần vùng đặc biệt | `52bb698` |
 | 20 | [20-nha-cua-theo-quy-mo.md](20-nha-cua-theo-quy-mo.md) | Nhà cửa theo quy mô (nhà tranh / nhà ngói / nhà lầu / phủ đệ), giếng, miếu, chợ, bảo tháp, hoàng cung, tường thành + tháp canh; tối ưu mở ruộng (116 → 84 ms/năm ở năm 1000) | `509dede` |
+| 21 | [21-the-gioi-tuong-tac.md](21-the-gioi-tuong-tac.md) | Vết tích và công trình tác động lên mô phỏng, chiến trường cổ, bí cảnh có art riêng, thiên tài địa bảo xuất thế, tranh đoạt cơ duyên, bấm vào sự kiện để lia camera | _(chờ)_ |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).

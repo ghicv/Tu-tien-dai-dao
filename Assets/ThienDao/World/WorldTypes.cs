@@ -63,6 +63,47 @@ namespace ThienDao.World
         // Years for the mark to lose one step of its 15: fire scars heal within a lifetime, a crater takes ages.
         public static readonly int[] YearsPerStep = { 1, 3, 2, 40, 12, 60, 8, 1, 1, 1 };
 
+        // How a scar changes what the ground yields (fields: Fertility; wild grass: ForageSystem).
+        // Ash buries the crops while deep, then weathers into the richest soil there is; silt feeds the fields.
+        public static float FertilityFactor(byte scar)
+        {
+            if (scar == 0) return 1f;
+            int s = Strength(scar);
+            switch (Kind(scar))
+            {
+                case ScarKind.Silt: return 1f + 0.05f * s;
+                case ScarKind.Ash: return s >= 10 ? 0.4f : s >= 5 ? 1f : 1.45f;
+                case ScarKind.Scorch: return 1f - 0.04f * s;
+                case ScarKind.Parched: return 1f - 0.05f * s;
+                case ScarKind.Trampled: return 1f - 0.03f * s;
+                case ScarKind.Battlefield: return 1f - 0.02f * s;
+                case ScarKind.Basalt: return 1f - 0.04f * s;
+                default: return 1f - 0.05f * s; // crater, fissure
+            }
+        }
+
+        public static float ForageFactor(byte scar)
+        {
+            if (scar == 0) return 1f;
+            int s = Strength(scar);
+            switch (Kind(scar))
+            {
+                case ScarKind.Silt: return 1.2f;
+                case ScarKind.Ash: return s >= 10 ? 0.3f : s >= 5 ? 0.9f : 1.25f;
+                case ScarKind.Battlefield: return 1f;
+                default: return Mathf.Max(0.1f, 1f - 0.055f * s);
+            }
+        }
+
+        // One line for the cell card: what the scar does to the land right now.
+        public static string EffectText(byte scar)
+        {
+            float f = FertilityFactor(scar);
+            string soil = f > 1.01f ? $"đất màu mỡ +{(f - 1f) * 100f:0}%" : f < 0.99f ? $"đất bạc màu −{(1f - f) * 100f:0}%" : "";
+            string extra = Kind(scar) == ScarKind.Battlefield ? "oán khí: ma tu tu luyện nhanh hơn" : "";
+            return soil.Length > 0 && extra.Length > 0 ? soil + " · " + extra : soil + extra;
+        }
+
         public static ScarKind Kind(byte s) => (ScarKind)(s & 15);
         public static int Strength(byte s) => s >> 4;
         public static byte Pack(ScarKind k, int strength) => strength <= 0 || k == ScarKind.None ? (byte)0 : (byte)((int)k | (System.Math.Min(15, strength) << 4));
@@ -177,6 +218,12 @@ namespace ThienDao.World
         Watchtower, // tháp canh: the corners of a walled thành
         Pagoda,     // bảo tháp: a thành and up
         Palace,     // hoàng cung: a kingdom's capital
+        // Bí cảnh on the map (RelicSystem): variant 0 sealed, 1 plundered.
+        RelicCave,     // động phủ of a fallen cultivator
+        RelicRuins,    // di tích of a destroyed sect
+        RelicTomb,     // cổ mộ
+        RelicAncient,  // thượng cổ di tích
+        RelicTreasure, // thiên địa linh vật
         Count
     }
 
@@ -186,19 +233,22 @@ namespace ThienDao.World
         {
             "", "Cây sồi", "Cây thu", "Cây rừng rậm", "Cây thông", "Thông tuyết", "Cây dừa", "Xương rồng",
             "Bụi cây", "Đá", "Nhà dân", "Tông môn", "Trúc", "Cây khô", "Đào hoa",
-            "Giếng làng", "Miếu thổ địa", "Chợ", "Tháp canh", "Bảo tháp", "Hoàng cung"
+            "Giếng làng", "Miếu thổ địa", "Chợ", "Tháp canh", "Bảo tháp", "Hoàng cung",
+            "Động phủ", "Di tích", "Cổ mộ", "Thượng cổ di tích", "Thiên địa linh vật"
         };
 
-        public static readonly byte[] FootprintW = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 3, 3, 2, 2, 7 };
-        public static readonly byte[] FootprintH = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 3, 3, 2, 2, 7 };
+        public static readonly byte[] FootprintW = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 3, 3, 2, 2, 7, 2, 3, 3, 4, 1 };
+        public static readonly byte[] FootprintH = { 0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3, 5, 1, 1, 1, 1, 3, 3, 2, 2, 7, 2, 3, 3, 4, 1 };
 
-        public static bool IsBuilding(ObjectType t) => t == ObjectType.House || t == ObjectType.SectHall || IsCivic(t);
+        public static bool IsBuilding(ObjectType t) => t == ObjectType.House || t == ObjectType.SectHall || IsCivic(t) || IsRelic(t);
+        public static bool IsRelic(ObjectType t) => t >= ObjectType.RelicCave && t <= ObjectType.RelicTreasure;
         public static bool IsCivic(ObjectType t) => t >= ObjectType.Well && t <= ObjectType.Palace;
 
         public static bool CanStandOn(ObjectType t, Terrain terrain)
         {
             if (!TerrainInfo.IsLand(terrain)) return false;
             if (terrain == Terrain.Farmland || terrain == Terrain.Lava) return false;
+            if (IsRelic(t)) return terrain != Terrain.Peak; // caves and wonders sit on the mountains too
             if (IsBuilding(t)) return terrain != Terrain.Mountain && terrain != Terrain.Peak && terrain != Terrain.Swamp;
             if (t == ObjectType.Rock) return true;
             return terrain != Terrain.Peak;

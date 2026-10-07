@@ -12,7 +12,7 @@ namespace ThienDao.Sim
     // A place the land remembers: lôi địa where a tribulation fell, a volcano that rose from the plain.
     public sealed class Landmark
     {
-        public const byte Thunder = 0, Volcano = 1;
+        public const byte Thunder = 0, Volcano = 1, Battlefield = 2;
 
         public byte Kind;
         public string Name;
@@ -21,6 +21,7 @@ namespace ThienDao.Sim
         public long Until = long.MaxValue; // lôi khí fades over centuries; a volcano stays
         public string Origin;              // "thiên kiếp của Hàn Lập năm 203"
         public bool Alive = true;
+        public int Toll;                   // chiến trường cổ: the fallen whose oán khí still hangs there
     }
 
     // Thiên tai (M6): calamities Thiên Đạo sends and those the world brings on itself, and the marks they leave.
@@ -794,7 +795,7 @@ namespace ThienDao.Sim
             var rng = RngFor(tick, 0x200000 + s.Id);
             _epidemics.Add(new Epidemic
             {
-                Settlement = s.Id, Until = tick + rng.Range(3, divine ? 9 : 7) * (long)SimClock.DaysPerMonth, Severity = divine ? 0.06f : 0.04f
+                Settlement = s.Id, Until = tick + rng.Range(3, divine ? 9 : 7) * (long)SimClock.DaysPerMonth, Severity = (divine ? 0.06f : 0.04f) * (_sim.Settlements.HasCivic(s, ObjectType.Shrine) ? 0.7f : 1f) // the miếu calms and tends
             });
             _sim.Events.Add(tick, EventKind.Calamity, divine ? 2 : 1,
                 $"{(divine ? "Thiên Đạo giáng ôn thần, ô" : "Ô")}n dịch bùng phát ở {s.Name}.", s.X + 0.5f, s.Y + 0.5f, Fx.Miasma);
@@ -852,6 +853,7 @@ namespace ThienDao.Sim
             _sim.Scars.Disc(cx, cy, 16f, ScarKind.Trampled, 9, 3, (uint)tick ^ (uint)(cx * 31 + cy));
             int dead = 0;
             var guards = new List<string>();
+            var walls = new List<string>();
             Within(cx, cy, TideReach);
             foreach (var s in _near)
             {
@@ -862,6 +864,11 @@ namespace ThienDao.Sim
                 {
                     share *= 0.35f;
                     if (!guards.Contains(guard.BaseName)) guards.Add(guard.BaseName);
+                }
+                if (s.Walled)
+                {
+                    share *= 0.4f; // the gates shut
+                    if (!walls.Contains(s.Name)) walls.Add(s.Name);
                 }
                 dead += _sim.Settlements.Kill(s, Stoch(s.Population * share, ref rng));
                 s.Food *= 0.85f; // the herds are gone too
@@ -878,7 +885,8 @@ namespace ThienDao.Sim
             int imp = Mathf.Max(divine ? 2 : 1, dead >= 40 ? 2 : 1);
             _sim.Events.Add(tick, EventKind.Calamity, imp,
                 $"Thú triều! {(clan != null ? $"Yêu thú {clan}" : wolves > 0 ? "Hàng trăm yêu lang" : "Bầy sói đói")} tràn xuống {where}: {dead} người bị cắn chết" +
-                (guards.Count > 0 ? $"; {string.Join(", ", guards)} xuất thủ trấn áp" : "") + ".", cx + 0.5f, cy + 0.5f, Fx.Stampede);
+                (guards.Count > 0 ? $"; {string.Join(", ", guards)} xuất thủ trấn áp" : "") +
+                (walls.Count > 0 ? $"; {string.Join(", ", walls)} đóng cổng thành cố thủ" : "") + ".", cx + 0.5f, cy + 0.5f, Fx.Stampede);
         }
 
         // ---------------------------------------------------------------- thiên kiếp: the land around it
@@ -1004,6 +1012,88 @@ namespace ThienDao.Sim
             }
         }
 
+        // ---------------------------------------------------------------- chiến trường cổ
+
+        // Where cultivators fell in battle the land keeps their oán khí: a landmark that grows with every battle
+        // fought on it, feeds ma tu, and in time condenses into yêu thú. It fades as the battlefield scar heals.
+        public void MarkBattlefield(int x, int y, int r, int dead, long tick, string origin)
+        {
+            if (dead <= 0) return;
+            Landmark field = null;
+            foreach (var l in Landmarks)
+                if (l.Alive && l.Kind == Landmark.Battlefield && (l.X - x) * (l.X - x) + (l.Y - y) * (l.Y - y) <= (l.R + r + 12) * (l.R + r + 12)) { field = l; break; } // one field for one contested land
+            long until = tick + 120L * SimClock.DaysPerYear;
+            if (field != null)
+            {
+                field.Toll += dead;
+                field.Until = System.Math.Max(field.Until, until);
+                field.R = Mathf.Max(field.R, r);
+                if (field.Toll >= 10 && field.Toll - dead < 10)
+                    _sim.Events.Add(tick, EventKind.Calamity, 2, $"Máu đổ lần nữa ở {field.Name}: oán khí nơi đây ngày càng nặng.", x + 0.5f, y + 0.5f);
+                return;
+            }
+            var near = NearestSettlement(x, y, 80);
+            field = new Landmark
+            {
+                Kind = Landmark.Battlefield, Name = $"Cổ chiến trường {(near != null ? near.BaseName : _volcanoNames.Next(ref _fieldRng))}",
+                X = x, Y = y, R = r, Tick = tick, Until = until, Origin = origin, Toll = dead
+            };
+            Landmarks.Add(field);
+            _sim.Relics?.OnLandmark(field, tick);
+        }
+
+        DetRandom _fieldRng = new DetRandom(0xF1E1Du);
+        const int MaxGrudgeBeasts = 40; // with this many yêu thú abroad, oán khí lies dormant
+
+        void BattlefieldsStep(long tick)
+        {
+            for (int k = 0, n = Landmarks.Count; k < n; k++)
+            {
+                var l = Landmarks[k];
+                if (!l.Alive || l.Kind != Landmark.Battlefield) continue;
+                if (tick >= l.Until)
+                {
+                    l.Alive = false;
+                    _sim.Events.Add(tick, EventKind.Calamity, 1, $"Oán khí ở {l.Name} ({l.Origin}) đã tan, cỏ lại mọc xanh.", l.X + 0.5f, l.Y + 0.5f);
+                    continue;
+                }
+                // The heavier the toll, the likelier the dead's resentment takes a shape.
+                var rng = RngFor(tick, 0x800000 + k);
+                if (l.Toll < 8 || _sim.Beasts.AliveCount >= MaxGrudgeBeasts || rng.NextFloat() >= Mathf.Min(0.06f, l.Toll * 0.002f)) continue;
+                int grade = 1 + (l.Toll >= 12 ? 1 : 0) + (l.Toll >= 30 ? 1 : 0);
+                float bx = l.X + 0.5f + rng.Range(-l.R, l.R + 1), by = l.Y + 0.5f + rng.Range(-l.R, l.R + 1);
+                if (!_w.IsWalkable(bx, by)) continue;
+                var beast = _sim.Beasts.Spawn(Species.Wolf, grade, bx, by, tick, ref rng);
+                l.Toll = l.Toll * 2 / 3; // some of the resentment went into it
+                _sim.Events.Add(tick, EventKind.Beast, 2, $"Oán khí ở {l.Name} ngưng tụ, hóa thành {beast.Name} ({beast.GradeText}).", bx, by, Fx.Miasma);
+            }
+        }
+
+        public Landmark HeaviestBattlefield(float x, float y, float reach)
+        {
+            Landmark best = null;
+            foreach (var l in Landmarks)
+            {
+                if (!l.Alive || l.Kind != Landmark.Battlefield || l.Toll < 5) continue;
+                float dx = l.X + 0.5f - x, dy = l.Y + 0.5f - y;
+                if (dx * dx + dy * dy > reach * reach) continue;
+                if (best == null || l.Toll > best.Toll) best = l;
+            }
+            return best;
+        }
+
+        // The oán khí over (x, y): 0 none .. 1 thick (ma tu cultivate faster on it).
+        public float GrudgeAt(float x, float y)
+        {
+            foreach (var l in Landmarks)
+            {
+                if (!l.Alive || l.Kind != Landmark.Battlefield) continue;
+                float dx = l.X + 0.5f - x, dy = l.Y + 0.5f - y;
+                if (dx * dx + dy * dy <= l.R * l.R) return Mathf.Min(1f, l.Toll / 20f);
+            }
+            return 0f;
+        }
+
         // The living landmark whose ground (x, y) is on, if any.
         public Landmark LandmarkAt(float x, float y)
         {
@@ -1025,6 +1115,7 @@ namespace ThienDao.Sim
         public void YearlyStep(long tick)
         {
             CoolLava(tick);
+            BattlefieldsStep(tick);
             FadeScars(tick);
 
             var rng = RngFor(tick, 0x400000);

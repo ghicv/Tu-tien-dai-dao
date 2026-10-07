@@ -85,7 +85,7 @@ namespace ThienDao.World
         public bool InBounds(int x, int y) => (uint)x < (uint)W && (uint)y < (uint)H;
 
         public float Fertility(int i) =>
-            UnityEngine.Mathf.Clamp01(TerrainInfo.BaseFertility[(int)Terrain[i]] * (0.55f + 0.6f * Moisture[i] / 255f));
+            UnityEngine.Mathf.Clamp01(TerrainInfo.BaseFertility[(int)Terrain[i]] * (0.55f + 0.6f * Moisture[i] / 255f) * ScarInfo.FertilityFactor(Scar[i]));
 
         public bool IsWalkable(float x, float y)
         {

@@ -10,6 +10,8 @@
     "Kim Thành", "Ngân Hà", "Thiên Thủy", "Lưỡng Giang", "Tam Hà", "Tứ Phương", "Vọng Hải", "Lâm An", "Phú Xuân", "Trường Lạc"
   ],
   "volcanoes": ["Hỏa Diễm Sơn", "Xích Viêm Sơn", "Địa Hỏa Phong", "Liệt Dương Sơn", "Hỏa Long Lĩnh", "Chu Tước Phong", "Viêm Ma Sơn", "Huyết Hỏa Nhai", "Phần Thiên Sơn", "Kim Ô Phong", "Hỏa Vân Lĩnh"],
+  "ancientRuins": ["Hư Thiên Điện", "Trụy Ma Cốc", "Huyết Sắc Cấm Địa", "Côn Ngô Cổ Tích", "Thượng Cổ Truyền Tống Trận", "Vạn Bảo Lâu Phế Tích", "Thiên Phượng Cổ Điện", "Huyền Thiên Cổ Thành", "Tinh Thần Cổ Đài", "Thái Hư Cung", "Cổ Ma Thành", "Vạn Linh Tế Đàn"],
+  "ancientTombs": ["Cổ Ma Mộ", "Thanh Dương Cổ Mộ", "Vạn Cốt Mộ", "Thiên Thi Lăng", "Lạc Hồn Cổ Mộ", "Huyết Ngọc Mộ", "Thái Âm Lăng", "Cổ Tu Chi Mộ", "Kiếm Trủng", "Long Cốt Lăng", "U Minh Cổ Mộ", "Bích Huyết Lăng"],
   "thunderPlaces": ["Lôi Cốc", "Kinh Lôi Nguyên", "Thiên Lôi Pha", "Tử Điện Lĩnh", "Lôi Minh Cương", "Vạn Lôi Hạp", "Cửu Tiêu Lôi Đài", "Ngũ Lôi Nhai", "Hắc Lôi Trạch", "Thanh Lôi Phong", "Lôi Hỏa Nguyên", "Thiên Phạt Đài"],
   "syllables": ["Thanh", "Bạch", "Hắc", "Kim", "Ngọc", "Vân", "Phong", "Thủy", "Sơn", "Lâm", "Hà", "Khê", "Lĩnh", "Nguyên", "Dương", "Nguyệt", "Tinh", "Hoa", "Diệp", "Thạch", "Long", "Hạc", "Tùng", "Trúc", "Liễu", "Đào", "Mai", "Lan"]
 }

@@ -34,6 +34,18 @@ namespace ThienDao.Player
             transform.position = new Vector3(center.x, center.y, -10f);
             _targetOrtho = Mathf.Clamp(ortho, MinOrtho, MaxOrtho);
             Cam.orthographicSize = _targetOrtho;
+            _gliding = false;
+        }
+
+        bool _gliding;
+        Vector2 _glideTo;
+
+        // Fly the camera to a place (an event in the news, …); any drag, key or wheel takes control back.
+        public void GlideTo(Vector2 center, float ortho)
+        {
+            _glideTo = center;
+            _targetOrtho = Mathf.Clamp(ortho, MinOrtho, MaxOrtho);
+            _gliding = true;
         }
 
         void Update()
@@ -45,18 +57,34 @@ namespace ThienDao.Player
 
             float scroll = mouse.scroll.ReadValue().y;
             if (!overUI && Mathf.Abs(scroll) > 0.01f)
+            {
                 _targetOrtho = Mathf.Clamp(_targetOrtho * (scroll > 0f ? 1f / ZoomStep : ZoomStep), MinOrtho, MaxOrtho);
+                _gliding = false;
+            }
 
-            // Zoom toward the cursor: keep the world point under it fixed.
-            Vector3 before = Cam.ScreenToWorldPoint(mp);
-            float o = Mathf.Lerp(Cam.orthographicSize, _targetOrtho, 1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
+            float k = 1f - Mathf.Exp(-14f * Time.unscaledDeltaTime);
+            float o = Mathf.Lerp(Cam.orthographicSize, _targetOrtho, _gliding ? 1f - Mathf.Exp(-5f * Time.unscaledDeltaTime) : k);
             if (Mathf.Abs(o - _targetOrtho) < _targetOrtho * 0.002f) o = _targetOrtho;
-            Cam.orthographicSize = o;
-            Vector3 after = Cam.ScreenToWorldPoint(mp);
-            transform.position += new Vector3(before.x - after.x, before.y - after.y, 0f);
+            if (_gliding)
+            {
+                // Glide: ease toward the target, zooming about the screen centre.
+                Cam.orthographicSize = o;
+                var pos = Vector2.Lerp(transform.position, _glideTo, 1f - Mathf.Exp(-5f * Time.unscaledDeltaTime));
+                transform.position = new Vector3(pos.x, pos.y, transform.position.z);
+                if ((pos - _glideTo).sqrMagnitude < 0.01f && o == _targetOrtho) _gliding = false;
+            }
+            else
+            {
+                // Zoom toward the cursor: keep the world point under it fixed.
+                Vector3 before = Cam.ScreenToWorldPoint(mp);
+                Cam.orthographicSize = o;
+                Vector3 after = Cam.ScreenToWorldPoint(mp);
+                transform.position += new Vector3(before.x - after.x, before.y - after.y, 0f);
+            }
 
             bool dragHeld = mouse.rightButton.isPressed || mouse.middleButton.isPressed;
             bool dragStart = mouse.rightButton.wasPressedThisFrame || mouse.middleButton.wasPressedThisFrame;
+            if (dragStart && !overUI) _gliding = false;
             if (dragStart && !overUI)
             {
                 _dragging = true;
@@ -79,6 +107,7 @@ namespace ThienDao.Player
                 if (kb.wKey.isPressed || kb.upArrowKey.isPressed) dir.y += 1f;
                 float speed = Cam.orthographicSize * (kb.leftShiftKey.isPressed ? 3f : 1.4f);
                 transform.position += (Vector3)(dir * (speed * Time.unscaledDeltaTime));
+                if (dir != Vector2.zero) _gliding = false;
             }
 
             float margin = Cam.orthographicSize * 0.5f;

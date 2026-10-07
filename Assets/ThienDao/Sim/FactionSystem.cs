@@ -158,6 +158,14 @@ namespace ThienDao.Sim
 
         public Relation RelationOf(int a, int b) => GetRelation(a, b, false);
 
+        // Bad blood from outside the war logic (a cơ duyên fought over, …); wars follow from opinion as usual.
+        public void Grievance(int a, int b, float amount)
+        {
+            if (a < 0 || b < 0 || a == b || Get(a) == null || Get(b) == null) return;
+            var r = GetRelation(a, b, true);
+            if (r != null) r.Opinion = Mathf.Max(-100f, r.Opinion - amount);
+        }
+
         public Stance StanceBetween(int a, int b) => GetRelation(a, b, false)?.Stance ?? Stance.Neutral;
 
         public void RelationsOf(int id, List<Relation> into)
@@ -925,6 +933,7 @@ namespace ThienDao.Sim
             int fieldR = 3 + Mathf.Min(7, dead + fa.Count / 3);
             _sim.Scars.Disc((int)b.X, (int)b.Y, fieldR, ScarKind.Battlefield, Mathf.Min(15, 9 + dead), 4, (uint)tick ^ (uint)b.Tile);
             if (greatLoss) _sim.Scars.Disc((int)b.X, (int)b.Y, 2f + fieldR * 0.4f, ScarKind.Scorch, 13, 7, (uint)tick ^ 0xB0u);
+            _sim.Disasters.MarkBattlefield((int)b.X, (int)b.Y, fieldR, dead, tick, $"trận {NameOf(winner.Id)} – {NameOf(loser.Id)} năm {tick / SimClock.DaysPerYear + 1}");
 
             _sim.Events.Add(tick, EventKind.Battle, b.Siege ? 3 : greatLoss ? 2 : 1,
                 $"{NameOf(winner.Id)} đánh bại {NameOf(loser.Id)} trong trận tranh {place}{(dead > 0 ? $", {dead} tu sĩ vẫn lạc" : "")}.",

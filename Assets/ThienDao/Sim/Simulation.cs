@@ -69,6 +69,7 @@ namespace ThienDao.Sim
             Qi = new QiSystem(world);
             Forage = new ForageSystem(world);
             world.TerrainChanged += Forage.RebuildCapBlocks; // must exist before settlements start clearing fields
+            world.LookChanged += Forage.RebuildCapBlocks;    // scars change how much grass grows
             Creatures = new CreatureSystem(this);
             Settlements = new SettlementSystem(this);
             Wildlife = new WildlifeSystem(world, Forage); // after villages have cleared their first fields

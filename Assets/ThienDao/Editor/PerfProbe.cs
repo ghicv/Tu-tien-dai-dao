@@ -20,8 +20,8 @@ namespace ThienDao.Editor
         static System.Collections.IEnumerator Probe()
         {
             var sb = new StringBuilder();
-            sb.AppendLine("| Năm | ms/năm (mô phỏng) | Bộ nhớ managed (MB) | Tu sĩ sống / tổng từng có | Dòng sử sách | Entity (slot) | Phàm nhân | Tệp lưu (KB) |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| Năm | ms/năm (mô phỏng) | Bộ nhớ managed (MB) | Tu sĩ sống / tổng từng có | Dòng sử sách | Entity (slot) | Phàm nhân | Tệp lưu (KB) | Yêu thú sống | Chiến trường cổ | Bí cảnh mở |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
             long baseMem = GC.GetTotalMemory(true);
             var genSw = Stopwatch.StartNew();
             var sim = new Simulation(MapGenerator.Generate("ThienDao"));
@@ -96,7 +96,10 @@ namespace ThienDao.Editor
             long mem = GC.GetTotalMemory(true) - baseMem;
             int alive = sim.Cultivation.AliveCount, total = sim.Cultivation.All.Count;
             int save = SaveGame.SaveToBytes(sim, "ThienDao").Length / 1024;
-            sb.AppendLine($"| {year} | {msPerYear:0.0} | {mem / 1048576.0:0.0} | {alive} / {total} | {sim.History.All.Count:N0} | {sim.Entities.Count:N0} | {sim.Settlements.TotalPopulation:N0} | {save:N0} |");
+            int fields = 0, open = 0;
+            foreach (var l in sim.Disasters.Landmarks) if (l.Alive && l.Kind == Landmark.Battlefield) fields++;
+            foreach (var r in sim.Relics.All) if (r.Open) open++;
+            sb.AppendLine($"| {year} | {msPerYear:0.0} | {mem / 1048576.0:0.0} | {alive} / {total} | {sim.History.All.Count:N0} | {sim.Entities.Count:N0} | {sim.Settlements.TotalPopulation:N0} | {save:N0} | {sim.Beasts.AliveCount} | {fields} | {open} |");
         }
     }
 }

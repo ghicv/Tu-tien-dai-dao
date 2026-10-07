@@ -114,7 +114,7 @@ namespace ThienDao.Sim
                 var s = settlements[k];
                 if (!s.Alive || s.Population < 40) continue;
                 var rng = RngFor(tick, s.Id);
-                if (rng.NextFloat() >= 0.08f) continue;
+                if (rng.NextFloat() >= (_sim.Settlements.HasCivic(s, ObjectType.Market) ? 0.16f : 0.08f)) continue; // a chợ sends out twice the merchants
                 TrySend(s, tick, ref rng);
             }
         }
@@ -138,12 +138,13 @@ namespace ThienDao.Sim
                 float dx = p.X - s.X, dy = p.Y - s.Y, d2 = dx * dx + dy * dy;
                 if (d2 > Reach * Reach || d2 < 20f * 20f) continue;
                 var pm = MarketOf(p);
+                float draw = _sim.Settlements.HasCivic(p, ObjectType.Market) ? 0.15f : 0f; // merchants like a town with a chợ
                 for (int g = 0; g < (int)Good.Count; g++)
                 {
                     float stock = g == 0 ? s.Food - pop * 6f : g == 1 ? m.Herbs : m.Pills;
                     if (stock < (g == 0 ? pop * 2f : g == 1 ? 5f : 2f)) continue;
                     // What moving it earns, less the road (farther is dearer).
-                    float gain = (pm.Price[g] - m.Price[g]) / BasePrice[g] - Mathf.Sqrt(d2) / 400f;
+                    float gain = (pm.Price[g] - m.Price[g]) / BasePrice[g] - Mathf.Sqrt(d2) / 400f + draw;
                     if (gain > bestGain) { bestGain = gain; best = p; bestGood = (Good)g; }
                 }
             }
