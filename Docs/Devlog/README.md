@@ -31,7 +31,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 24 | [24-sinh-luc.md](24-sinh-luc.md) | Sinh lực (máu) thật cho tu sĩ và yêu thú: mất máu khi đấu pháp, độ kiếp, trảm yêu; bị thương thì yếu đi và dưỡng thương; máu hiện trên ô thông tin của mọi sinh vật | `aef8949` |
 | 25 | [25-sat-thuong-thien-dao.md](25-sat-thuong-thien-dao.md) | Thiên phạt và thiên tai gây sát thương thật lên mọi sinh vật; yêu thú to theo giai; đi chậm lại nhưng tu vi càng cao càng nhanh; Hóa Thần xé rách hư không | `75b82f7` |
 | 26 | [26-quyen-nang-phuc-hoa.md](26-quyen-nang-phuc-hoa.md) | Quyền năng còn thiếu: thả tu sĩ theo cảnh giới, đánh thức hung thú, thả yêu thú theo giai, ban pháp bảo, giáng tâm ma, phế tu vi, thiên tài địa bảo, mở bí cảnh | `b6f55db` |
-| 27 | [27-cau-nguyen-thien-menh.md](27-cau-nguyen-thien-menh.md) | Tín ngưỡng và cầu nguyện (đáp lời bằng mưa, ban phúc, thiên phạt; miếu thờ, người có linh căn, tà giáo), Thiên mệnh: 3 mục tiêu mềm thế giới tự gợi ý, Thiên uy | `—` |
+| 27 | [27-cau-nguyen-thien-menh.md](27-cau-nguyen-thien-menh.md) | Tín ngưỡng và cầu nguyện (đáp lời bằng mưa, ban phúc, thiên phạt; miếu thờ, người có linh căn, tà giáo), Thiên mệnh: 3 mục tiêu mềm thế giới tự gợi ý, Thiên uy | `296639d` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).
