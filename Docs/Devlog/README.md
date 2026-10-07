@@ -28,7 +28,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 21 | [21-the-gioi-tuong-tac.md](21-the-gioi-tuong-tac.md) | Vết tích và công trình tác động lên mô phỏng, chiến trường cổ, bí cảnh có art riêng, thiên tài địa bảo xuất thế, tranh đoạt cơ duyên, bấm vào sự kiện để lia camera | `7ee44ce` |
 | 22 | [22-bay-va-di-bo.md](22-bay-va-di-bo.md) | Bay theo cảnh giới, đi bộ theo địa hình, tìm đường A* né biển, núi và dung nham (lội được sông), không còn xuyên địa hình | `cc0c901` |
 | 23 | [23-hung-thu.md](23-hung-thu.md) | Hung thú xuất thế (sự kiện thế giới), liên minh trảm yêu, 14 loài ma thú vẽ tay theo tứ hung (to, cao, hung dữ), cân bằng | `05e674e` |
-| 24 | [24-sinh-luc.md](24-sinh-luc.md) | Sinh lực (máu) thật cho tu sĩ và yêu thú: mất máu khi đấu pháp, độ kiếp, trảm yêu; bị thương thì yếu đi và dưỡng thương; máu hiện trên ô thông tin của mọi sinh vật | _(chờ)_ |
+| 24 | [24-sinh-luc.md](24-sinh-luc.md) | Sinh lực (máu) thật cho tu sĩ và yêu thú: mất máu khi đấu pháp, độ kiếp, trảm yêu; bị thương thì yếu đi và dưỡng thương; máu hiện trên ô thông tin của mọi sinh vật | `aef8949` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).
