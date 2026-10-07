@@ -45,6 +45,7 @@ namespace ThienDao.Sim
         public readonly RelicSystem Relics;
         public readonly TradeSystem Trade;
         public readonly EraSystem Eras;
+        public readonly HarmSystem Harm;
         public readonly WorldRules Rules = new WorldRules();
         public readonly EventLog Events = new EventLog();
 
@@ -86,6 +87,7 @@ namespace ThienDao.Sim
             Relics = new RelicSystem(this);
             Trade = new TradeSystem(this);
             Eras = new EraSystem(this);
+            Harm = new HarmSystem(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);

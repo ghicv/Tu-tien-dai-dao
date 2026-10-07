@@ -40,6 +40,7 @@ namespace ThienDao.Sim
         BeastSlain, // cultivator A killed a yêu thú
         BeastKill,  // a yêu thú killed cultivator A
         BeastFlee,  // cultivator A fled from a yêu thú
+        VoidRift,   // renderer only, never on an event: a Hóa Thần tears the void (FxRenderer.WatchRifts)
     }
 
     public readonly struct WorldEvent

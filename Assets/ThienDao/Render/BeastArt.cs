@@ -5,7 +5,7 @@ namespace ThienDao.Render
 {
     // Yêu thú drawn by hand, a character per pixel ('.' is empty), facing right; the outline is added afterwards.
     // Drawn tall and upright, chests high, heads raised, maws open: beasts to fear, not cattle. On screen a
-    // great one is drawn two or three times larger (SpriteLibrary.BeastScale). Shapes after the old bestiaries:
+    // higher grade is drawn larger, up to three times (SpriteLibrary.BeastScale). Shapes after the old bestiaries:
     // Cùng Kỳ for the tiger, Thao Thiết for the ox, Đào Ngột for the ape, Hỗn Độn, a winged long, a Huyền Quy.
     static class BeastArt
     {

@@ -85,16 +85,18 @@ namespace ThienDao.Sim
                 if (s == Species.Migrants) TickMigrants(id, tick);
                 else if (s == Species.Cultivator)
                 {
-                    if (_e.Flying[id]) Fly(id, FlightSpeed(id));
-                    else Walk(id, SpeciesInfo.Speed[(int)s], tick);
+                    var c = _sim.Cultivation.ForEntity(id);
+                    if (!_e.Flying[id]) Walk(id, SpeciesInfo.Speed[(int)s] * (c != null ? 1f + 0.04f * c.Stage : 1f), tick); // Luyện Khí: the higher the tầng, the lighter the step
+                    else if (c != null && c.Realm >= Realm.HoaThan) TearTheVoid(id);
+                    else Fly(id, c != null ? FlightByRealm[(int)c.Realm] : SpeciesInfo.FlyingSpeed);
                 }
                 else if (s == Species.Beast)
                 {
-                    // Great beasts stride faster; điêu, giao long and huyết bức fly.
+                    // The higher the grade, the faster it runs or flies (cửu giai ≈ 2.4× nhất giai on foot).
                     var beast = _sim.Beasts.ForEntity(id);
                     int grade = beast != null ? beast.Grade : 1;
-                    if (_e.Flying[id]) Fly(id, 6f + grade);
-                    else Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.08f * grade), tick);
+                    if (_e.Flying[id]) Fly(id, 2f + 0.9f * grade);
+                    else Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.17f * (grade - 1)), tick);
                 }
                 else if (s == Species.Caravan)
                 {
@@ -104,15 +106,27 @@ namespace ThienDao.Sim
             }
         }
 
-        // Ngự kiếm phi hành: the higher the realm, the faster the sword (Trúc Cơ 10 … Hóa Thần 30 cells a day).
-        static readonly float[] FlightByRealm = { 10f, 10f, 10f, 14f, 20f, 30f, 30f };
+        // Journeys take about 2.2 times as long as before speeds were lowered (devlog 25). Chances rolled each month
+        // on whoever is out on the road (a beast noticing a passer-by, a chance meeting) are scaled by this, so a
+        // journey stays as dangerous as it was.
+        public const float RoadPace = 0.45f;
 
-        float FlightSpeed(int id)
+        // Ngự kiếm phi hành: the higher the realm, the faster the sword (Trúc Cơ 4, Kết Đan 6, Nguyên Anh 10 cells
+        // a day). A Hóa Thần no longer flies: it tears the void (TearTheVoid).
+        static readonly float[] FlightByRealm = { 4f, 4f, 4f, 6f, 10f, 10f, 10f };
+
+        // Xé rách hư không: a Hóa Thần steps into a rift and out wherever it is going, the same day. Nothing on the
+        // road can stop it, because it is never on the road (the renderer draws the rift at both ends).
+        void TearTheVoid(int id)
         {
-            int idx = _e.Payload[id];
-            var all = _sim.Cultivation.All;
-            return idx >= 0 && idx < all.Count ? FlightByRealm[(int)all[idx].Realm] : SpeciesInfo.FlyingSpeed;
+            float tx = _e.TX[id], ty = _e.TY[id];
+            if (!_w.InBounds((int)tx, (int)ty) || tx < 0f || ty < 0f) return;
+            _e.X[id] = tx;
+            _e.Y[id] = ty;
         }
+
+        // A jump this far in one day is a rift, not a flight (for the renderer).
+        public const float RiftJump = 12f;
 
         // A walker gave up: its route found no way to the target (an island, a sealed valley).
         public bool Stuck(int id) => _sim.Nav.Failed(id);

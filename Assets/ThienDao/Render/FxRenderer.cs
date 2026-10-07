@@ -13,7 +13,7 @@ namespace ThienDao.Render
         const int MaxEffects = 48;
         const float CellPx = WorldRenderer.CellPx;
 
-        enum Sprite { BoltA, BoltB, Flash, Ring, Spark, Smoke, Fire0, Fire1, Fire2, Cloud, Beam, Drop, QiShot, Count }
+        enum Sprite { BoltA, BoltB, Flash, Ring, Spark, Smoke, Fire0, Fire1, Fire2, Cloud, Beam, Drop, QiShot, Rift, RiftThin, Count }
 
         struct Particle
         {
@@ -117,6 +117,28 @@ namespace ThienDao.Render
             }
         }
 
+        // A Hóa Thần who crossed the land in a single day tore the void: a rift where they went in and one where
+        // they came out. Only Hóa Thần are checked, and there are never many.
+        readonly Dictionary<int, long> _rifted = new Dictionary<int, long>();
+
+        void WatchRifts(Rect view)
+        {
+            var e = _sim.Entities;
+            long tick = _sim.Clock.Tick;
+            foreach (var c in _sim.Cultivation.All)
+            {
+                if (!c.Alive || c.Realm < Realm.HoaThan) continue;
+                int id = c.Entity;
+                float dx = e.X[id] - e.PrevX[id], dy = e.Y[id] - e.PrevY[id];
+                if (dx * dx + dy * dy < CreatureSystem.RiftJump * CreatureSystem.RiftJump) continue;
+                if (_rifted.TryGetValue(c.Index, out long seen) && seen == tick) continue;
+                _rifted[c.Index] = tick;
+                if (_effects.Count >= MaxEffects) continue;
+                if (view.Contains(new Vector2(e.PrevX[id], e.PrevY[id]))) Spawn(Fx.VoidRift, e.PrevX[id], e.PrevY[id]);
+                if (view.Contains(new Vector2(e.X[id], e.Y[id]))) Spawn(Fx.VoidRift, e.X[id], e.Y[id]);
+            }
+        }
+
         // Effects that harm the living mark a zone where creatures blink white, and some of the stand-ins die.
         void Hurt(Fx fx, float x, float y)
         {
@@ -170,6 +192,7 @@ namespace ThienDao.Render
             // The beast in the fight, drawn as its own kind and size.
             var who = beast ? _sim.Beasts.LookNear(ev.X, ev.Y) : null;
             var beastLook = who != null ? SpriteLibrary.BeastUnit((int)who.Kind, who.Grade) : SpriteLibrary.Unit.Beast;
+            float beastScale = who != null ? SpriteLibrary.BeastScale(who.Grade, who.Rampage) : 1f;
             switch (ev.Fx)
             {
                 case Fx.DuelKill: // A died at B's hand
@@ -185,12 +208,14 @@ namespace ThienDao.Render
                     f.WinnerColor = QiOf(a);
                     f.WinnerIdx = a.Index;
                     f.LoserLook = beastLook;
+                    f.LoserScale = beastScale;
                     f.LoserColor = Claw;
                     f.LoserClaws = true;
                     f.LoserDies = true;
                     break;
                 default: // a beast killed A, or A fled from it
                     f.WinnerLook = beastLook;
+                    f.WinnerScale = beastScale;
                     f.WinnerColor = Claw;
                     f.WinnerClaws = true;
                     f.LoserLook = UnitRenderer.CultivatorLook(a);
@@ -316,6 +341,9 @@ namespace ThienDao.Render
                 case Fx.Storm:
                     e.Duration = kind == Fx.Storm ? 3f : 3.5f;
                     break;
+                case Fx.VoidRift:
+                    e.Duration = 1f;
+                    break;
                 case Fx.Stampede:
                     e.Duration = 2.2f;
                     for (int k = 0; k < 7; k++)
@@ -347,6 +375,7 @@ namespace ThienDao.Render
             Vector3 bl = cam.ViewportToWorldPoint(Vector3.zero), tr = cam.ViewportToWorldPoint(Vector3.one);
             var view = Rect.MinMaxRect(bl.x - 4f, bl.y - 4f, tr.x + 4f, tr.y + 24f);
             PickUpEvents(view);
+            WatchRifts(view);
 
             _verts.Clear();
             _uvs.Clear();
@@ -480,6 +509,18 @@ namespace ThienDao.Render
                         _particles.Add(new Particle { Sprite = Sprite.Smoke, X = e.X + Rand(-4f, 4f), Y = e.Y + Rand(-2f, 3f), VX = Rand(-0.2f, 0.2f), VY = Rand(0.3f, 0.8f),
                             Life = Rand(1.5f, 2.5f), Size = Rand(1f, 1.6f), Grow = 0.5f, Color = new Color32(120, 200, 90, 140) });
                     break;
+
+                case Fx.VoidRift:
+                {
+                    // Opens thin, gapes, seals thin again; a flash as it opens, void motes drifting out while it gapes.
+                    var tear = t < 0.12f || t > 0.82f ? Sprite.RiftThin : Sprite.Rift;
+                    Quad(tear, e.X, e.Y + 1.4f, 1f, 1f, new Color32(255, 255, 255, 255));
+                    if (t < 0.1f) Quad(Sprite.Flash, e.X, e.Y + 1.4f, 2f, 2f, new Color32(220, 190, 255, 220));
+                    if (tear == Sprite.Rift && _rand.NextDouble() < 0.5)
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = e.X + Rand(-0.6f, 0.6f), Y = e.Y + Rand(0.4f, 2.4f), VX = Rand(-1.2f, 1.2f), VY = Rand(-0.3f, 0.6f),
+                            Life = Rand(0.3f, 0.6f), Size = 1f, Color = _rand.NextDouble() < 0.5 ? new Color32(170, 110, 255, 255) : new Color32(235, 225, 255, 255) });
+                    break;
+                }
 
                 case Fx.Stampede:
                     if (_rand.NextDouble() < 0.4)
@@ -726,6 +767,34 @@ namespace ThienDao.Render
                     return d <= half - 2 && y < 7 ? new Color32(255, 236, 120, 255) : new Color32(255, 150, 40, 255);
                 });
             }
+
+            // Hư không liệt phùng: a jagged black gash in the air, edged in violet with pale flecks, widest in the
+            // middle. The thin one is the same tear just opening or sealing.
+            Color32[] Tear(int w, int h, float width)
+            {
+                var b = new Color32[w * h];
+                var core = new Color32(14, 6, 24, 255);
+                var edge = new Color32(146, 84, 226, 255);
+                var rim = new Color32(226, 206, 255, 255);
+                int mid = w / 2;
+                for (int y = 0; y < h; y++)
+                {
+                    int x0 = mid + ((y / 3) % 3 == 1 ? 1 : (y / 3) % 3 == 2 ? -1 : 0); // a zigzag, three pixels a step
+                    int half = Mathf.RoundToInt(width * Mathf.Sin(Mathf.PI * (y + 0.5f) / h));
+                    for (int x = 0; x < w; x++)
+                    {
+                        int d = Mathf.Abs(x - x0);
+                        if (d < half) b[y * w + x] = core;
+                        else if (d == half) b[y * w + x] = edge;
+                        else if (d == half + 1 && (x + y) % 3 == 0) b[y * w + x] = rim;
+                    }
+                }
+                return b;
+            }
+            var rift = Tear(11, 26, 2.6f);
+            var riftThin = Tear(7, 20, 0.6f);
+            Put(Sprite.Rift, 11, 26, (x, y) => rift[y * 11 + x]);
+            Put(Sprite.RiftThin, 7, 20, (x, y) => riftThin[y * 7 + x]);
 
             atlas = new Texture2D(tw, th, TextureFormat.RGBA32, false) { name = "FxAtlas", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             atlas.SetPixelData(px, 0);

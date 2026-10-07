@@ -133,10 +133,12 @@ namespace ThienDao.Render
         public const int UnitFrames = 2;
         public const int BeastKinds = 14, BeastSizes = 2;
 
-        // A yêu thú's look: its kind at full size (a beast is always bigger than a cultivator); from lục giai, and any
-        // hung thú, it is drawn twice as large on screen, cửu giai three times (BeastScale), the pixels multiplied.
+        // A yêu thú's look: its kind at full size (a beast is always bigger than a cultivator). Each grade stands
+        // taller than the one below (BeastScale): nhất giai as drawn, cửu giai three times over, a hung thú a little
+        // more again. The pixels are multiplied and point-sampled, never smoothed.
         public static Unit BeastUnit(int kind, int grade) => (Unit)((int)Unit.BeastFirst + Mathf.Clamp(kind, 0, BeastKinds - 1) * BeastSizes + 1);
-        public static int BeastScale(int grade, bool rampage = false) => grade >= 9 ? 3 : grade >= 6 || rampage ? 2 : 1;
+        static readonly float[] GradeScale = { 1f, 1f, 1.12f, 1.25f, 1.4f, 1.6f, 1.85f, 2.15f, 2.5f, 3f };
+        public static float BeastScale(int grade, bool rampage = false) => GradeScale[Mathf.Clamp(grade, 0, 9)] * (rampage ? 1.15f : 1f);
         const int UnitSlot = 32; // room for the huge beasts
         static PixelSprite[] _units;     // index = unit * UnitFrames + frame; then the same again as white silhouettes
         static Texture2D _unitAtlas;

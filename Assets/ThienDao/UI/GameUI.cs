@@ -80,7 +80,7 @@ namespace ThienDao.UI
             { BrushTool.QiInfuse, "Rót linh khí — linh khí tràn ra rồi tản dần" }, { BrushTool.QiDrain, "Hút linh khí — vùng đó cạn kiệt" },
             { BrushTool.GrantRoot, "Ban linh căn — bấm vào một người: tu sĩ được tẩy luyện linh căn, phàm nhân trong làng thức tỉnh linh căn" },
             { BrushTool.Bless, "Ban cơ duyên — bấm vào tu sĩ: tu vi tăng mạnh, thêm thọ; bấm vào làng: mùa màng bội thu" },
-            { BrushTool.Smite, "Thiên phạt — sét đánh xuống người được chọn (hồn phi phách tán) hoặc xuống chỗ bấm" },
+            { BrushTool.Smite, "Thiên phạt — một đạo thiên lôi (4.000 sát thương) đánh xuống tu sĩ, yêu thú hay chỗ bấm; mọi sinh vật trong 3 ô đều trúng sét" },
             { BrushTool.Tribulation, "Thiên kiếp — bấm vào một tu sĩ: sống sót thì phá bình cảnh hoặc được lôi kiếp tôi luyện, không thì vẫn lạc. " +
                                      "Sét đánh cả vùng quanh đó và để lại lôi địa (linh khí dày, phàm nhân tránh xa) vài trăm năm" },
             { BrushTool.Earthquake, "Động đất — nhà sập, người chết, linh mạch trong vùng có thể đứt gãy (cọ to thì vùng rộng)" },
@@ -704,13 +704,14 @@ namespace ThienDao.UI
 
         readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[5];
         Ui.IconButton _reviveButton;
-        const int AnnihilateButton = 4;
+        const int SmiteButton = 2, AnnihilateButton = 4;
+        const string DivineTipCreature = "Thiên phạt: một đạo thiên lôi 4.000 sát thương (ít nhất 40% sinh lực); mọi sinh vật trong 3 ô đều trúng sét";
 
         static readonly string[] DivineTipPerson =
         {
             "Ban linh căn: tẩy luyện linh căn người này lên Thiên / Dị linh căn",
             "Ban cơ duyên: tu vi tăng mạnh, khí vận tràn đầy, thêm 20 năm thọ",
-            "Thiên phạt: sét đánh xuống, hồn phi phách tán",
+            "Thiên phạt: một đạo thiên lôi 4.000 sát thương (ít nhất 40% sinh lực); kẻ mạnh có thể chịu được vài đạo. Ai đứng gần cũng trúng sét",
             "Thiên kiếp: vượt qua thì phá bình cảnh (hoặc được tôi luyện), thất bại thì vẫn lạc; nơi đó hóa lôi địa",
             ""
         };
@@ -724,17 +725,17 @@ namespace ThienDao.UI
             "Diệt môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa"
         };
 
-        void ShowDivineButtons(bool show, bool village, bool sect = false)
+        void ShowDivineButtons(bool show, bool village, bool sect = false, bool creature = false)
         {
             for (int k = 0; k < _divineButtons.Length; k++)
             {
                 var b = _divineButtons[k];
                 // Thiên kiếp is for cultivators only; diệt môn for sects only.
-                bool on = show && (village ? DivineTipVillage[k].Length > 0 && (k != AnnihilateButton || sect) : DivineTipPerson[k].Length > 0);
+                bool on = show && (creature ? k == SmiteButton : village ? DivineTipVillage[k].Length > 0 && (k != AnnihilateButton || sect) : DivineTipPerson[k].Length > 0);
                 if (b.Frame.gameObject.activeSelf != on) b.Frame.gameObject.SetActive(on);
                 if (!on) continue;
                 var tip = b.Frame.GetComponent<Tooltip>();
-                if (tip != null) tip.Text = village ? DivineTipVillage[k] : DivineTipPerson[k];
+                if (tip != null) tip.Text = creature ? DivineTipCreature : village ? DivineTipVillage[k] : DivineTipPerson[k];
             }
         }
 
@@ -1270,7 +1271,7 @@ namespace ThienDao.UI
                 _cardBar1Root.gameObject.SetActive(false);
                 _cardBar2Root.gameObject.SetActive(false);
                 _followButton.Frame.gameObject.SetActive(sel.Kind == InspectKind.Migrants || sel.Kind == InspectKind.Beast || sel.Kind == InspectKind.Caravan);
-                ShowDivineButtons(false, false);
+                ShowDivineButtons(sel.Kind == InspectKind.Beast || sel.Kind == InspectKind.Migrants || sel.Kind == InspectKind.Caravan || sel.Kind == InspectKind.Animal, false, false, true);
                 ShowRevive(false);
                 _watchButton.Frame.gameObject.SetActive(false);
                 _followButton.SetSelected(_game.Follow);
@@ -1764,7 +1765,8 @@ namespace ThienDao.UI
                         ? $"Thiên kiếp → {who} ({h.Cultivator.RealmText}{(Realms.IsPeak(h.Cultivator.Realm, h.Cultivator.Stage) ? ", đang ở bình cảnh" : "")})"
                         : "Chọn một tu sĩ để giáng thiên kiếp";
                 else
-                    hint = h.Kind == InspectKind.Cultivator ? $"Thiên phạt → {who}" : h.Kind == InspectKind.Settlement ? $"Thiên lôi → {h.Settlement.Name}" : "Thiên lôi đánh xuống đây";
+                    hint = h.Kind == InspectKind.Cultivator ? $"Thiên phạt → {who}" : h.Kind == InspectKind.Settlement ? $"Thiên lôi → {h.Settlement.Name}" :
+                           h.Kind == InspectKind.Beast && sim.Beasts.ForEntity(h.Entity) is Beast hb ? $"Thiên phạt → {hb.Title} ({hb.GradeText})" : "Thiên lôi đánh xuống đây";
             }
             else if (!PointerOverUI && WorldBrush.IsCalamityTool(_game.Brush.Tool))
             {

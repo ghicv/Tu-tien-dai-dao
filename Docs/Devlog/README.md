@@ -29,6 +29,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 22 | [22-bay-va-di-bo.md](22-bay-va-di-bo.md) | Bay theo cảnh giới, đi bộ theo địa hình, tìm đường A* né biển, núi và dung nham (lội được sông), không còn xuyên địa hình | `cc0c901` |
 | 23 | [23-hung-thu.md](23-hung-thu.md) | Hung thú xuất thế (sự kiện thế giới), liên minh trảm yêu, 14 loài ma thú vẽ tay theo tứ hung (to, cao, hung dữ), cân bằng | `05e674e` |
 | 24 | [24-sinh-luc.md](24-sinh-luc.md) | Sinh lực (máu) thật cho tu sĩ và yêu thú: mất máu khi đấu pháp, độ kiếp, trảm yêu; bị thương thì yếu đi và dưỡng thương; máu hiện trên ô thông tin của mọi sinh vật | `aef8949` |
+| 25 | [25-sat-thuong-thien-dao.md](25-sat-thuong-thien-dao.md) | Thiên phạt và thiên tai gây sát thương thật lên mọi sinh vật; yêu thú to theo giai; đi chậm lại nhưng tu vi càng cao càng nhanh; Hóa Thần xé rách hư không | `—` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).

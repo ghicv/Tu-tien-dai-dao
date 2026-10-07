@@ -138,7 +138,12 @@ namespace ThienDao.Sim
             return b;
         }
 
-        void Die(Beast b, long tick, string text, int importance, Cultivator killer = null)
+        public void Perish(Beast b, long tick, string text, int importance, Fx fx = Fx.None)
+        {
+            if (b.Alive) Die(b, tick, text, importance, null, fx);
+        }
+
+        void Die(Beast b, long tick, string text, int importance, Cultivator killer = null, Fx fx = Fx.None)
         {
             float x = _e.X[b.Entity], y = _e.Y[b.Entity];
             b.DeathX = x;
@@ -153,7 +158,7 @@ namespace ThienDao.Sim
                 foreach (var o in All)
                     if (o.Clan == b.Index) o.Clan = -1;
             b.Clan = -1;
-            _sim.Events.Add(tick, EventKind.Beast, importance, text, x, y, killer != null ? Fx.BeastSlain : Fx.None, killer?.Index ?? -1, -1, killer?.SectId ?? -1);
+            _sim.Events.Add(tick, EventKind.Beast, importance, text, x, y, killer != null ? Fx.BeastSlain : fx, killer?.Index ?? -1, -1, killer?.SectId ?? -1);
         }
 
         // Each year, in regions where animals have lived long under rich qi, one may open its spirit.
@@ -317,7 +322,7 @@ namespace ThienDao.Sim
             int id = _sim.Creatures.FindNearest(_e.X[b.Entity], _e.Y[b.Entity], 12f, 1 << (int)Species.Cultivator);
             var c = _sim.Cultivation.ForEntity(id);
             if (c == null || !_sim.Cultivation.IsShownOnMap(c) || c.AtWar || c.HuntTarget >= 0 || tick - c.LastDuelTick < SimClock.DaysPerMonth * 6) return;
-            if (rng.NextFloat() >= 0.35f) return;
+            if (rng.NextFloat() >= 0.35f * CreatureSystem.RoadPace) return;
             Fight(c, b, tick, CombatSystem.Strength(c) >= Strength(b) ? "săn yêu đan" : "lỡ bước vào lãnh địa yêu thú", ref rng);
         }
 

@@ -21,9 +21,9 @@ namespace ThienDao.Sim
         public static readonly string[] Names = { "", "Hươu", "Thỏ", "Sói", "Đoàn di dân", "Tu sĩ", "Yêu thú", "Thương đội" };
 
         // Index by (int)Species.
-        public static readonly float[] Speed = { 0f, 2f, 1.5f, 2.4f, 3f, 3f, 2.5f, 2.5f };   // cells per day on foot
+        public static readonly float[] Speed = { 0f, 1f, 0.8f, 1.2f, 1.4f, 1.4f, 1.3f, 1.3f }; // cells per day on foot
         public static readonly float[] HuntFood = { 0f, 8f, 2f, 4f, 0f, 0f, 0f, 0f };       // person-months of food per animal hunted
-        public const float FlyingSpeed = 12f;                                     // ngự kiếm phi hành, cells per day
+        public const float FlyingSpeed = 4f;                                      // ngự kiếm phi hành, cells per day
         // Sinh lực of one animal or one mortal (herds and villagers are counted, not tracked one by one).
         public static readonly float[] Hp = { 0f, 40f, 12f, 60f, Realms.Hp[0], 0f, 0f, Realms.Hp[0] };
     }

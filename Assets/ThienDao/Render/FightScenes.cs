@@ -19,6 +19,7 @@ namespace ThienDao.Render
         public float X, Y;                     // the loser's feet; the winner stands to one side
         public bool WinnerRight;
         public Unit WinnerLook, LoserLook;
+        public float WinnerScale = 1f, LoserScale = 1f; // a great beast fights at its own size
         public int WinnerIdx = -1, LoserIdx = -1; // cultivators hidden from normal drawing while this plays
         public bool LoserDies;
         public Color32 WinnerColor, LoserColor;   // their kiếm khí

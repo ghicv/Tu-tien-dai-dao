@@ -557,6 +557,36 @@ namespace ThienDao.Sim
             }
         }
 
+        // A blow from heaven or earth (HarmSystem) over migrants on the road: each group loses the share it would
+        // kill; a group left with nobody is gone. Returns the dead.
+        public int HarmMigrants(HarmSystem harm, float damage, long tick)
+        {
+            var e = _sim.Entities;
+            int total = 0;
+            for (int g = _groups.Count - 1; g >= 0; g--)
+            {
+                var group = _groups[g];
+                float x = e.X[group.Entity], y = e.Y[group.Entity];
+                float share = HarmSystem.CrowdShare(damage * harm.Reach(x, y), SpeciesInfo.Hp[(int)Species.Migrants]);
+                if (share <= 0f) continue;
+                int people = 0, dead = 0;
+                for (int b = 0; b < Settlement.AgeGroups; b++)
+                {
+                    int lost = Mathf.CeilToInt(group.Cohorts[b] * share - 0.001f);
+                    lost = Mathf.Min(lost, group.Cohorts[b]);
+                    group.Cohorts[b] -= lost;
+                    dead += lost;
+                    people += group.Cohorts[b];
+                }
+                total += dead;
+                if (people > 0) continue;
+                _groups.RemoveAt(g);
+                e.Kill(group.Entity, DeathCause.Natural);
+                _sim.Events.Add(tick, EventKind.Disaster, 1, $"Đoàn di dân từ {All[group.From].Name} bị diệt sạch, {dead} người chết.", x, y);
+            }
+            return total;
+        }
+
         // A calamity takes up to n people (the frail first); returns how many died.
         public int Kill(Settlement s, int n)
         {

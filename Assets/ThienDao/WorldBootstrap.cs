@@ -362,13 +362,19 @@ namespace ThienDao
             if (act == DivineAct.GrantRoot && target < 0 && village < 0) return; // nobody chosen
             if (act == DivineAct.Tribulation && target < 0) return;           // thiên kiếp falls on a cultivator only
             if (act == DivineAct.Annihilate && (village < 0 || !t.Settlement.Sect)) return; // diệt môn needs a sect
+            var beast = t.Kind == InspectKind.Beast ? Sim.Beasts.ForEntity(t.Entity) : null;
             int x = t.CellX, y = t.CellY;
             if (t.Cultivator != null && Sim.Cultivation.IsShownOnMap(t.Cultivator))
             {
                 x = (int)Sim.Entities.X[t.Cultivator.Entity];
                 y = (int)Sim.Entities.Y[t.Cultivator.Entity];
             }
-            Sim.Enqueue(new DivineActCommand(act, x, y, target, village));
+            else if (t.Entity >= 0 && Sim.Entities.IsAlive(t.Entity)) // a beast, migrants or a caravan: where it stands now
+            {
+                x = (int)Sim.Entities.X[t.Entity];
+                y = (int)Sim.Entities.Y[t.Entity];
+            }
+            Sim.Enqueue(new DivineActCommand(act, x, y, target, village, beast?.Index ?? -1));
         }
 
         // From the ranking: select that expert; if they are out on the map, the camera follows them there.

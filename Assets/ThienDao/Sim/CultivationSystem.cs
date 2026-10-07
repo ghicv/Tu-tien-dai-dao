@@ -1028,12 +1028,6 @@ namespace ThienDao.Sim
             _sim.Events.Add(tick, EventKind.Divine, 1, $"{c.Title} gặp cơ duyên, tu vi tăng mạnh.", _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing, c.Index);
         }
 
-        public void Smite(Cultivator c, long tick)
-        {
-            if (c == null || !c.Alive) return;
-            Die(c, tick, $"Thiên phạt giáng xuống, {c.Title} ({SectName(c)}) hồn phi phách tán.", c.Realm >= Realm.KetDan ? 3 : 2, Fx.Lightning);
-        }
-
         public void HashInto(ref ulong h)
         {
             foreach (var c in All)

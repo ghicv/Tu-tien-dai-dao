@@ -255,6 +255,8 @@ namespace ThienDao.Sim
             float fx = x + 0.5f, fy = y + 0.5f;
             _ids.Clear();
             var hit = new List<Settlement>();
+            var harm = _sim.Harm;
+            harm.Clear();
             var srng = ScarRng(tick, x, y);
             for (int step = 0; step < len; step += 2)
             {
@@ -263,6 +265,7 @@ namespace ThienDao.Sim
                 fy += Mathf.Sin(a) * 2f;
                 int cx = (int)fx, cy = (int)fy;
                 if (!_w.InBounds(cx, cy)) break;
+                if (step % 6 == 0) harm.Add(fx, fy, w + 1.5f); // the storm's track, for whoever is caught in it
                 // Lightning out of the storm leaves burnt spots along its track.
                 if (srng.NextFloat() < 0.08f)
                     _sim.Scars.Disc(cx + srng.Range(-w, w + 1), cy + srng.Range(-w, w + 1), srng.Range(1f, 2.5f), ScarKind.Scorch, 12, 6, (uint)step);
@@ -291,8 +294,9 @@ namespace ThienDao.Sim
                     houses++;
                 }
             foreach (var s in hit) dead += _sim.Settlements.Kill(s, Stoch(s.Population * 0.03f, ref rng));
+            string hurt = HarmSystem.Tail(harm.Strike(divine ? 250f : 120f, tick, "bị cuồng phong cuốn đi", false));
             _sim.Events.Add(tick, EventKind.Calamity, Mathf.Max(divine ? 2 : 1, dead >= 20 ? 2 : 1),
-                $"{(divine ? "Thiên Đạo nổi cuồng phong, b" : "B")}ão lớn quét qua {where}: {houses} nhà tốc mái, {dead} người chết, {trees} cây đổ.",
+                $"{(divine ? "Thiên Đạo nổi cuồng phong, b" : "B")}ão lớn quét qua {where}: {houses} nhà tốc mái, {dead} người chết, {trees} cây đổ{hurt}.",
                 x + 0.5f, y + 0.5f, Fx.Storm);
         }
 
@@ -424,6 +428,11 @@ namespace ThienDao.Sim
                 float k = 1f - Dist(s, cx, cy) / r;
                 dead += _sim.Settlements.Kill(s, Stoch(s.Population * (0.12f * k + 0.01f), ref rng));
             }
+            // Whoever stands on the ground is thrown down and buried; those in the air ride it out.
+            var harm = _sim.Harm;
+            harm.Clear();
+            harm.Add(cx + 0.5f, cy + 0.5f, r);
+            string hurt = HarmSystem.Tail(harm.Strike(divine ? 400f : 200f, tick, "bị đất đá vùi lấp", true));
             if (ley > 0) RebuildQi(cx - r - QiCap.LeyReach, cy - r - QiCap.LeyReach, cx + r + QiCap.LeyReach, cy + r + QiCap.LeyReach);
             // The ground splits in long cracks running out from the epicentre.
             var srng = ScarRng(tick, cx, cy);
@@ -433,7 +442,7 @@ namespace ThienDao.Sim
             int imp = Mathf.Max(divine ? 2 : 1, dead >= 30 || ley >= 10 ? 2 : 1);
             _sim.Events.Add(tick, EventKind.Calamity, imp,
                 $"{(divine ? "Thiên Đạo nổi giận, địa long" : "Địa long")} trở mình {where}: {houses} nhà sập, {dead} người chết" +
-                (ley > 0 ? $", {ley} đoạn linh mạch đứt gãy" : "") + ".", cx + 0.5f, cy + 0.5f, Fx.Quake);
+                (ley > 0 ? $", {ley} đoạn linh mạch đứt gãy" : "") + hurt + ".", cx + 0.5f, cy + 0.5f, Fx.Quake);
         }
 
         // ---------------------------------------------------------------- núi lửa
@@ -542,6 +551,11 @@ namespace ThienDao.Sim
             RebuildQi(x0 - QiCap.LeyReach, y0 - QiCap.LeyReach, x1 + QiCap.LeyReach, y1 + QiCap.LeyReach);
             _sim.Wildlife.LandChanged(x0, y0, x1, y1);
             _sim.ResolveFlood(x0, y0, x1, y1); // whoever stands in the lava burns
+            // Fire and falling rock scour the foot of the mountain; the living there burn or are wounded.
+            var harm = _sim.Harm;
+            harm.Clear();
+            harm.Add(cx + 0.5f, cy + 0.5f, burn);
+            string hurt = HarmSystem.Tail(harm.Strike(900f, tick, "bị dung nham và đá lửa thiêu chết", false));
 
             var volcano = new Landmark
             {
@@ -552,7 +566,7 @@ namespace ThienDao.Sim
             _sim.Relics?.OnLandmark(volcano, tick);
             _sim.Events.Add(tick, EventKind.Calamity, 3,
                 $"Núi lửa phun trào {where}{(divine ? " theo ý Thiên Đạo" : "")}, {name} mọc lên giữa trời đất: {dead} người chết vì tro bụi" +
-                (houses > 0 ? $", {houses} nhà bị thiêu rụi" : "") + ".", cx + 0.5f, cy + 0.5f, Fx.Eruption);
+                (houses > 0 ? $", {houses} nhà bị thiêu rụi" : "") + hurt + ".", cx + 0.5f, cy + 0.5f, Fx.Eruption);
         }
 
         static bool IsPlant(ObjectType t) => t != ObjectType.None && t != ObjectType.Rock && !ObjectInfo.IsBuilding(t);

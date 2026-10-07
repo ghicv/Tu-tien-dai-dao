@@ -201,7 +201,7 @@ namespace ThienDao.Sim
             var weak = strong == a ? b : a;
             if (strong.Demonic && !weak.Demonic && strong.Realm >= weak.Realm) { chance = Mathf.Max(chance, 0.35f); context = "giết người đoạt bảo"; }
             else if (a.Demonic != b.Demonic) { chance = Mathf.Max(chance, 0.25f); context = "chính tà bất lưỡng lập"; }
-            if (rng.NextFloat() >= chance) return;
+            if (rng.NextFloat() >= chance * CreatureSystem.RoadPace) return;
             var first = context == "giết người đoạt bảo" ? strong : a;
             Duel(first, first == a ? b : a, tick, context == "giết người đoạt bảo" ? 0.5f : 0.3f, context, ref rng);
         }

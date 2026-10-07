@@ -233,6 +233,71 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void ThienPhatWoundsEveryCreatureByItsSinhLuc()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 2);
+            var town = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population > 30);
+            var rng = new DetRandom(7u);
+            // A great hung thú lives through one bolt, wounded; a small beast is burnt away.
+            var great = sim.Beasts.RaiseHungThu(9, town.X + 20.5f, town.Y + 0.5f, sim.Clock.Tick, "thử nghiệm");
+            sim.Enqueue(new DivineActCommand(DivineAct.Smite, town.X + 20, town.Y, -1, -1, great.Index));
+            sim.ApplyPending();
+            Assert.IsTrue(great.Alive, "cửu giai hung thú survives one bolt");
+            Assert.Less(BeastSystem.HpFrac(great), 0.7f, "but loses sinh lực");
+            var small = sim.Beasts.Spawn(Species.Wolf, 2, town.X + 40.5f, town.Y + 0.5f, sim.Clock.Tick, ref rng);
+            var bystander = sim.Beasts.Spawn(Species.Wolf, 2, town.X + 41.5f, town.Y + 0.5f, sim.Clock.Tick, ref rng);
+            sim.Enqueue(new DivineActCommand(DivineAct.Smite, town.X + 40, town.Y, -1, -1, small.Index));
+            sim.ApplyPending();
+            Assert.IsFalse(small.Alive, "nhị giai is burnt away");
+            Assert.IsFalse(bystander.Alive, "the one standing beside it is struck too");
+            // Struck again and again, even the hung thú falls.
+            for (int k = 0; k < 4 && great.Alive; k++)
+            {
+                sim.Enqueue(new DivineActCommand(DivineAct.Smite, 0, 0, -1, -1, great.Index));
+                sim.ApplyPending();
+            }
+            Assert.IsFalse(great.Alive, "enough bolts kill anything");
+            // A bolt on bare ground still hurts the cultivator standing there.
+            var c = sim.Cultivation.All.Find(o => o.Alive && o.Realm >= Realm.KetDan);
+            if (c != null)
+            {
+                float before = CombatSystem.HpOf(c);
+                int cx = (int)sim.Entities.X[c.Entity], cy = (int)sim.Entities.Y[c.Entity];
+                sim.Enqueue(new DivineActCommand(DivineAct.Smite, cx + 1, cy));
+                sim.ApplyPending();
+                Assert.IsTrue(!c.Alive || CombatSystem.HpOf(c) < before, "a cultivator beside the bolt loses sinh lực");
+            }
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void HoaThanTearsTheVoidAndTheMightyMoveFaster()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, 30);
+            var e = sim.Entities;
+            var fliers = sim.Cultivation.All.FindAll(o => o.Alive);
+            Assert.GreaterOrEqual(fliers.Count, 2);
+            var hoaThan = fliers[0];
+            var ketDan = fliers[1];
+            hoaThan.Realm = Realm.HoaThan;
+            hoaThan.Stage = 0;
+            ketDan.Realm = Realm.KetDan;
+            ketDan.Stage = 0;
+            foreach (var c in new[] { hoaThan, ketDan })
+            {
+                e.Flying[c.Entity] = true;
+                e.TX[c.Entity] = UnityEngine.Mathf.Clamp(e.X[c.Entity] + 200f, 1f, sim.World.W - 2f);
+                e.TY[c.Entity] = e.Y[c.Entity];
+            }
+            float kdFrom = e.X[ketDan.Entity];
+            sim.Creatures.Tick(sim.Clock.Tick);
+            Assert.AreEqual(e.TX[hoaThan.Entity], e.X[hoaThan.Entity], 1e-3f, "a Hóa Thần is there the same day");
+            Assert.AreEqual(6f, UnityEngine.Mathf.Abs(e.X[ketDan.Entity] - kdFrom), 1e-3f, "a Kết Đan flies six cells a day");
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));

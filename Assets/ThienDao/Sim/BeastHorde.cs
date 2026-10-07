@@ -305,7 +305,7 @@ namespace ThienDao.Sim
             float bx = _e.X[b.Entity], by = _e.Y[b.Entity];
             float reach = 320f + 160f * attempt;
             var minRealm = b.Grade >= 9 ? Realm.NguyenAnh : b.Grade >= 7 ? Realm.KetDan : Realm.TrucCo;
-            var coalition = new Coalition { Beast = b.Index, Attempt = attempt, Deadline = tick + 240 };
+            var coalition = new Coalition { Beast = b.Index, Attempt = attempt, Deadline = tick + 480 }; // walkers and swords are slow; time to gather
             var sects = new List<string>();
             float power = 0f;
             foreach (var f in _sim.Factions.All)

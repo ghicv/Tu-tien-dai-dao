@@ -247,6 +247,22 @@ namespace ThienDao.Sim
             }
         }
 
+        // A blow from heaven or earth (HarmSystem): a caravan that would lose half its people or more scatters, goods lost.
+        public int Harm(HarmSystem harm, float damage)
+        {
+            var e = _sim.Entities;
+            int lost = 0;
+            for (int k = _caravans.Count - 1; k >= 0; k--)
+            {
+                int id = _caravans[k].Entity;
+                if (HarmSystem.CrowdShare(damage * harm.Reach(e.X[id], e.Y[id]), SpeciesInfo.Hp[(int)Species.Caravan]) < 0.5f) continue;
+                _caravans.RemoveAt(k);
+                e.Kill(id, DeathCause.Natural);
+                lost++;
+            }
+            return lost;
+        }
+
         public void HashInto(ref ulong h)
         {
             StateHash.Add(ref h, _caravans.Count | ((long)Roads << 20) | (Delivered << 40));

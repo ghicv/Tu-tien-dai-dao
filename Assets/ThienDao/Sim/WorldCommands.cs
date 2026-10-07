@@ -236,21 +236,23 @@ namespace ThienDao.Sim
     public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation, Revive, Annihilate }
 
     // Thiên Đạo acting on one being: the chosen cultivator (Target, an index into Cultivation.All) or a mortal of
-    // the chosen village (Village, a settlement id). Without a target, Bless / Smite fall back to whoever is nearby.
+    // the chosen village (Village, a settlement id), or for a thiên phạt the chosen yêu thú (Beast, an index into
+    // Beasts.All). Without a target, Bless falls back to whoever is nearby; Smite falls on the spot clicked.
     public sealed class DivineActCommand : IWorldCommand
     {
         const int CultivatorMask = 1 << (int)Species.Cultivator;
         public readonly DivineAct Act;
         public readonly int X, Y;
-        public readonly int Target, Village;
+        public readonly int Target, Village, Beast;
 
-        public DivineActCommand(DivineAct act, int x, int y, int target = -1, int village = -1)
+        public DivineActCommand(DivineAct act, int x, int y, int target = -1, int village = -1, int beast = -1)
         {
             Act = act;
             X = x;
             Y = y;
             Target = target;
             Village = village;
+            Beast = beast;
         }
 
         public void Apply(Simulation sim)
@@ -286,33 +288,79 @@ namespace ThienDao.Sim
                 sim.Events.Add(tick, EventKind.Divine, 1, $"Thiên Đạo ban phúc cho {village.Name}, mùa màng bội thu.", village.X + 0.5f, village.Y + 0.5f, Fx.Blessing);
                 return;
             }
-            // Prefer the chosen one; otherwise someone visible under the cursor, or whoever is meditating nearby.
-            var c = chosen ?? (Target >= 0 ? null : sim.Cultivation.FindShownNear(X + 0.5f, Y + 0.5f, 3f) ??
-                                                  sim.Cultivation.ForEntity(sim.Creatures.FindNearest(X + 0.5f, Y + 0.5f, 6f, CultivatorMask)));
-            if (village != null && chosen == null) c = null; // a village was chosen: the bolt falls on it
             if (Act == DivineAct.Bless)
             {
+                // Prefer the chosen one; otherwise someone visible under the cursor, or whoever is meditating nearby.
+                var c = chosen ?? (Target >= 0 || village != null ? null : sim.Cultivation.FindShownNear(X + 0.5f, Y + 0.5f, 3f) ??
+                                                  sim.Cultivation.ForEntity(sim.Creatures.FindNearest(X + 0.5f, Y + 0.5f, 6f, CultivatorMask)));
                 sim.Cultivation.Bless(c, tick);
                 return;
             }
+            var beast = Beast >= 0 && Beast < sim.Beasts.All.Count && sim.Beasts.All[Beast].Alive ? sim.Beasts.All[Beast] : null;
+            Smite(sim, chosen, village == null ? beast : null, tick);
+        }
+
+        // Thiên phạt: one đạo thiên lôi. The one it is aimed at takes the full bolt (and never less than
+        // MinBoltShare of their sinh lực), so a Hóa Thần or a great hung thú may live through one or two; everything
+        // else within three cells is struck too, and the ground is scorched. Aimed at nobody, it falls on the spot.
+        void Smite(Simulation sim, Cultivator c, Beast b, long tick)
+        {
+            var e = sim.Entities;
+            float cx = c != null ? e.X[c.Entity] : b != null ? e.X[b.Entity] : X + 0.5f;
+            float cy = c != null ? e.Y[c.Entity] : b != null ? e.Y[b.Entity] : Y + 0.5f;
+            string text = null;
+            int importance = 0;
             if (c != null)
             {
-                sim.Disasters.Blasted((int)sim.Entities.X[c.Entity], (int)sim.Entities.Y[c.Entity], 3, tick);
-                sim.Cultivation.Smite(c, tick);
-                return;
+                float blow = Mathf.Max(HarmSystem.Bolt, CombatSystem.MaxHp(c) * HarmSystem.MinBoltShare);
+                if (HarmSystem.Wound(c, blow))
+                    sim.Cultivation.Perish(c, tick, $"Thiên phạt giáng xuống, {c.Title} ({sim.Cultivation.SectName(c)}) hồn phi phách tán.", c.Realm >= Realm.KetDan ? 3 : 2, Fx.Lightning);
+                else
+                {
+                    text = $"Thiên phạt giáng xuống {c.Title} ({sim.Cultivation.SectName(c)}): chịu được một đạo thiên lôi, sinh lực còn {CombatSystem.HpOf(c):N0}/{CombatSystem.MaxHp(c):N0}";
+                    importance = 2;
+                }
             }
-            // Nobody to punish: the bolt still falls, scorching the ground and anyone living there.
+            else if (b != null)
+            {
+                float blow = Mathf.Max(HarmSystem.Bolt, BeastSystem.MaxHp(b) * HarmSystem.MinBoltShare);
+                if (HarmSystem.Wound(b, blow))
+                    sim.Beasts.Perish(b, tick, $"Thiên phạt giáng xuống, {b.Title} ({b.GradeText}) tan thành tro bụi.", b.Rampage || b.Grade >= 6 ? 3 : 1, Fx.Lightning);
+                else
+                {
+                    text = $"Thiên phạt giáng xuống {b.Title} ({b.GradeText}): trúng một đạo thiên lôi mà chưa chết, sinh lực còn {BeastSystem.HpOf(b):N0}/{BeastSystem.MaxHp(b):N0}";
+                    importance = 2;
+                }
+            }
+
+            var harm = sim.Harm;
+            harm.Clear();
+            harm.Add(cx, cy, 3f);
+            var r = harm.Strike(HarmSystem.Bolt, tick, "bị thiên lôi đánh tan xác", false, c, b);
+            // The bolt burns the ground where it lands: trees and loose things go, buildings stand.
             var w = sim.World;
-            for (int y = Y - 2; y <= Y + 2; y++)
-            for (int x = X - 2; x <= X + 2; x++)
+            int ix = (int)cx, iy = (int)cy;
+            for (int y = iy - 2; y <= iy + 2; y++)
+            for (int x = ix - 2; x <= ix + 2; x++)
             {
                 if (!w.InBounds(x, y)) continue;
                 int id = w.Objects.CellObject[w.Idx(x, y)];
                 if (id >= 0 && !ObjectInfo.IsBuilding(w.Objects.Get(id).Type)) w.Objects.Remove(id);
             }
-            sim.Settlements.Strike(X, Y, tick);
-            sim.Disasters.Blasted(X, Y, 3, tick);
-            sim.Events.Add(tick, EventKind.Divine, 0, "Thiên lôi giáng xuống.", X + 0.5f, Y + 0.5f, Fx.Lightning);
+            sim.Disasters.Blasted(ix, iy, 3, tick);
+            if (c == null && b == null) sim.Settlements.Strike(X, Y, tick); // aimed at a village or the bare ground
+            string tail = HarmSystem.Tail(r);
+            if (text == null && (c != null || b != null) && tail.Length == 0) return; // the one aimed at died, and nobody else was near
+            if (text == null)
+            {
+                text = c != null || b != null ? "Thiên lôi lan ra" : "Thiên lôi giáng xuống";
+                tail = tail.Length > 0 ? tail.Substring(1) : ""; // "Thiên lôi giáng xuống: 2 tu sĩ vẫn lạc"
+                text += tail.Length > 0 ? ":" + tail : "";
+                importance = r.Fallen > 0 || r.BeastsSlain > 0 ? 1 : 0;
+            }
+            else text += tail;
+            sim.Events.Add(tick, EventKind.Divine, importance, text + ".", cx, cy, c == null && b == null || text.StartsWith("Thiên phạt") ? Fx.Lightning : Fx.None,
+                c?.Index ?? -1);
         }
     }
 
