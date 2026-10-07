@@ -166,9 +166,9 @@ namespace ThienDao.Sim
             return n;
         }
 
-        Relic Add(RelicKind kind, string name, float x, float y, int tier, long tick)
+        Relic Add(RelicKind kind, string name, float x, float y, int tier, long tick, bool divine = false)
         {
-            if (OpenCount() >= MaxOpen || !_w.InBounds((int)x, (int)y)) return null;
+            if ((!divine && OpenCount() >= MaxOpen) || !_w.InBounds((int)x, (int)y)) return null; // what Thiên Đạo sets down always stands
             var r = new Relic { Index = All.Count, Kind = kind, Name = name, X = (int)x, Y = (int)y, Tier = Mathf.Clamp(tier, 1, 5), Tick = tick };
             All.Add(r);
             PlaceArt(r);
@@ -312,6 +312,49 @@ namespace ThienDao.Sim
             _sim.Events.Add(tick, EventKind.Relic, 3, $"Bảo quang xung thiên: {what} xuất thế giữa chốn linh khí nồng đậm, cả thiên hạ chấn động!",
                 r.X + 0.5f, r.Y + 0.5f, Fx.LightPillar);
             StartContest(r, tick);
+        }
+
+        // ---------------------------------------------------------------- set down by Thiên Đạo (devlog 26)
+
+        // A thiên tài địa bảo where the player clicks: the richer the qi there, the higher its tier. Its light is seen
+        // by all, and the sects around come to fight over it like any other.
+        public Relic PlaceTreasure(int x, int y, long tick)
+        {
+            if (!_w.InBounds(x, y) || !_w.IsWalkable(x + 0.5f, y + 0.5f)) return null;
+            var rng = RngFor(tick, 610000 + x * 1031 + y);
+            float qi = _w.QiCap[_w.Idx(x, y)];
+            string what = _w.Lore.NaturalTreasures[rng.Range(0, _w.Lore.NaturalTreasures.Length)];
+            int tier = qi >= 7000f ? 5 : qi >= 5000f ? 4 : qi >= 3000f ? 3 : 2;
+            var r = Add(RelicKind.Treasure, what, x, y, tier, tick, true);
+            if (r == null) return null;
+            r.Treasure = what;
+            r.Origin = $"Thiên Đạo ban xuống năm {Year(tick)}";
+            r.Stones = rng.Range(80f, 240f) * tier;
+            r.Discovered = true;
+            _sim.Events.Add(tick, EventKind.Relic, 3, $"Thiên Đạo giáng xuống {what}, bảo quang xung thiên, thiên hạ chấn động!", r.X + 0.5f, r.Y + 0.5f, Fx.LightPillar);
+            StartContest(r, tick);
+            return r;
+        }
+
+        // A bí cảnh torn open where the player clicks: an ancient site of three layers, its seal broken for all
+        // to see. Treasure, linh thạch and danger inside; the sects race and fight to be first through the door.
+        public Relic OpenSecretRealm(int x, int y, long tick)
+        {
+            if (!_w.InBounds(x, y) || !ObjectInfo.CanStandOn(ObjectType.RelicAncient, _w.Terrain[_w.Idx(x, y)])) return null;
+            var rng = RngFor(tick, 620000 + x * 1031 + y);
+            var lore = _w.Lore;
+            int tier = rng.Range(3, 6);
+            var r = Add(RelicKind.Ancient, lore.AncientRuins[rng.Range(0, lore.AncientRuins.Length)], x, y, tier, tick, true);
+            if (r == null) return null;
+            r.Origin = $"bí cảnh Thiên Đạo mở ra năm {Year(tick)}";
+            r.Treasure = lore.Treasures[rng.Range(0, lore.Treasures.Length)];
+            r.Stones = rng.Range(600f, 1800f) * tier / 3f;
+            r.Pills = rng.Range(1, 5);
+            r.Layers = 3;
+            r.Discovered = true;
+            _sim.Events.Add(tick, EventKind.Relic, 3, $"Thiên Đạo xé mở phong ấn, bí cảnh {r.Name} hiện thế; tu sĩ bốn phương kéo đến!", r.X + 0.5f, r.Y + 0.5f, Fx.LightPillar);
+            StartContest(r, tick);
+            return r;
         }
 
         // ---------------------------------------------------------------- tranh đoạt cơ duyên

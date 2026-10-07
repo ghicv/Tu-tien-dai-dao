@@ -94,7 +94,14 @@ namespace ThienDao.UI
             { BrushTool.Storm, "Bão — cuồng phong quét theo một đường dài: cây đổ, nhà tốc mái, người chết (cọ to thì bão rộng)" },
             { BrushTool.Cold, "Rét — vài tháng tuyết phủ: mùa màng mất trắng, người già trẻ nhỏ chết cóng, cỏ héo" },
             { BrushTool.Annihilate, "Diệt môn — bấm vào một tông môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa" },
-            { BrushTool.SpawnBeast, "Thả yêu thú tam giai: nó chiếm lãnh địa, săn thú, tập kích làng; tu sĩ sẽ tới săn yêu đan" },
+            { BrushTool.SpawnBeast, "Thả yêu thú (chọn giai bằng + / −): nó chiếm lãnh địa, săn thú, tập kích làng; tu sĩ sẽ tới săn yêu đan" },
+            { BrushTool.SpawnCultivator, "Thả tu sĩ (chọn cảnh giới bằng + / −): một tán tu xuống nhân gian, chỗ bấm thành động phủ; từ đó tự tu luyện, kết thù, thu đồ đệ, lập tông môn" },
+            { BrushTool.SpawnHungThu, "Đánh thức hung thú (ngũ đến cửu giai, chọn bằng + / −): nó đi tàn sát từ thành này sang thành khác cho tới khi các tông môn liên minh trảm yêu" },
+            { BrushTool.GrantTreasure, "Ban pháp bảo — bấm vào tu sĩ: thêm một pháp bảo (đánh mạnh hơn, dễ vượt thiên kiếp hơn), nhưng ma tu sẽ thèm khát" },
+            { BrushTool.HeartDemon, "Giáng tâm ma — bấm vào tu sĩ: đạo tâm lung lay, tu vi trì trệ; đạo tâm càng yếu càng dễ tẩu hỏa nhập ma, tụt cảnh giới hoặc sa vào ma đạo" },
+            { BrushTool.Cripple, "Phế tu vi — bấm vào tu sĩ: mất trọn một đại cảnh giới, sức, máu và thọ nguyên giảm theo" },
+            { BrushTool.PlaceTreasure, "Thiên tài địa bảo — đặt một linh vật ở chỗ bấm (linh khí càng đậm phẩm càng cao): bảo quang xung thiên, các tông môn kéo đến tranh đoạt" },
+            { BrushTool.OpenRealm, "Mở bí cảnh — xé mở một thượng cổ di tích ba tầng ở chỗ bấm: có pháp bảo, linh thạch, đan dược và hiểm nguy; tu sĩ bốn phương tranh nhau vào" },
         };
 
         public bool PointerOverUI => _visible && EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
@@ -327,12 +334,24 @@ namespace ThienDao.UI
             var sizeBox = Ui.Node("BrushSize", rt);
             _sizeGroup = sizeBox.gameObject.AddComponent<CanvasGroup>();
             Column(sizeBox, 2).childAlignment = TextAnchor.MiddleCenter;
-            var plus = Ui.Button(sizeBox, Icons.Plus, "Cọ to hơn ( ] )", () => _game.Brush.Size = Mathf.Min(40, _game.Brush.Size + 1), 40f);
+            var plus = Ui.Button(sizeBox, Icons.Plus, "Cọ to hơn ( ] )", () => StepBrush(+1), 40f);
+            _plusTip = plus.Frame.GetComponent<Tooltip>();
             Size(plus.Frame, 40f, 40f);
             _brushSize = Ui.Label(sizeBox, "6", 20, TextAnchor.MiddleCenter);
-            Size(_brushSize, 40f, 24f);
-            var minus = Ui.Button(sizeBox, Icons.Minus, "Cọ nhỏ hơn ( [ )", () => _game.Brush.Size = Mathf.Max(1, _game.Brush.Size - 1), 40f);
+            Size(_brushSize, 96f, 24f);
+            var minus = Ui.Button(sizeBox, Icons.Minus, "Cọ nhỏ hơn ( [ )", () => StepBrush(-1), 40f);
+            _minusTip = minus.Frame.GetComponent<Tooltip>();
             Size(minus.Frame, 40f, 40f);
+        }
+
+        Tooltip _plusTip, _minusTip;
+
+        // + / − change the brush size, or for a tool that sends a being down, its realm or grade.
+        void StepBrush(int d)
+        {
+            var brush = _game.Brush;
+            if (WorldBrush.HasLevel(brush.Tool)) brush.StepLevel(d);
+            else brush.Size = Mathf.Clamp(brush.Size + d, 1, 40);
         }
 
         void SelectTab(int tab)
@@ -367,6 +386,8 @@ namespace ThienDao.UI
                     AddTool(BrushTool.SpawnRabbit, Icons.Unit(Unit.Rabbit));
                     AddTool(BrushTool.SpawnWolf, Icons.Unit(Unit.Wolf));
                     AddTool(BrushTool.SpawnBeast, Icons.Unit(Unit.Beast));
+                    AddTool(BrushTool.SpawnHungThu, Icons.Unit(SpriteLibrary.BeastUnit((int)BeastKind.Tiger, 9)));
+                    AddTool(BrushTool.SpawnCultivator, Icons.Unit(Unit.CultivatorKD));
                     AddTool(BrushTool.Erase, Icons.Erase);
                     break;
                 case 2:
@@ -374,12 +395,17 @@ namespace ThienDao.UI
                     AddTool(BrushTool.LeyErase, Icons.LeyBreak);
                     AddTool(BrushTool.QiInfuse, Icons.QiUp);
                     AddTool(BrushTool.QiDrain, Icons.QiDown);
+                    AddTool(BrushTool.PlaceTreasure, Icons.Object(ObjectType.RelicTreasure));
+                    AddTool(BrushTool.OpenRealm, Icons.Object(ObjectType.RelicAncient));
                     break;
                 case 3:
                     AddTool(BrushTool.GrantRoot, Icons.Seed);
                     AddTool(BrushTool.Bless, Icons.Star);
                     AddTool(BrushTool.Smite, Icons.Bolt);
                     AddTool(BrushTool.Tribulation, Icons.Tribulation);
+                    AddTool(BrushTool.GrantTreasure, Icons.Sword);
+                    AddTool(BrushTool.HeartDemon, Icons.HeartDemon);
+                    AddTool(BrushTool.Cripple, Icons.Cripple);
                     AddTool(BrushTool.Annihilate, Icons.Wrath);
                     break;
                 case 4:
@@ -650,22 +676,23 @@ namespace ThienDao.UI
             Size(_followButton.Frame, 44f, 44f);
             _watchButton = Ui.Button(buttons, Icons.Bookmark, "Theo dõi: người này sẽ sống như nhân vật chính", ToggleWatchSelected, 44f);
             Size(_watchButton.Frame, 44f, 44f);
-            var gap = Ui.Node("Gap", buttons);
-            Size(gap, 10f, 10f);
-            // Thiên Đạo acts on exactly the one shown on the card.
+            _reviveButton = Ui.Button(buttons, Icons.Revive, "Hồi sinh: sống lại với thêm trăm năm thọ, mang huyết thù với kẻ đã giết mình", _game.ReviveSelected, 44f);
+            Size(_reviveButton.Frame, 44f, 44f);
+            // Thiên Đạo acts on exactly the one shown on the card: phúc first, then họa.
+            var actsRow = _actsRow = Ui.Node("Acts", _card);
+            Row(actsRow, 6).childAlignment = TextAnchor.MiddleLeft;
+            Height(actsRow, 46f);
             var acts = new[]
             {
                 (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt), (DivineAct.Tribulation, Icons.Tribulation),
-                (DivineAct.Annihilate, Icons.Wrath)
+                (DivineAct.Annihilate, Icons.Wrath), (DivineAct.GrantTreasure, Icons.Sword), (DivineAct.HeartDemon, Icons.HeartDemon), (DivineAct.Cripple, Icons.Cripple)
             };
             for (int k = 0; k < acts.Length; k++)
             {
                 var act = acts[k].Item1;
-                _divineButtons[k] = Ui.Button(buttons, acts[k].Item2, DivineTipPerson[k], () => _game.ActOnSelected(act), 44f);
+                _divineButtons[k] = Ui.Button(actsRow, acts[k].Item2, DivineTipPerson[k], () => _game.ActOnSelected(act), 44f);
                 Size(_divineButtons[k].Frame, 44f, 44f);
             }
-            _reviveButton = Ui.Button(buttons, Icons.Revive, "Hồi sinh: sống lại với thêm trăm năm thọ, mang huyết thù với kẻ đã giết mình", _game.ReviveSelected, 44f);
-            Size(_reviveButton.Frame, 44f, 44f);
             _card.gameObject.SetActive(false);
         }
 
@@ -702,8 +729,9 @@ namespace ThienDao.UI
             _chipCount = 0;
         }
 
-        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[5];
+        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[8];
         Ui.IconButton _reviveButton;
+        RectTransform _actsRow;
         const int SmiteButton = 2, AnnihilateButton = 4;
         const string DivineTipCreature = "Thiên phạt: một đạo thiên lôi 4.000 sát thương (ít nhất 40% sinh lực); mọi sinh vật trong 3 ô đều trúng sét";
 
@@ -713,7 +741,10 @@ namespace ThienDao.UI
             "Ban cơ duyên: tu vi tăng mạnh, khí vận tràn đầy, thêm 20 năm thọ",
             "Thiên phạt: một đạo thiên lôi 4.000 sát thương (ít nhất 40% sinh lực); kẻ mạnh có thể chịu được vài đạo. Ai đứng gần cũng trúng sét",
             "Thiên kiếp: vượt qua thì phá bình cảnh (hoặc được tôi luyện), thất bại thì vẫn lạc; nơi đó hóa lôi địa",
-            ""
+            "",
+            "Ban pháp bảo: đánh mạnh hơn, dễ vượt thiên kiếp hơn; ma tu sẽ thèm khát",
+            "Giáng tâm ma: đạo tâm lung lay; đạo tâm yếu thì dễ tẩu hỏa nhập ma, tụt cảnh giới hoặc sa vào ma đạo",
+            "Phế tu vi: mất trọn một đại cảnh giới, sức, máu và thọ nguyên giảm theo"
         };
 
         static readonly string[] DivineTipVillage =
@@ -722,11 +753,13 @@ namespace ThienDao.UI
             "Ban cơ duyên: mùa màng bội thu",
             "Thiên phạt: thiên lôi đánh xuống làng",
             "",
-            "Diệt môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa"
+            "Diệt môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa",
+            "", "", ""
         };
 
         void ShowDivineButtons(bool show, bool village, bool sect = false, bool creature = false)
         {
+            bool any = false;
             for (int k = 0; k < _divineButtons.Length; k++)
             {
                 var b = _divineButtons[k];
@@ -734,9 +767,11 @@ namespace ThienDao.UI
                 bool on = show && (creature ? k == SmiteButton : village ? DivineTipVillage[k].Length > 0 && (k != AnnihilateButton || sect) : DivineTipPerson[k].Length > 0);
                 if (b.Frame.gameObject.activeSelf != on) b.Frame.gameObject.SetActive(on);
                 if (!on) continue;
+                any = true;
                 var tip = b.Frame.GetComponent<Tooltip>();
                 if (tip != null) tip.Text = creature ? DivineTipCreature : village ? DivineTipVillage[k] : DivineTipPerson[k];
             }
+            if (_actsRow.gameObject.activeSelf != any) _actsRow.gameObject.SetActive(any);
         }
 
         void BuildPointerHelpers()
@@ -776,10 +811,14 @@ namespace ThienDao.UI
             foreach (var (button, mode) in _overlayButtons) button.SetSelected(_game.Renderer.Overlay == mode);
             if (_labelsToggle != null) _labelsToggle.SetSelected(ShowLabels);
             if (_ruleValues.Count > 0) UpdateRuleValues();
-            _brushSize.text = _game.Brush.Size.ToString();
-            // The brush size only matters to tools that paint an area or reach over one.
-            bool sized = current != BrushTool.Inspect && !WorldBrush.IsDivineTool(current) && !WorldBrush.IsPointTool(current) &&
-                         !WorldBrush.IsBuildingTool(current) && current != BrushTool.Plague && current != BrushTool.Eruption && current != BrushTool.GreatCalamity;
+            bool leveled = WorldBrush.HasLevel(current);
+            _brushSize.text = leveled ? WorldBrush.LevelName(current, _game.Brush.Level) : _game.Brush.Size.ToString();
+            _brushSize.fontSize = leveled ? 16 : 20;
+            if (_plusTip != null) _plusTip.Text = leveled ? (current == BrushTool.SpawnCultivator ? "Cảnh giới cao hơn ( ] )" : "Giai cao hơn ( ] )") : "Cọ to hơn ( ] )";
+            if (_minusTip != null) _minusTip.Text = leveled ? (current == BrushTool.SpawnCultivator ? "Cảnh giới thấp hơn ( [ )" : "Giai thấp hơn ( [ )") : "Cọ nhỏ hơn ( [ )";
+            // The brush size only matters to tools that paint an area or reach over one; the level to those that send a being down.
+            bool sized = leveled || (current != BrushTool.Inspect && !WorldBrush.IsDivineTool(current) && !WorldBrush.IsPointTool(current) &&
+                         !WorldBrush.IsBuildingTool(current) && current != BrushTool.Plague && current != BrushTool.Eruption && current != BrushTool.GreatCalamity);
             _sizeGroup.alpha = sized ? 1f : 0.15f; // faded, not hidden, so the toolbar keeps its shape
             _sizeGroup.interactable = _sizeGroup.blocksRaycasts = sized;
             _toolTitle.text = $"{TabNames[_tab].ToUpper()}  <color=#ffd873>›  {WorldBrush.ToolNames[(int)current]}</color>";
@@ -1760,6 +1799,10 @@ namespace ThienDao.UI
                     hint = h.Kind == InspectKind.Settlement ? $"Ban phúc → {h.Settlement.Name}" : who != null ? $"Ban cơ duyên → {who}" : "Ban cơ duyên → tu sĩ gần nhất";
                 else if (tool == BrushTool.Annihilate)
                     hint = h.Kind == InspectKind.Settlement && h.Settlement.Sect ? $"Diệt môn → {h.Settlement.Name}" : "Chọn một tông môn để diệt";
+                else if (tool == BrushTool.GrantTreasure || tool == BrushTool.HeartDemon || tool == BrushTool.Cripple)
+                    hint = h.Kind == InspectKind.Cultivator
+                        ? $"{WorldBrush.ToolNames[(int)tool]} → {who} ({h.Cultivator.RealmText}{(tool == BrushTool.HeartDemon ? $", đạo tâm {h.Cultivator.DaoHeart * 100f:0}%" : "")})"
+                        : $"Chọn một tu sĩ để {WorldBrush.ToolNames[(int)tool].ToLower()}";
                 else if (tool == BrushTool.Tribulation)
                     hint = h.Kind == InspectKind.Cultivator
                         ? $"Thiên kiếp → {who} ({h.Cultivator.RealmText}{(Realms.IsPeak(h.Cultivator.Realm, h.Cultivator.Stage) ? ", đang ở bình cảnh" : "")})"
@@ -1777,6 +1820,8 @@ namespace ThienDao.UI
                         ? sim.Disasters.GreatCalamityActive ? "Đại kiếp đang diễn ra" : "Đại kiếp → toàn thế giới"
                         : $"{WorldBrush.ToolNames[(int)tool]} · bán kính {DisasterSystem.Radius(WorldBrush.CalamityFor(tool), _game.Brush.Size)} ô";
             }
+            else if (!PointerOverUI && WorldBrush.HasLevel(_game.Brush.Tool))
+                hint = $"{WorldBrush.ToolNames[(int)_game.Brush.Tool]} · {WorldBrush.LevelName(_game.Brush.Tool, _game.Brush.Level)}  ( [ ] đổi )";
             else if (!PointerOverUI && _game.Brush.Tool == BrushTool.Inspect)
             {
                 switch (h.Kind)

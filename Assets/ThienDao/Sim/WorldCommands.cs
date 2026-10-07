@@ -233,7 +233,7 @@ namespace ThienDao.Sim
         }
     }
 
-    public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation, Revive, Annihilate }
+    public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation, Revive, Annihilate, GrantTreasure, HeartDemon, Cripple }
 
     // Thiên Đạo acting on one being: the chosen cultivator (Target, an index into Cultivation.All) or a mortal of
     // the chosen village (Village, a settlement id), or for a thiên phạt the chosen yêu thú (Beast, an index into
@@ -282,6 +282,10 @@ namespace ThienDao.Sim
                 sim.Cultivation.CallTribulation(chosen, tick); // only ever on the chosen cultivator
                 return;
             }
+            // Phúc / họa on the chosen cultivator only.
+            if (Act == DivineAct.GrantTreasure) { sim.Cultivation.GrantTreasure(chosen, tick); return; }
+            if (Act == DivineAct.HeartDemon) { sim.Cultivation.HeartDemon(chosen, tick); return; }
+            if (Act == DivineAct.Cripple) { sim.Cultivation.Cripple(chosen, tick); return; }
             if (Act == DivineAct.Bless && chosen == null && village != null)
             {
                 village.Food += village.Population * 6f; // a good harvest for the chosen village
@@ -382,6 +386,61 @@ namespace ThienDao.Sim
             var rng = new DetRandom(Hash.U32(sim.World.Seed ^ 0x5BEAu, (int)sim.Clock.Tick, X * 4099 + Y));
             var b = sim.Beasts.Spawn(Species.Wolf, Grade, X + 0.5f, Y + 0.5f, sim.Clock.Tick, ref rng);
             sim.Events.Add(sim.Clock.Tick, EventKind.Beast, 2, $"Thiên Đạo thả {b.Name} ({b.GradeText}) xuống nhân gian.", X + 0.5f, Y + 0.5f, Fx.Stampede);
+        }
+    }
+
+    // Thiên Đạo sends a tán tu of the chosen realm down to (X, Y).
+    public sealed class SpawnCultivatorCommand : IWorldCommand
+    {
+        public readonly int X, Y;
+        public readonly Realm Realm;
+
+        public SpawnCultivatorCommand(int x, int y, Realm realm)
+        {
+            X = x;
+            Y = y;
+            Realm = realm;
+        }
+
+        public void Apply(Simulation sim) => sim.Cultivation.Descend(Realm, X + 0.5f, Y + 0.5f, sim.Clock.Tick);
+    }
+
+    // Thiên Đạo wakes a hung thú of the given grade at (X, Y): it sets out at once to ravage the towns.
+    public sealed class SpawnHungThuCommand : IWorldCommand
+    {
+        public readonly int X, Y, Grade;
+
+        public SpawnHungThuCommand(int x, int y, int grade)
+        {
+            X = x;
+            Y = y;
+            Grade = grade;
+        }
+
+        public void Apply(Simulation sim)
+        {
+            if (!sim.World.IsWalkable(X + 0.5f, Y + 0.5f)) return;
+            sim.Beasts.RaiseHungThu(Grade, X + 0.5f, Y + 0.5f, sim.Clock.Tick, "Thiên Đạo đánh thức nó");
+        }
+    }
+
+    // Thiên Đạo sets down a thiên tài địa bảo (SecretRealm false) or tears open a bí cảnh (true) at (X, Y).
+    public sealed class PlaceRelicCommand : IWorldCommand
+    {
+        public readonly int X, Y;
+        public readonly bool SecretRealm;
+
+        public PlaceRelicCommand(int x, int y, bool secretRealm)
+        {
+            X = x;
+            Y = y;
+            SecretRealm = secretRealm;
+        }
+
+        public void Apply(Simulation sim)
+        {
+            if (SecretRealm) sim.Relics.OpenSecretRealm(X, Y, sim.Clock.Tick);
+            else sim.Relics.PlaceTreasure(X, Y, sim.Clock.Tick);
         }
     }
 

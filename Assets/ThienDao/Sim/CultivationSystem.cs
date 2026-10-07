@@ -1028,6 +1028,89 @@ namespace ThienDao.Sim
             _sim.Events.Add(tick, EventKind.Divine, 1, $"{c.Title} gặp cơ duyên, tu vi tăng mạnh.", _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing, c.Index);
         }
 
+        // ---------------------------------------------------------------- phúc / họa (Thiên Đạo, devlog 26)
+
+        static readonly float[] DescendAge = { 16f, 22f, 90f, 230f, 450f, 900f };
+
+        // A tán tu of the chosen realm appears at (x, y), the spot becoming their cave. From there they live like
+        // anyone else: cultivate, roam, take disciples, found a sect if ambitious, make enemies.
+        public Cultivator Descend(Realm realm, float x, float y, long tick)
+        {
+            if (realm < Realm.LuyenKhi || realm > Realm.HoaThan || !_w.IsWalkable(x, y)) return null;
+            var rng = RngFor(tick, 720000 + All.Count);
+            var c = Create(ref rng, realm, 0, DescendAge[(int)realm] * rng.Range(0.8f, 1.2f), -1, x, y, tick);
+            c.Blessed = true;
+            _sim.Events.Add(tick, EventKind.Divine, realm >= Realm.KetDan ? 2 : 1,
+                $"Thiên Đạo đưa {c.Title} ({Realms.Names[(int)realm]}, {SpiritRoots.Kind(c.Roots)}) xuống nhân gian, làm một tán tu.",
+                x, y, Fx.LightPillar, c.Index);
+            return c;
+        }
+
+        // Ban pháp bảo: one more treasure (stronger in a fight, steadier under thiên kiếp); a coveted one, too,
+        // for a ma tu falls on whoever carries one (CombatSystem: giết người đoạt bảo).
+        public void GrantTreasure(Cultivator c, long tick)
+        {
+            if (c == null || !c.Alive) return;
+            var rng = RngFor(tick, 730000 + c.Index);
+            c.Treasures++;
+            c.TreasureName = _w.Lore.Treasures[rng.Range(0, _w.Lore.Treasures.Length)];
+            c.Blessed = true;
+            _sim.Events.Add(tick, EventKind.Divine, 2, $"Thiên Đạo ban cho {c.Title} ({SectName(c)}) pháp bảo {c.TreasureName}.",
+                _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing, c.Index, -1, c.SectId);
+        }
+
+        // Giáng tâm ma: the dao heart shaken (weaker, slower to break through, likelier to deviate later), and
+        // the weaker the heart was, the likelier the demon wins at once: dead, fallen a realm, or turned ma tu.
+        public void HeartDemon(Cultivator c, long tick)
+        {
+            if (c == null || !c.Alive) return;
+            var rng = RngFor(tick, 740000 + c.Index);
+            string who = $"{c.Title} ({SectName(c)})";
+            float px = _e.X[c.Entity], py = _e.Y[c.Entity];
+            float heart = c.DaoHeart;
+            c.DaoHeart = Mathf.Max(0f, c.DaoHeart - 0.45f);
+            c.Progress *= 0.5f;
+            if (rng.NextFloat() >= 0.75f - 0.6f * heart)
+            {
+                _sim.Events.Add(tick, EventKind.Deviation, 1, $"Thiên Đạo giáng tâm ma xuống {who}: đạo tâm lung lay, tu vi trì trệ.", px, py, Fx.DemonBlast, c.Index, -1, c.SectId);
+                return;
+            }
+            float outcome = rng.NextFloat();
+            if (outcome < 0.25f)
+                Die(c, tick, $"Tâm ma Thiên Đạo giáng xuống nuốt chửng {who}, kinh mạch đứt đoạn mà chết.", c.Realm >= Realm.TrucCo ? 2 : 1, Fx.DemonBlast);
+            else if (outcome < 0.6f || c.Demonic || !_sim.Rules.DemonicAllowed)
+            {
+                if (c.Realm > Realm.LuyenKhi) SetRealm(c, c.Realm - 1, Realms.Stages[(int)c.Realm - 1] - 1);
+                else c.Stage = Mathf.Max(0, c.Stage - 3);
+                c.Progress = 0f;
+                _sim.Events.Add(tick, EventKind.Deviation, 2, $"{who} bị tâm ma Thiên Đạo giáng xuống quấy phá, tẩu hỏa nhập ma, tu vi tụt xuống {c.RealmText}.", px, py, Fx.DemonBlast, c.Index, -1, c.SectId);
+            }
+            else
+            {
+                c.Demonic = true;
+                _sim.Events.Add(tick, EventKind.Deviation, 2, $"{who} không thắng nổi tâm ma Thiên Đạo giáng xuống, sa vào ma đạo.", px, py, Fx.DemonBlast, c.Index, -1, c.SectId);
+            }
+        }
+
+        // Phế tu vi: a whole great realm torn away (Luyện Khí lose all their tầng). Strength, sinh lực and thọ nguyên
+        // fall with it; one who has outlived the lower realm's span will not see many more years.
+        public void Cripple(Cultivator c, long tick)
+        {
+            if (c == null || !c.Alive) return;
+            string who = $"{c.Title} ({SectName(c)})";
+            var from = c.Realm;
+            if (c.Realm > Realm.LuyenKhi) SetRealm(c, c.Realm - 1, 0);
+            else c.Stage = 0;
+            c.Progress = 0f;
+            c.DaoHeart = Mathf.Max(0f, c.DaoHeart - 0.2f);
+            c.Hp = Mathf.Min(CombatSystem.HpOf(c), CombatSystem.MaxHp(c));
+            if (c.Realm < Realm.TrucCo) _e.Flying[c.Entity] = false; // the sword no longer answers: walking home
+            bool old = c.AgeYears(tick) > c.LifespanYears;
+            _sim.Events.Add(tick, EventKind.Divine, from >= Realm.KetDan ? 3 : 2,
+                $"Thiên Đạo phế bỏ tu vi của {who}: từ {Realms.Names[(int)from]} rơi xuống {c.RealmText}" + (old ? ", thọ nguyên đã cạn." : "."),
+                _e.X[c.Entity], _e.Y[c.Entity], Fx.DemonBlast, c.Index, -1, c.SectId);
+        }
+
         public void HashInto(ref ulong h)
         {
             foreach (var c in All)

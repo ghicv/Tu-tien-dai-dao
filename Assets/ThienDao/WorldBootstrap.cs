@@ -360,7 +360,7 @@ namespace ThienDao
             int target = t.Kind == InspectKind.Cultivator && t.Cultivator != null ? t.Cultivator.Index : -1;
             int village = t.Kind == InspectKind.Settlement && t.Settlement != null ? t.Settlement.Id : -1;
             if (act == DivineAct.GrantRoot && target < 0 && village < 0) return; // nobody chosen
-            if (act == DivineAct.Tribulation && target < 0) return;           // thiên kiếp falls on a cultivator only
+            if ((act == DivineAct.Tribulation || act == DivineAct.GrantTreasure || act == DivineAct.HeartDemon || act == DivineAct.Cripple) && target < 0) return; // these fall on a cultivator only
             if (act == DivineAct.Annihilate && (village < 0 || !t.Settlement.Sect)) return; // diệt môn needs a sect
             var beast = t.Kind == InspectKind.Beast ? Sim.Beasts.ForEntity(t.Entity) : null;
             int x = t.CellX, y = t.CellY;
@@ -532,8 +532,8 @@ namespace ThienDao
             }
             if (kb.hKey.wasPressedThisFrame && !(_ui != null && _ui.KeyboardBlocked)) _ui?.ToggleChronicle();
             if (_ui != null && _ui.KeyboardBlocked) return;
-            if (kb.leftBracketKey.wasPressedThisFrame) Brush.Size = Mathf.Max(1, Brush.Size - 1);
-            if (kb.rightBracketKey.wasPressedThisFrame) Brush.Size = Mathf.Min(40, Brush.Size + 1);
+            if (kb.leftBracketKey.wasPressedThisFrame) { if (WorldBrush.HasLevel(Brush.Tool)) Brush.StepLevel(-1); else Brush.Size = Mathf.Max(1, Brush.Size - 1); }
+            if (kb.rightBracketKey.wasPressedThisFrame) { if (WorldBrush.HasLevel(Brush.Tool)) Brush.StepLevel(+1); else Brush.Size = Mathf.Min(40, Brush.Size + 1); }
             if (kb.escapeKey.wasPressedThisFrame)
             {
                 Brush.Tool = BrushTool.Inspect;

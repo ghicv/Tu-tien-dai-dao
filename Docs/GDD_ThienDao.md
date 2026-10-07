@@ -485,6 +485,13 @@ Mọi quyền năng → `Command` → áp dụng ở tick kế tiếp → ghi v�
 - Kẻ thù có thể đánh lén người đang độ kiếp.
 - Chi tiết: `Docs/Devlog/13-m6-quy-luat-sinh-tu-dai-kiep.md`.
 
+**Đã cài (devlog 25–26):**
+- **Sinh linh:** thả tu sĩ ở cảnh giới chọn, đánh thức hung thú ngũ đến cửu giai, thả yêu thú theo giai chọn.
+- **Phúc / Họa:** ban pháp bảo, giáng tâm ma, phế tu vi.
+- **Linh khí:** đặt thiên tài địa bảo, mở bí cảnh.
+- **Thiên phạt và thiên tai** gây sát thương theo sinh lực lên mọi sinh vật.
+- Chi tiết: `Docs/Devlog/25-sat-thuong-thien-dao.md`, `Docs/Devlog/26-quyen-nang-phuc-hoa.md`.
+
 ---
 
 ## 15. Rendering (theo phong cách WorldBox)

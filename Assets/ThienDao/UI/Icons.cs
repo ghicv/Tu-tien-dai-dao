@@ -680,6 +680,40 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Tâm ma: a violet heart split by a black crack, a red demon eye in it.
+        public static Sprite HeartDemon => Glyph("heartdemon", new[]
+        {
+            "............",
+            "..kk....kk..",
+            ".kppk..kppk.",
+            "kpwpkkkpppk.",
+            "kpppkppkpppk",
+            "kppkrrkppppk",
+            ".kpkrrkpppk.",
+            "..kppkpppk..",
+            "...kpkppk...",
+            "....kkpk....",
+            ".....kk.....",
+            "............",
+        }, P);
+
+        // Phế tu vi: a golden đan cracked in two, its light spilling out.
+        public static Sprite Cripple => Glyph("cripple", new[]
+        {
+            "....k..k....",
+            "..k.kkkk.k..",
+            "...kyyykk...",
+            "..kyywykyk..",
+            ".kyyywkyyyk.",
+            ".kyyykyyyyk.",
+            ".kyyyykyyyk.",
+            ".kyyykyyyok.",
+            "..kyyykyok..",
+            "...kkokkk...",
+            "..k..kk..k..",
+            "............",
+        }, P);
+
         // Sinh lực (máu): a drop of blood.
         public static Sprite Blood => Glyph("blood", new[]
         {

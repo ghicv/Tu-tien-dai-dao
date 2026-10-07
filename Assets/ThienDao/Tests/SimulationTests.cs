@@ -298,6 +298,59 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void ThienDaoPhucHoaPowersChangeTheWorld()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 3);
+            var town = sim.Settlements.All.Find(s => s.Alive && !s.Sect);
+            int x = town.X + 12, y = town.Y;
+            for (int k = 0; k < 40 && !sim.World.IsWalkable(x + 0.5f, y + 0.5f); k++) x++;
+
+            // Thả tu sĩ: a Kết Đan tán tu appears where clicked.
+            int before = sim.Cultivation.All.Count;
+            sim.Enqueue(new SpawnCultivatorCommand(x, y, Realm.KetDan));
+            sim.ApplyPending();
+            Assert.AreEqual(before + 1, sim.Cultivation.All.Count);
+            var c = sim.Cultivation.All[before];
+            Assert.AreEqual(Realm.KetDan, c.Realm);
+            Assert.AreEqual(-1, c.SectId, "a tán tu");
+
+            // Ban pháp bảo, giáng tâm ma, phế tu vi on that one.
+            sim.Enqueue(new DivineActCommand(DivineAct.GrantTreasure, x, y, c.Index));
+            sim.ApplyPending();
+            Assert.AreEqual(1, c.Treasures);
+            Assert.IsNotNull(c.TreasureName);
+            float heart = c.DaoHeart;
+            sim.Enqueue(new DivineActCommand(DivineAct.HeartDemon, x, y, c.Index));
+            sim.ApplyPending();
+            Assert.IsTrue(!c.Alive || c.DaoHeart < heart, "the dao heart is shaken");
+            if (c.Alive)
+            {
+                var realm = c.Realm;
+                sim.Enqueue(new DivineActCommand(DivineAct.Cripple, x, y, c.Index));
+                sim.ApplyPending();
+                Assert.AreEqual(realm - 1, c.Realm, "a whole great realm is torn away");
+            }
+
+            // Đánh thức hung thú: it rampages at once.
+            sim.Enqueue(new SpawnHungThuCommand(x, y, 7));
+            sim.ApplyPending();
+            Assert.IsTrue(sim.Beasts.All.Exists(b => b.Alive && b.Rampage && b.Grade == 7));
+
+            // Thiên tài địa bảo and bí cảnh: set down and fought over.
+            int relics = sim.Relics.All.Count;
+            sim.Enqueue(new PlaceRelicCommand(x, y, false));
+            sim.Enqueue(new PlaceRelicCommand(x + 30, y + 30, true));
+            sim.ApplyPending();
+            Assert.GreaterOrEqual(sim.Relics.All.Count, relics + 1, "at least the treasure stands");
+            var treasure = sim.Relics.All[relics];
+            Assert.AreEqual(RelicKind.Treasure, treasure.Kind);
+            Assert.IsTrue(treasure.Discovered);
+            Run(sim, SimClock.DaysPerYear * 2);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));
