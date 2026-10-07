@@ -165,7 +165,14 @@ namespace ThienDao.World
         public static bool IsWater(Terrain t) => t <= Terrain.River;
         public static bool IsLand(Terrain t) => t > Terrain.River && t < Terrain.Count;
         public static bool IsHighland(Terrain t) => t == Terrain.Hills || t == Terrain.Mountain || t == Terrain.Peak;
-        public static bool IsWalkable(Terrain t) => IsLand(t) && t != Terrain.Peak && t != Terrain.Lava;
+        // Rivers can be forded (slowly); the sea, bare peaks and lava cannot be crossed on foot.
+        public static bool IsWalkable(Terrain t) => (IsLand(t) || t == Terrain.River) && t != Terrain.Peak && t != Terrain.Lava;
+
+        // Walking pace on each ground (1 = open grass); a road (ZoneFlags.Road) speeds it up by Nav.RoadBonus.
+        public static readonly float[] WalkSpeed =
+        {
+            0f, 0f, 0f, 0.35f, 0.9f, 1f, 0.65f, 0.5f, 1f, 0.75f, 0.4f, 0.75f, 0.55f, 0.6f, 0.35f, 0f, 1f, 0f, 0.85f, 0.6f
+        };
         public static bool IsFarmable(Terrain t) =>
             t == Terrain.Grass || t == Terrain.Savanna || t == Terrain.Forest || t == Terrain.Jungle || t == Terrain.Hills || t == Terrain.Ashland;
 

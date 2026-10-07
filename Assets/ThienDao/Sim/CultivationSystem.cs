@@ -764,7 +764,8 @@ namespace ThienDao.Sim
                     break;
                 default:
                     c.Away = false;
-                    // Walkers can be blocked by water short of home; they find another way round.
+                    // Walkers find their way round on foot (NavSystem); only one with no road home at all (cut off on
+                    // an islet by a flood) is set down there, rather than left stranded forever.
                     float dx = c.HomeX - _e.X[c.Entity], dy = c.HomeY - _e.Y[c.Entity];
                     if (dx * dx + dy * dy > 9f) Teleport(c, c.HomeX, c.HomeY);
                     break;

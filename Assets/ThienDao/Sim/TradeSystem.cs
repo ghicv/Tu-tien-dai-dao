@@ -205,8 +205,8 @@ namespace ThienDao.Sim
                 }
             }
             bool arrived = (e.TX[id] - e.X[id]) * (e.TX[id] - e.X[id]) + (e.TY[id] - e.Y[id]) * (e.TY[id] - e.Y[id]) < 0.09f;
-            bool stuck = e.X[id] == e.PrevX[id] && e.Y[id] == e.PrevY[id];
-            if (arrived || stuck || tick - e.BirthTick[id] > 200) Arrive(id, tick, arrived);
+            bool stuck = _sim.Creatures.Stuck(id); // no road there on foot
+            if (arrived || stuck || tick - e.BirthTick[id] > 320) Arrive(id, tick, arrived);
         }
 
         void Arrive(int id, long tick, bool arrived)

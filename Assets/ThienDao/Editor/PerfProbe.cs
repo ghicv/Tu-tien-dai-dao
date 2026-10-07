@@ -40,6 +40,10 @@ namespace ThienDao.Editor
             breakdown.AppendLine();
             var perSystem = new double[Simulation.SystemNames.Length, 10];
             var perVillage = new double[SettlementSystem.ProfNames.Length, 10];
+            var perNav = new double[NavSystem.ProfNames.Length + 5, 10];
+            Array.Clear(NavSystem.ProfMs, 0, NavSystem.ProfMs.Length);
+            NavSystem.Expanded = NavSystem.Failures = NavSystem.Waits = 0;
+            int plansBefore = sim.Nav.Planned;
             Array.Clear(SettlementSystem.ProfMs, 0, SettlementSystem.ProfMs.Length);
             for (int century = 1; century <= 10; century++)
             {
@@ -54,6 +58,15 @@ namespace ThienDao.Editor
                 double msPerYear = simMs / 100.0;
                 for (int s = 0; s < Simulation.SystemNames.Length; s++) { perSystem[s, century - 1] = sim.SystemMs[s] / 100.0; sim.SystemMs[s] = 0; }
                 for (int s = 0; s < SettlementSystem.ProfNames.Length; s++) { perVillage[s, century - 1] = SettlementSystem.ProfMs[s] / 100.0; SettlementSystem.ProfMs[s] = 0; }
+                for (int s = 0; s < NavSystem.ProfNames.Length; s++) { perNav[s, century - 1] = NavSystem.ProfMs[s] / 100.0; NavSystem.ProfMs[s] = 0; }
+                int np = NavSystem.ProfNames.Length;
+                perNav[np, century - 1] = (sim.Nav.Planned - plansBefore) / 100.0; plansBefore = sim.Nav.Planned;
+                perNav[np + 1, century - 1] = NavSystem.Failures / 100.0;
+                perNav[np + 2, century - 1] = NavSystem.Expanded / 100.0;
+                perNav[np + 3, century - 1] = NavSystem.Waits / 100.0;
+                perNav[np + 4, century - 1] = NavSystem.ZoneRebuilds / 100.0;
+                NavSystem.ZoneRebuilds = 0;
+                NavSystem.Expanded = NavSystem.Failures = NavSystem.Waits = 0;
                 Row(sb, sim, century * 100, msPerYear, baseMem);
                 Debug.Log($"[ThienDao] perf: year {century * 100}, {msPerYear:0.0} ms/year");
             }
@@ -78,6 +91,23 @@ namespace ThienDao.Editor
             {
                 breakdown.Append($"| {SettlementSystem.ProfNames[s]} |");
                 for (int c = 0; c < 10; c++) breakdown.Append($" {perVillage[s, c]:0.0} |");
+                breakdown.AppendLine();
+            }
+
+            breakdown.AppendLine();
+            breakdown.AppendLine("## Trong hệ Di chuyển (mỗi năm)");
+            breakdown.AppendLine();
+            breakdown.Append("| Phần |");
+            for (int c = 1; c <= 10; c++) breakdown.Append($" {c * 100} |");
+            breakdown.AppendLine();
+            breakdown.Append("|---|");
+            for (int c = 1; c <= 10; c++) breakdown.Append("---|");
+            breakdown.AppendLine();
+            string[] navRows = { NavSystem.ProfNames[0] + " (ms)", NavSystem.ProfNames[1] + " (ms)", NavSystem.ProfNames[2] + " (ms)", "Số lần tìm đường", "Không có đường", "Nút A* đã mở", "Chờ lượt tìm", "Lần đánh số vùng" };
+            for (int s = 0; s < navRows.Length; s++)
+            {
+                breakdown.Append($"| {navRows[s]} |");
+                for (int c = 0; c < 10; c++) breakdown.Append($" {perNav[s, c]:0.#} |");
                 breakdown.AppendLine();
             }
 

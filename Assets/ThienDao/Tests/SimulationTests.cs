@@ -181,6 +181,30 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void WalkersGoRoundWaterAndFlyersOverIt()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var e = sim.Entities;
+            var w = sim.World;
+            int steps = 0, intoWater = 0;
+            for (int d = 0; d < SimClock.DaysPerYear * 3; d++)
+            {
+                sim.Step();
+                for (int id = 0; id < e.Count; id++)
+                {
+                    if (!e.IsAlive(id) || e.Flying[id] || e.Species[id] == Species.None) continue;
+                    if (e.X[id] == e.PrevX[id] && e.Y[id] == e.PrevY[id]) continue;
+                    steps++;
+                    // Stepping from dry ground into the sea, onto a bare peak or into lava is what walkers must not do.
+                    if (w.IsWalkable(e.PrevX[id], e.PrevY[id]) && !w.IsWalkable(e.X[id], e.Y[id])) intoWater++;
+                }
+            }
+            Assert.Greater(steps, 1000, "people walk about");
+            Assert.AreEqual(0, intoWater, "walkers find a way round instead of crossing water");
+            Assert.Greater(sim.Nav.Planned, 0, "long trips were planned around obstacles");
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));

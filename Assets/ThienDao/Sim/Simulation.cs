@@ -28,6 +28,7 @@ namespace ThienDao.Sim
         public readonly SimClock Clock = new SimClock();
         public readonly QiSystem Qi;
         public readonly ForageSystem Forage;
+        public readonly NavSystem Nav;
         public readonly EntityStore Entities = new EntityStore();
         public readonly CreatureSystem Creatures;
         public readonly WildlifeSystem Wildlife;
@@ -70,6 +71,7 @@ namespace ThienDao.Sim
             Forage = new ForageSystem(world);
             world.TerrainChanged += Forage.RebuildCapBlocks; // must exist before settlements start clearing fields
             world.LookChanged += Forage.RebuildCapBlocks;    // scars change how much grass grows
+            Nav = new NavSystem(this);     // routes for walkers, rebuilt where the land changes
             Creatures = new CreatureSystem(this);
             Settlements = new SettlementSystem(this);
             Wildlife = new WildlifeSystem(world, Forage); // after villages have cleared their first fields

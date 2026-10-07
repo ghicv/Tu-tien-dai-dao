@@ -83,23 +83,39 @@ namespace ThienDao.Sim
                 _e.PrevX[id] = _e.X[id];
                 _e.PrevY[id] = _e.Y[id];
                 if (s == Species.Migrants) TickMigrants(id, tick);
-                else if (s == Species.Cultivator) Move(id, _e.Flying[id] ? SpeciesInfo.FlyingSpeed : SpeciesInfo.Speed[(int)s]);
-                else if (s == Species.Beast) Move(id, SpeciesInfo.Speed[(int)s]);
+                else if (s == Species.Cultivator)
+                {
+                    if (_e.Flying[id]) Fly(id, FlightSpeed(id));
+                    else Walk(id, SpeciesInfo.Speed[(int)s], tick);
+                }
+                else if (s == Species.Beast) Walk(id, SpeciesInfo.Speed[(int)s], tick);
                 else if (s == Species.Caravan)
                 {
-                    Move(id, SpeciesInfo.Speed[(int)s]);
+                    Walk(id, SpeciesInfo.Speed[(int)s], tick);
                     _sim.Trade.Walked(id, tick); // wears the road, delivers on arrival
                 }
             }
         }
 
+        // Ngự kiếm phi hành: the higher the realm, the faster the sword (Trúc Cơ 10 … Hóa Thần 30 cells a day).
+        static readonly float[] FlightByRealm = { 10f, 10f, 10f, 14f, 20f, 30f, 30f };
+
+        float FlightSpeed(int id)
+        {
+            int idx = _e.Payload[id];
+            var all = _sim.Cultivation.All;
+            return idx >= 0 && idx < all.Count ? FlightByRealm[(int)all[idx].Realm] : SpeciesInfo.FlyingSpeed;
+        }
+
+        // A walker gave up: its route found no way to the target (an island, a sealed valley).
+        public bool Stuck(int id) => _sim.Nav.Failed(id);
+
         public bool HasArrived(int id) => Arrived(id);
 
         void TickMigrants(int id, long tick)
         {
-            Move(id, SpeciesInfo.Speed[(int)Species.Migrants]);
-            bool stuck = _e.X[id] == _e.PrevX[id] && _e.Y[id] == _e.PrevY[id];
-            if (Arrived(id) || stuck || tick - _e.BirthTick[id] > 240)
+            Walk(id, SpeciesInfo.Speed[(int)Species.Migrants], tick);
+            if (Arrived(id) || Stuck(id) || tick - _e.BirthTick[id] > 360)
                 _sim.Settlements.MigrantsArrived(id, tick);
         }
 
@@ -109,30 +125,74 @@ namespace ThienDao.Sim
             return dx * dx + dy * dy < 0.09f;
         }
 
-        void Move(int id, float speed)
+        // Flyers go straight over anything, sea and peaks included.
+        void Fly(int id, float speed)
         {
             float x = _e.X[id], y = _e.Y[id];
             float dx = _e.TX[id] - x, dy = _e.TY[id] - y;
             float d = Mathf.Sqrt(dx * dx + dy * dy);
             if (d < 1e-4f) return;
-            float nx, ny;
-            if (d <= speed) { nx = _e.TX[id]; ny = _e.TY[id]; }
-            else { nx = x + dx / d * speed; ny = y + dy / d * speed; }
-            // Walkers stranded on water (the ground changed under them) may wade out.
-            bool canPass = _e.Flying[id]
-                ? _w.InBounds((int)nx, (int)ny) && nx >= 0f && ny >= 0f
-                : _w.IsWalkable(nx, ny) || !_w.IsWalkable(x, y);
-            if (canPass)
+            float nx = d <= speed ? _e.TX[id] : x + dx / d * speed, ny = d <= speed ? _e.TY[id] : y + dy / d * speed;
+            if (!_w.InBounds((int)nx, (int)ny) || nx < 0f || ny < 0f) return;
+            _e.X[id] = nx;
+            _e.Y[id] = ny;
+        }
+
+        static readonly float[] Detours = { 0.5f, -0.5f, 1f, -1f, 1.57f, -1.57f };
+
+        // Walkers follow their route around sea, peaks and lava, at the pace the ground allows (a road is fast,
+        // a swamp or a mountain slow); a step that runs into something tries to sidestep before replanning.
+        void Walk(int id, float pace, long tick)
+        {
+            float x = _e.X[id], y = _e.Y[id];
+            if (!_w.IsWalkable(x, y))
+            {
+                // Stranded on water or lava (the ground changed under them): wade to the nearest dry cell.
+                for (int r = 1; r <= 4; r++)
+                for (int oy = -r; oy <= r; oy++)
+                for (int ox = -r; ox <= r; ox++)
+                {
+                    if (Mathf.Max(Mathf.Abs(ox), Mathf.Abs(oy)) != r || !_w.IsWalkable(x + ox, y + oy)) continue;
+                    float ddx = ox, ddy = oy, dd = Mathf.Sqrt(ddx * ddx + ddy * ddy), ss = Mathf.Min(pace * 0.5f, dd);
+                    _e.X[id] = x + ddx / dd * ss;
+                    _e.Y[id] = y + ddy / dd * ss;
+                    return;
+                }
+                return;
+            }
+            float tdx = _e.TX[id] - x, tdy = _e.TY[id] - y;
+            if (tdx * tdx + tdy * tdy < 1e-6f) return;
+            var step = _sim.Nav.Steer(id, _e, tick, out float wx, out float wy);
+            if (step == NavSystem.Step.Wait) return;
+            if (step == NavSystem.Step.Failed)
+            {
+                // No way there on foot: give up on this target.
+                _e.TX[id] = x;
+                _e.TY[id] = y;
+                return;
+            }
+            float speed = pace * Mathf.Max(0.2f, _sim.Nav.SpeedAt(x, y));
+            float dx = wx - x, dy = wy - y;
+            float d = Mathf.Sqrt(dx * dx + dy * dy);
+            if (d < 1e-4f) return;
+            float s = Mathf.Min(speed, d);
+            float nx = x + dx / d * s, ny = y + dy / d * s;
+            if (_w.IsWalkable(nx, ny))
             {
                 _e.X[id] = nx;
                 _e.Y[id] = ny;
+                return;
             }
-            else
+            float a = Mathf.Atan2(dy, dx);
+            foreach (float turn in Detours)
             {
-                // Blocked by water or a peak: give up on this target.
-                _e.TX[id] = x;
-                _e.TY[id] = y;
+                float sx = x + Mathf.Cos(a + turn) * s, sy = y + Mathf.Sin(a + turn) * s;
+                if (!_w.IsWalkable(sx, sy)) continue;
+                _e.X[id] = sx;
+                _e.Y[id] = sy;
+                return;
             }
+            _sim.Nav.Replan(id);
         }
 
         public void HashInto(ref ulong h)
