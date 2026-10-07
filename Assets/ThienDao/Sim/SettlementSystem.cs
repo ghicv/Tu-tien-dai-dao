@@ -29,6 +29,8 @@ namespace ThienDao.Sim
         public int WallX0 = -1, WallY0, WallX1, WallY1;    // the ring of its walls, if it has any
         public long CivicRetry;                            // no room for its next công trình: look again from this tick
         public int ClaimFrom = 2;                          // rings inside this have no free farmland (until land is freed nearby)
+        public float Faith = FaithSystem.StartFaith;       // tín ngưỡng 0..100: how much its people trust Thiên Đạo (FaithSystem)
+        public long LastPrayer = -100000;                  // when it last prayed
 
         // Caches (exact: same result as recomputing): fields are re-checked only after the land nearby changed,
         // and the harvest's fertility sum only when the fields or the number tended changed.
@@ -1012,10 +1014,25 @@ namespace ThienDao.Sim
             {
                 if (max <= 0) return ok;
                 if (HasCivic(s, type)) continue;
+                if (type == ObjectType.Shrine && s.Faith < FaithSystem.ShrineFloor) continue; // a people who turned from heaven keep no miếu
                 if (PlaceCivic(s, type, s.X, s.Y, 14, false)) max--;
                 else ok = false;
             }
             return ok;
+        }
+
+        // Tín ngưỡng (FaithSystem): a faithful people raise a miếu to Thiên Đạo, even a hamlet; a faithless one lets theirs fall.
+        public bool BuildShrine(Settlement s) => s.Alive && !HasCivic(s, ObjectType.Shrine) && PlaceCivic(s, ObjectType.Shrine, s.X, s.Y, 14, false);
+
+        public bool AbandonShrine(Settlement s)
+        {
+            foreach (int id in s.Civic)
+                if (_w.Objects.Get(id).Type == ObjectType.Shrine)
+                {
+                    _w.Objects.Remove(id); // OnObjectRemoved drops it from the village
+                    return true;
+                }
+            return false;
         }
 
         public bool HasCivic(Settlement s, ObjectType type)

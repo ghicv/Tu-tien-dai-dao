@@ -996,6 +996,23 @@ namespace ThienDao.Sim
             return true;
         }
 
+        // A mortal of the village takes up the path on their own (FaithSystem): a child of heaven's favour where
+        // the people keep faith, a ma tu out of a cult where they have turned from heaven. No event: the caller tells it.
+        public Cultivator RiseFromVillage(Settlement s, long tick, bool demonic, out float age)
+        {
+            age = 0f;
+            if (s == null || !s.Alive || !_sim.Settlements.TakeAdult(s, out age)) return null;
+            var rng = RngFor(tick, 715000 + s.Id);
+            var sect = demonic ? null : _sim.Factions?.ProtectorOf(s.X, s.Y) ?? NearestSect(s.X, s.Y);
+            var c = Create(ref rng, Realm.LuyenKhi, 0, age, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick);
+            c.Progress = 0f;
+            if (demonic) c.Demonic = true;
+            else c.Luck = Mathf.Max(c.Luck, 0.7f);
+            if (sect != null) Recruit(c, sect, ref rng);
+            else StartOuting(c, ref rng);
+            return c;
+        }
+
         // Ban linh căn on a mortal of a village: that grown man or woman awakens a heavenly root and sets out.
         public Cultivator AwakenMortal(Settlement s, long tick)
         {

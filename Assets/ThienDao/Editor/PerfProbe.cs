@@ -20,8 +20,8 @@ namespace ThienDao.Editor
         static System.Collections.IEnumerator Probe()
         {
             var sb = new StringBuilder();
-            sb.AppendLine("| Năm | ms/năm (mô phỏng) | Bộ nhớ managed (MB) | Tu sĩ sống / tổng từng có | Dòng sử sách | Entity (slot) | Phàm nhân | Tệp lưu (KB) | Yêu thú sống | Chiến trường cổ | Bí cảnh mở |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| Năm | ms/năm (mô phỏng) | Bộ nhớ managed (MB) | Tu sĩ sống / tổng từng có | Dòng sử sách | Entity (slot) | Phàm nhân | Tệp lưu (KB) | Yêu thú sống | Chiến trường cổ | Bí cảnh mở | Lời cầu (đã cầu / quá hạn) | Làng tín ngưỡng ≥ 60 / ≤ 8 | Ma tu sống |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
             long baseMem = GC.GetTotalMemory(true);
             var genSw = Stopwatch.StartNew();
             var sim = new Simulation(MapGenerator.Generate("ThienDao"));
@@ -129,7 +129,10 @@ namespace ThienDao.Editor
             int fields = 0, open = 0;
             foreach (var l in sim.Disasters.Landmarks) if (l.Alive && l.Kind == Landmark.Battlefield) fields++;
             foreach (var r in sim.Relics.All) if (r.Open) open++;
-            sb.AppendLine($"| {year} | {msPerYear:0.0} | {mem / 1048576.0:0.0} | {alive} / {total} | {sim.History.All.Count:N0} | {sim.Entities.Count:N0} | {sim.Settlements.TotalPopulation:N0} | {save:N0} | {sim.Beasts.AliveCount} | {fields} | {open} |");
+            int faithless = 0, demonic = 0;
+            foreach (var s in sim.Settlements.All) if (s.Alive && !s.Sect && s.Faith <= 8f) faithless++;
+            foreach (var c in sim.Cultivation.All) if (c.Alive && c.Demonic) demonic++;
+            sb.AppendLine($"| {year} | {msPerYear:0.0} | {mem / 1048576.0:0.0} | {alive} / {total} | {sim.History.All.Count:N0} | {sim.Entities.Count:N0} | {sim.Settlements.TotalPopulation:N0} | {save:N0} | {sim.Beasts.AliveCount} | {fields} | {open} | {sim.Faith.Raised} / {sim.Faith.Ignored} | {sim.Faith.FaithfulCount(FaithSystem.ShrineFaith)} / {faithless} | {demonic} |");
         }
     }
 }

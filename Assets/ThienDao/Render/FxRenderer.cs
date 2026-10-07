@@ -117,6 +117,24 @@ namespace ThienDao.Render
             }
         }
 
+        // A village praying to Thiên Đạo: incense smoke rising in a thin column from its heart, a golden fleck now and then.
+        void DrawPrayers(Rect view, float dt)
+        {
+            var all = _sim.Settlements.All;
+            foreach (var p in _sim.Faith.Open)
+            {
+                var s = all[p.Settlement];
+                float x = s.X + 0.5f, y = s.Y + 1f;
+                if (!view.Contains(new Vector2(x, y))) continue;
+                if (_rand.NextDouble() < dt * 5f)
+                    _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-0.3f, 0.3f), Y = y, VX = Rand(-0.15f, 0.15f), VY = Rand(0.8f, 1.3f),
+                        Life = Rand(1.8f, 2.6f), Size = 1f, Color = new Color32(226, 222, 214, 255) });
+                if (_rand.NextDouble() < dt * 2f)
+                    _particles.Add(new Particle { Sprite = Sprite.Spark, X = x + Rand(-0.8f, 0.8f), Y = y + Rand(0.5f, 2.5f), VY = Rand(0.4f, 0.9f),
+                        Life = Rand(0.6f, 1.1f), Size = 1f, Color = new Color32(255, 214, 110, 255) });
+            }
+        }
+
         // A Hóa Thần who crossed the land in a single day tore the void: a rift where they went in and one where
         // they came out. Only Hóa Thần are checked, and there are never many.
         readonly Dictionary<int, long> _rifted = new Dictionary<int, long>();
@@ -391,6 +409,7 @@ namespace ThienDao.Render
             }
             DrawFights(now);
             DrawRelicBeacons(view, now);
+            DrawPrayers(view, Time.unscaledDeltaTime);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
             FightScenes.Hurt.RemoveAll(z => now - z.Start > FightScenes.HurtTime);

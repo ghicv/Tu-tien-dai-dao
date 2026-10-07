@@ -680,6 +680,23 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Hương khói (cầu nguyện, tín ngưỡng): a bronze burner, three lit sticks, smoke curling up.
+        public static Sprite Incense => Glyph("incense", new[]
+        {
+            "...w...w....",
+            "..w...w...w.",
+            "...w...w.w..",
+            "....r.r.r...",
+            "....n.n.n...",
+            "....n.n.n...",
+            ".kkkkkkkkkk.",
+            "kooyoooyoook",
+            ".koooooooook",
+            "..koooooook.",
+            "...kk...kk..",
+            "............",
+        }, P);
+
         // Tâm ma: a violet heart split by a black crack, a red demon eye in it.
         public static Sprite HeartDemon => Glyph("heartdemon", new[]
         {
@@ -901,6 +918,8 @@ namespace ThienDao.UI
                 case Sim.EventKind.Beast: return Paw;
                 case Sim.EventKind.Relic: return Book;
                 case Sim.EventKind.Era: return Globe;
+                case Sim.EventKind.Faith: return Incense;
+                case Sim.EventKind.Destiny: return Star;
                 default: return Scroll;
             }
         }

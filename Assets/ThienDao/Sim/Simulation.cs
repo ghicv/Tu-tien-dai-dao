@@ -46,6 +46,8 @@ namespace ThienDao.Sim
         public readonly TradeSystem Trade;
         public readonly EraSystem Eras;
         public readonly HarmSystem Harm;
+        public readonly FaithSystem Faith;
+        public readonly DestinySystem Destiny;
         public readonly WorldRules Rules = new WorldRules();
         public readonly EventLog Events = new EventLog();
 
@@ -88,6 +90,8 @@ namespace ThienDao.Sim
             Trade = new TradeSystem(this);
             Eras = new EraSystem(this);
             Harm = new HarmSystem(this);
+            Faith = new FaithSystem(this);
+            Destiny = new DestinySystem(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -97,7 +101,9 @@ namespace ThienDao.Sim
             while (_pending.Count > 0)
             {
                 var c = _pending.Dequeue();
-                c.Apply(this);
+                Faith.Heaven = true; // whatever this act kills, heaven killed (FaithSystem)
+                try { c.Apply(this); }
+                finally { Faith.Heaven = false; }
                 Log.Add(new LoggedCommand(Clock.Tick, c));
             }
         }
@@ -106,7 +112,7 @@ namespace ThienDao.Sim
         public static readonly string[] SystemNames =
         {
             "Di chuyển", "Linh khí", "Cỏ", "Thiên tai", "Thú hoang", "Làng", "Tu sĩ", "Đấu pháp", "Yêu thú", "Nhân vật chính",
-            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ"
+            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ", "Tín ngưỡng"
         };
         [System.NonSerialized] public readonly double[] SystemMs = new double[SystemNames.Length];
         static readonly double MsPerTick = 1000.0 / Stopwatch.Frequency;
@@ -138,6 +144,8 @@ namespace ThienDao.Sim
                 Relics.MonthlyStep(tick); Mark(10, ref t);
                 Trade.MonthlyStep(tick); Mark(11, ref t);
                 Factions.MonthlyStep(tick); Mark(12, ref t);
+                Faith.MonthlyStep(tick);
+                Destiny.MonthlyStep(tick); Mark(15, ref t);
             }
             if (Clock.IsYearStart)
             {
@@ -151,6 +159,7 @@ namespace ThienDao.Sim
                 Relics.YearlyStep(tick); Mark(10, ref t);
                 Eras.YearlyStep(tick); Mark(13, ref t);
                 Stories.YearlyStep(tick); Mark(14, ref t);
+                Faith.YearlyStep(tick); Mark(15, ref t);
             }
         }
 
@@ -230,6 +239,8 @@ namespace ThienDao.Sim
             Relics.HashInto(ref h);
             Trade.HashInto(ref h);
             Eras.HashInto(ref h);
+            Faith.HashInto(ref h);
+            Destiny.HashInto(ref h);
             return h;
         }
     }

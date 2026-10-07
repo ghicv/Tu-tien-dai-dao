@@ -233,6 +233,7 @@ namespace ThienDao.Sim
                 broke = true;
             }
             _weather.Add(new Weather { Kind = Calamity.Rain, X = x, Y = y, R = r, Start = tick, Until = tick + months * (long)SimClock.DaysPerMonth, Place = PlaceName(x, y) });
+            if (divine) _sim.Faith?.OnRain(x, y, r, tick); // the rain they prayed for
             _sim.Events.Add(tick, EventKind.Calamity, divine ? 2 : 1,
                 $"{(divine ? "Thiên Đạo ban mưa, m" : "M")}ưa thuận gió hòa {PlaceName(x, y)}{(broke ? ", đại hạn chấm dứt" : "")}.", x + 0.5f, y + 0.5f, Fx.Rain);
         }
@@ -813,6 +814,15 @@ namespace ThienDao.Sim
             });
             _sim.Events.Add(tick, EventKind.Calamity, divine ? 2 : 1,
                 $"{(divine ? "Thiên Đạo giáng ôn thần, ô" : "Ô")}n dịch bùng phát ở {s.Name}.", s.X + 0.5f, s.Y + 0.5f, Fx.Miasma);
+        }
+
+        // Thiên Đạo's blessing drives the sickness out of a village: it ends with this month's tally.
+        public bool Cure(int settlement, long tick)
+        {
+            bool any = false;
+            foreach (var e in _epidemics)
+                if (e.Settlement == settlement && !e.Done && e.Until > tick) { e.Until = tick; any = true; }
+            return any;
         }
 
         void EpidemicStep(long tick)

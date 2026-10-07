@@ -159,6 +159,7 @@ namespace ThienDao.Sim
                     if (o.Clan == b.Index) o.Clan = -1;
             b.Clan = -1;
             _sim.Events.Add(tick, EventKind.Beast, importance, text, x, y, killer != null ? Fx.BeastSlain : fx, killer?.Index ?? -1, -1, killer?.SectId ?? -1);
+            _sim.Faith?.OnBeastDied(b, killer, tick); // the towns that prayed against it
         }
 
         // Each year, in regions where animals have lived long under rich qi, one may open its spirit.

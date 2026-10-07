@@ -46,7 +46,7 @@ namespace ThienDao.UI
 
         // windows
         RectTransform _windowStack;
-        Window _ranking, _events, _stats, _powers;
+        Window _ranking, _events, _stats, _powers, _destiny;
         ChronicleWindow _chronicle;
         float _slowRefresh;
         readonly List<Cultivator> _rank = new List<Cultivator>();
@@ -584,7 +584,7 @@ namespace ThienDao.UI
         void BuildWindows()
         {
             var buttons = Ui.Node("WindowButtons", _root);
-            Ui.Place(buttons, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -12f), new Vector2(320f, 60f));
+            Ui.Place(buttons, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-12f, -12f), new Vector2(390f, 60f));
             Row(buttons, 6).childAlignment = TextAnchor.MiddleRight;
 
             _windowStack = Ui.Node("Windows", _root);
@@ -599,9 +599,12 @@ namespace ThienDao.UI
             _stats = MakeWindow("Thống kê");
             BuildStatChips();
             _powers = MakeWindow("Thế lực");
+            _destiny = MakeWindow("Thiên mệnh");
+            BuildDestinyRows();
             _chronicle = new ChronicleWindow(_root, _game);
             var book = Ui.Button(buttons, Icons.Book, "Biên niên sử: sử sách, truyền kỳ, danh nhân (H)", () => _chronicle.Toggle(), 56f);
             Size(book.Frame, 56f, 56f);
+            AddWindowButton(buttons, Icons.Star, "Thiên mệnh: mục tiêu thế giới gợi ý, và lời cầu nguyện của chúng sinh đang chờ đáp", _destiny);
             AddWindowButton(buttons, Icons.Banner, "Thế lực: tông môn, lãnh thổ, chiến tranh", _powers);
             AddWindowButton(buttons, Icons.Crown, "Bảng cường giả", _ranking);
             AddWindowButton(buttons, Icons.Scroll, "Sự kiện thế giới", _events);
@@ -715,7 +718,7 @@ namespace ThienDao.UI
 
         Image _cardPortrait;
         Text _cardSub, _cardBar1Text, _cardBar2Text;
-        readonly Ui.Chip[] _cardChips = new Ui.Chip[21];
+        readonly Ui.Chip[] _cardChips = new Ui.Chip[24];
         int _chipCount;
 
         void Chip(Sprite icon, string text, string tip, Color? color = null)
@@ -831,6 +834,7 @@ namespace ThienDao.UI
                 UpdateWatchList();
                 if (_events.Open) UpdateEventRows();
                 if (_powers.Open) _powers.Body.text = PowersText();
+                if (_destiny.Open) UpdateDestinyRows();
             }
             if (_stats.Open)
             {
@@ -1184,6 +1188,91 @@ namespace ThienDao.UI
             }
         }
 
+        // ---------------------------------------------------------------- thiên mệnh window: soft goals and prayers
+
+        const int DestinyRows = DestinySystem.Slots + 8;
+        readonly (Image icon, Text text)[] _destinyRows = new (Image, Text)[DestinyRows];
+        readonly Vector2[] _destinyAt = new Vector2[DestinyRows];
+        readonly bool[] _destinyPlaced = new bool[DestinyRows];
+
+        void BuildDestinyRows()
+        {
+            _destiny.Body.fontSize = 17;
+            for (int k = 0; k < DestinyRows; k++)
+            {
+                var row = Ui.Node("Destiny", _destiny.Root);
+                Row(row, 8).childAlignment = TextAnchor.UpperLeft;
+                var icon = Ui.Icon(row, null, 26f);
+                var t = Ui.Label(row, "", 17);
+                Element(t).preferredWidth = 380f;
+                _destinyRows[k] = (icon, t);
+                int slot = k;
+                row.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
+                row.gameObject.AddComponent<Button>().onClick.AddListener(() =>
+                {
+                    if (!_destinyPlaced[slot]) { ShowToast("Mục tiêu này không gắn với một nơi nào trên bản đồ."); return; }
+                    var cam = _game.Camera;
+                    cam.GlideTo(_destinyAt[slot], Mathf.Min(cam.Cam.orthographicSize, 28f)); // click to fly there
+                });
+                row.gameObject.SetActive(false);
+            }
+        }
+
+        string DestinyProgress(Destiny d, int p)
+        {
+            switch (d.Kind)
+            {
+                case DestinyKind.AnswerPrayers: return $"đã đáp {p}/{d.Goal}";
+                case DestinyKind.SlayHungThu: return $"nó đã tàn sát thêm {p}/{d.Goal} thành";
+                case DestinyKind.Ascend: return $"hiện ở {Realms.Names[Mathf.Clamp(p, 0, (int)Realm.HoaThan)]}";
+                case DestinyKind.ProtectSect: return $"{p}/{d.Goal} năm";
+                case DestinyKind.Population: return $"{p:N0}/{d.Goal:N0}";
+                default: return $"{p}/{d.Goal} nơi";
+            }
+        }
+
+        void UpdateDestinyRows()
+        {
+            var sim = _game.Sim;
+            var ds = sim.Destiny;
+            long tick = sim.Clock.Tick;
+            var sb = new StringBuilder();
+            sb.Append($"<color=#ffd873>Thiên uy {ds.Merit}</color>  <color=#8890a8>· đã thành {ds.Completed} · không thành {ds.Failed}</color>\n");
+            sb.Append("<color=#8890a8>Thế giới tự gợi ý; theo hay không, theo cách nào, tùy Thiên Đạo. Bấm một dòng để tới nơi đó.</color>");
+            for (int k = 0; k < Mathf.Min(2, ds.Past.Count); k++)
+            {
+                var d = ds.Past[k];
+                sb.Append($"\n<color={(d.Done ? "#a8e890" : "#ff8a80")}>{(d.Done ? "Đã thành" : "Không thành")}</color> <color=#8890a8>({d.EndTick / SimClock.DaysPerYear + 1})</color> {d.Text}");
+            }
+            _destiny.Body.text = sb.ToString();
+
+            int shown = 0;
+            foreach (var d in ds.Active)
+            {
+                if (shown >= DestinyRows) break;
+                int p = ds.Progress(d, tick);
+                long years = Mathf.Max(0, (int)((d.Until - tick) / SimClock.DaysPerYear));
+                _destinyPlaced[shown] = ds.Where(d, out _destinyAt[shown]);
+                var (icon, text) = _destinyRows[shown++];
+                icon.sprite = Icons.Star;
+                text.text = $"<color=#ffd873>{d.Text}</color>\n<color=#b8bccc>{DestinyProgress(d, p)} · còn {years} năm · thiên uy +{d.Reward}</color>";
+                text.transform.parent.gameObject.SetActive(true);
+            }
+            foreach (var pr in sim.Faith.Open)
+            {
+                if (shown >= DestinyRows) break;
+                var s = sim.Settlements.All[pr.Settlement];
+                _destinyPlaced[shown] = true;
+                _destinyAt[shown] = new Vector2(s.X + 0.5f, s.Y + 0.5f);
+                var (icon, text) = _destinyRows[shown++];
+                icon.sprite = Icons.Incense;
+                text.text = $"<color=#ffffff>{s.Name}: {FaithSystem.KindNames[(int)pr.Kind]}</color> <color=#8890a8>· còn {(pr.Until - tick) / SimClock.DaysPerMonth} tháng</color>\n" +
+                            $"<color=#b8bccc>{AnswerHint(pr.Kind)}</color>";
+                text.transform.parent.gameObject.SetActive(true);
+            }
+            for (int k = shown; k < DestinyRows; k++) _destinyRows[k].text.transform.parent.gameObject.SetActive(false);
+        }
+
         void UpdateEventRows()
         {
             var events = _game.Sim.Events.Recent;
@@ -1286,6 +1375,18 @@ namespace ThienDao.UI
             sb.Append($"<color=#8890a8>FPS {_game.Fps:0} · {_game.Camera.PixelsPerCell:0.0} px/ô · chunk {r.ResidentChunks}/{r.ChunkCount} · " +
                       $"{sim.TicksLastFrame} tick/frame · {w.Objects.AliveCount:N0} vật thể · {sim.Log.Count} lệnh · seed {w.Seed}</color>");
             return sb.ToString();
+        }
+
+        // How Thiên Đạo can answer a prayer of this kind (more than one way, on purpose).
+        static string AnswerHint(PrayerKind kind)
+        {
+            switch (kind)
+            {
+                case PrayerKind.Rain: return "ban mưa xuống vùng đó (tab Thời tiết) hoặc ban cơ duyên cho làng";
+                case PrayerKind.Cure: return "ban cơ duyên cho làng, ôn dịch sẽ tiêu tan";
+                case PrayerKind.Harvest: return "ban cơ duyên cho làng hoặc ban mưa";
+                default: return "giáng thiên phạt diệt hung thú (tu sĩ giết được thì dân cảm ơn tu sĩ)";
+            }
         }
 
         void UpdateCard()
@@ -1408,6 +1509,16 @@ namespace ThienDao.UI
                 if (sim.Disasters.IsInfected(s.Id)) Chip(Icons.Skull, "Ôn dịch", "Ôn dịch đang hoành hành", new Color(0.6f, 0.9f, 0.5f));
                 int drought = sim.Disasters.DroughtMonthsLeft(s.X, s.Y, sim.Clock.Tick);
                 if (drought >= 0) Chip(Icons.Sun, $"{drought} th", "Đại hạn, còn khoảng chừng ấy tháng", new Color(1f, 0.75f, 0.4f));
+                // Tín ngưỡng, and the prayer they are waiting on.
+                var prayer = sim.Faith.PrayerOf(s.Id);
+                if (prayer != null)
+                    Chip(Icons.Incense, $"{FaithSystem.KindShort[(int)prayer.Kind]} · {(prayer.Until - sim.Clock.Tick) / SimClock.DaysPerMonth} th",
+                        $"Đang {FaithSystem.KindNames[(int)prayer.Kind]}, chờ Thiên Đạo đáp lời: {AnswerHint(prayer.Kind)}. Làm ngơ thì lòng tin nguội lạnh",
+                        new Color(1f, 0.85f, 0.45f));
+                Chip(Icons.Incense, $"{s.Faith:0}",
+                    "Tín ngưỡng Thiên Đạo (0–100). Đáp lời cầu nguyện thì tăng, làm ngơ hay giáng thiên phạt thì giảm. " +
+                    $"Từ {FaithSystem.ShrineFaith:0} dựng miếu; từ 80 trời có thể giáng phúc, sinh người có linh căn; dưới {FaithSystem.ShrineFloor:0} bỏ miếu; gần 0 dễ sinh tà giáo, ma tu",
+                    s.Faith >= FaithSystem.ShrineFaith ? new Color(1f, 0.85f, 0.45f) : s.Faith < FaithSystem.ShrineFloor ? new Color(0.75f, 0.55f, 0.95f) : (Color?)null);
                 // The market: stock and price against the usual (red when dear).
                 var m = sim.Trade.MarketOf(s);
                 Color? Dear(Good g) => sim.Trade.PriceFactor(s, g) > 1.5f ? warn : sim.Trade.PriceFactor(s, g) < 0.7f ? new Color(0.6f, 0.95f, 0.6f) : (Color?)null;
@@ -1749,6 +1860,13 @@ namespace ThienDao.UI
                     // Sects in a light tint of their colour; mortal villages in plain ink.
                     var color = f != null ? Color.Lerp(f.Color, Color.white, 0.45f) : Ui.Ink;
                     PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 5f, 0f), $"{s.Name} ({s.Population})", color, 20);
+                }
+                // Villages praying to Thiên Đạo, and how long they will wait.
+                foreach (var p in sim.Faith.Open)
+                {
+                    var s = sim.Settlements.All[p.Settlement];
+                    PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 7.5f, 0f),
+                        $"{FaithSystem.KindShort[(int)p.Kind]} · còn {(p.Until - sim.Clock.Tick) / SimClock.DaysPerMonth} tháng", new Color(1f, 0.85f, 0.45f), 18);
                 }
                 foreach (var l in sim.Disasters.Landmarks)
                     if (l.Alive)

@@ -351,6 +351,50 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void PrayersAreAnsweredOrIgnoredAndHeavenOffersDestinies()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 2);
+            Assert.GreaterOrEqual(sim.Destiny.Active.Count, 2, "thiên mệnh are on offer from the start");
+
+            // Two villages far apart fall into drought; both pray.
+            var villages = sim.Settlements.All.FindAll(s => s.Alive && !s.Sect && s.Population >= 20);
+            var a = villages[0];
+            var b = villages.Find(s => (s.X - a.X) * (s.X - a.X) + (s.Y - a.Y) * (s.Y - a.Y) > 300 * 300);
+            Assert.IsNotNull(b);
+            foreach (var s in new[] { a, b })
+            {
+                s.Faith = 100f; // the faithful pray soonest
+                sim.Enqueue(new CalamityCommand(Calamity.Drought, s.X, s.Y, 2));
+            }
+            sim.ApplyPending();
+            for (int m = 0; m < 12 && (sim.Faith.PrayerOf(a.Id) == null || sim.Faith.PrayerOf(b.Id) == null); m++) Run(sim, SimClock.DaysPerMonth);
+            Assert.IsNotNull(sim.Faith.PrayerOf(a.Id), "a prays for rain");
+            Assert.IsNotNull(sim.Faith.PrayerOf(b.Id), "so does b");
+            Assert.AreEqual(PrayerKind.Rain, sim.Faith.PrayerOf(a.Id).Kind);
+
+            // Heaven answers a with rain: faith rises and the prayer is closed.
+            float before = a.Faith;
+            int answered = sim.Faith.Answered;
+            sim.Enqueue(new CalamityCommand(Calamity.Rain, a.X, a.Y, 6));
+            sim.ApplyPending();
+            Assert.AreEqual(answered + 1, sim.Faith.Answered);
+            Assert.IsNull(sim.Faith.PrayerOf(a.Id));
+            Assert.GreaterOrEqual(a.Faith, UnityEngine.Mathf.Min(100f, before));
+
+            // b is left to wait: when the drought outlasts the prayer, faith cools.
+            float bFaith = b.Faith;
+            int ignored = sim.Faith.Ignored;
+            Run(sim, SimClock.DaysPerMonth * 7);
+            if (sim.Disasters.DroughtMonthsLeft(b.X, b.Y, sim.Clock.Tick) >= 0 || sim.Faith.Ignored > ignored)
+            {
+                Assert.Greater(sim.Faith.Ignored, ignored, "a prayer left unanswered lapses");
+                Assert.Less(b.Faith, bFaith);
+            }
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));

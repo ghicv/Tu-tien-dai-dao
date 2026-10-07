@@ -30,6 +30,8 @@ namespace ThienDao.Sim
         Beast,          // yêu thú (M7): awakening, growth, raids, slain, yêu vương and yêu tộc
         Relic,          // bí cảnh (M7): left by the dead, found, explored
         Era,            // thời đại (M7): the world enters a new age
+        Faith,          // tín ngưỡng (devlog 27): prayers raised, answered, ignored; miếu raised and abandoned
+        Destiny,        // thiên mệnh (devlog 27): a soft goal set, fulfilled or failed
     }
 
     // Visual effect the renderer should play at the event's position.
