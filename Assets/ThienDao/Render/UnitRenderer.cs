@@ -215,10 +215,20 @@ namespace ThienDao.Render
                 {
                     // Yêu thú: a red aura from tứ giai up, gold for a Yêu Vương.
                     var b = _sim.Beasts.ForEntity(id);
-                    if (b != null && (b.Grade >= 4 || b.IsKing))
-                        AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + 0.7f, b.IsKing ? new Color32(255, 214, 110, 255) : new Color32(255, 80, 70, 255));
-                    DrawFighter(Unit.Beast, frame, x, y, left, 255, FightScenes.HurtFlash(x, y, Time.unscaledTime, id, out _));
-                    AddHit(Unit.Beast, x, y, new Hit { Entity = id, Region = -1, Kind = -1 });
+                    var look = b != null ? SpriteLibrary.BeastUnit((int)b.Kind, b.Grade) : Unit.Beast;
+                    // Fliers beat their wings even when hovering; a hung thú wears a blood-red aura, a Yêu Vương gold.
+                    if (b != null && BeastSystem.Flies(b.Kind) && !_sim.Paused) frame = ((int)(time * 5f) + id) & 1;
+                    int body = b != null ? SpriteLibrary.BeastScale(b.Grade, b.Rampage) : 1;
+                    if (b != null && (b.Grade >= 4 || b.IsKing || b.Rampage))
+                    {
+                        var tint = b.Rampage ? new Color32(220, 30, 40, 255) : b.IsKing ? new Color32(255, 214, 110, 255) : new Color32(255, 80, 70, 255);
+                        AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + 1.6f * body, tint);
+                        if (b.Rampage) AddQuadCentered(Unit.Aura, ((int)(time * 3f) + id + 1) & 1, x, y + 2.4f * body, tint);
+                    }
+                    float hover = b != null && BeastSystem.Flies(b.Kind) ? 0.9f + Mathf.Sin(time * 3f + id) * 0.1f : 0f;
+                    int scale = b != null ? SpriteLibrary.BeastScale(b.Grade, b.Rampage) : 1;
+                    DrawFighter(look, frame, x, y + hover, left, 255, FightScenes.HurtFlash(x, y, Time.unscaledTime, id, out _), scale);
+                    AddHit(look, x, y, new Hit { Entity = id, Region = -1, Kind = -1 }, scale);
                     continue;
                 }
                 if (s != Species.Cultivator)
@@ -295,11 +305,11 @@ namespace ThienDao.Render
             }
         }
 
-        void DrawFighter(Unit look, int frame, float x, float y, bool faceLeft, byte alpha, float flash)
+        void DrawFighter(Unit look, int frame, float x, float y, bool faceLeft, byte alpha, float flash, int scale = 1)
         {
-            AddQuadAt(look, frame, x, y, faceLeft, new Color32(255, 255, 255, alpha), false);
+            AddQuadAt(look, frame, x, y, faceLeft, new Color32(255, 255, 255, alpha), false, false, scale);
             if (flash > 0.01f) // the whole body flashes white where the blow landed
-                AddQuadAt(look, frame, x, y, faceLeft, new Color32(255, 255, 255, (byte)(255 * flash * alpha / 255f)), false, true);
+                AddQuadAt(look, frame, x, y, faceLeft, new Color32(255, 255, 255, (byte)(255 * flash * alpha / 255f)), false, true, scale);
         }
 
         void DrawVillagers(Rect view)
@@ -598,10 +608,10 @@ namespace ThienDao.Render
         static readonly Color32 WatchedTint = new Color32(255, 236, 120, 255);
 
         // Same box as AddQuad draws (feet at (x, y)).
-        void AddHit(Unit unit, float x, float y, Hit hit)
+        void AddHit(Unit unit, float x, float y, Hit hit, int scale = 1)
         {
             var sp = SpriteLibrary.UnitSprite(unit, 0);
-            float w = sp.W / (float)WorldRenderer.CellPx, h = sp.H / (float)WorldRenderer.CellPx;
+            float w = sp.W * scale / (float)WorldRenderer.CellPx, h = sp.H * scale / (float)WorldRenderer.CellPx;
             hit.Box = new Rect(x - w * 0.5f, y - 0.15f, w, h);
             _hits.Add(hit);
         }
@@ -653,7 +663,8 @@ namespace ThienDao.Render
         void AddQuadCentered(Unit unit, int frame, float x, float y, Color32 color, bool flip = false) =>
             AddQuadAt(unit, frame, x, y, flip, color, true);
 
-        void AddQuadAt(Unit unit, int frame, float x, float y, bool flip, Color32 color, bool centered, bool white = false)
+        // scale: whole multiples only (a hung thú doubled), so its pixels stay square blocks on the grid.
+        void AddQuadAt(Unit unit, int frame, float x, float y, bool flip, Color32 color, bool centered, bool white = false, int scale = 1)
         {
             if (_verts.Count >= MaxQuads * 4) return;
             // Pixel art: fades and flashes go in hard steps, and every sprite sits on the 8-px-per-cell grid.
@@ -662,7 +673,7 @@ namespace ThienDao.Render
             var sp = SpriteLibrary.UnitSprite(unit, frame);
             var uv = SpriteLibrary.UnitUv(unit, frame, white);
             const float px = WorldRenderer.CellPx;
-            float w = sp.W / px, h = sp.H / px;
+            float w = sp.W * scale / px, h = sp.H * scale / px;
             float x0 = Mathf.Round((x - w * 0.5f) * px) / px, y0 = Mathf.Round((centered ? y - h * 0.5f : y - 0.15f) * px) / px;
             _verts.Add(new Vector3(x0, y0, 0f));
             _verts.Add(new Vector3(x0, y0 + h, 0f));

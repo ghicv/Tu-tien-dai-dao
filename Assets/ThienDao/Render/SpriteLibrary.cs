@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ThienDao.Core;
 using ThienDao.World;
 using UnityEngine;
@@ -125,11 +126,18 @@ namespace ThienDao.Render
             Deer, Rabbit, Wolf, Villager0, Villager1, Villager2, Villager3, Migrants,
             CultivatorLK, CultivatorTC, CultivatorKD, CultivatorNA, CultivatorHT, CultivatorDemonic, FlyingSword, Aura,
             Beast, Caravan,
-            Count
+            BeastFirst, // then each yêu thú kind in three sizes (BeastUnit)
+            Count = BeastFirst + BeastKinds * BeastSizes
         }
 
         public const int UnitFrames = 2;
-        const int UnitSlot = 16;
+        public const int BeastKinds = 14, BeastSizes = 2;
+
+        // A yêu thú's look: its kind at full size (a beast is always bigger than a cultivator); from lục giai, and any
+        // hung thú, it is drawn twice as large on screen, cửu giai three times (BeastScale), the pixels multiplied.
+        public static Unit BeastUnit(int kind, int grade) => (Unit)((int)Unit.BeastFirst + Mathf.Clamp(kind, 0, BeastKinds - 1) * BeastSizes + 1);
+        public static int BeastScale(int grade, bool rampage = false) => grade >= 9 ? 3 : grade >= 6 || rampage ? 2 : 1;
+        const int UnitSlot = 32; // room for the huge beasts
         static PixelSprite[] _units;     // index = unit * UnitFrames + frame; then the same again as white silhouettes
         static Texture2D _unitAtlas;
         static Rect[] _unitUv;
@@ -147,7 +155,7 @@ namespace ThienDao.Render
             {
                 EnsureUnits();
                 if (_unitAtlas != null) return _unitAtlas;
-                int cols = 4, rows = (_units.Length + cols - 1) / cols;
+                int cols = 16, rows = (_units.Length + cols - 1) / cols;
                 int tw = cols * UnitSlot, th = rows * UnitSlot;
                 var px = new Color32[tw * th];
                 _unitUv = new Rect[_units.Length];
@@ -196,6 +204,9 @@ namespace ThienDao.Render
                 list[(int)Unit.Aura * UnitFrames + f] = Aura(f);
                 list[(int)Unit.Beast * UnitFrames + f] = Beast(f);
                 list[(int)Unit.Caravan * UnitFrames + f] = Caravan(f);
+                for (int k = 0; k < BeastKinds; k++)
+                for (int z = 0; z < BeastSizes; z++)
+                    list[((int)Unit.BeastFirst + k * BeastSizes + z) * UnitFrames + f] = BeastLook(k, z, f);
             }
             // Every unit again as a white silhouette of its body (soft shadows left out).
             var all = new PixelSprite[list.Length * 2];
@@ -236,6 +247,66 @@ namespace ThienDao.Render
             cv.Outline(0.4f);
             cv.Shadow(7.5f, 0.8f, 6.5f, 1.1f);
             return cv.ToSprite(0, 0, fur);
+        }
+
+        // ---------------------------------------------------------------- yêu thú (hand-drawn in BeastArt)
+
+        // size 0: the drawing halved (each 2×2 block takes its commonest colour), for the young; 1: as drawn.
+        // Walkers bob a pixel in the second frame; fliers have a second drawing with the wings down.
+        static PixelSprite BeastLook(int kind, int size, int frame)
+        {
+            var look = BeastArt.Kinds[Mathf.Clamp(kind, 0, BeastArt.Kinds.Length - 1)];
+            var rows = look.Frames[Mathf.Min(frame, look.Frames.Length - 1)];
+            bool bob = frame == 1 && look.Frames.Length == 1;
+            int w = 0;
+            foreach (var r in rows) w = Mathf.Max(w, r.Length);
+            int h = rows.Length;
+            var full = new Color32[w * (h + 1)];
+            for (int ry = 0; ry < h; ry++)
+            {
+                int y = h - ry - (bob ? 0 : 1); // text runs top-down, the canvas bottom-up; a bob lifts it a pixel
+                var row = rows[ry];
+                for (int x = 0; x < row.Length; x++)
+                    if (row[x] != '.' && look.Palette.TryGetValue(row[x], out var c)) full[y * w + x] = c;
+            }
+            h += 1;
+            var cv = size == 0 ? Halved(full, w, h) : new Canvas(w + 2, h + 2);
+            if (size != 0)
+                for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    if (full[y * w + x].a != 0) cv.Set(x + 1, y + 1, full[y * w + x]);
+            cv.Outline(0.42f);
+            cv.Shadow(cv.W * 0.5f, 0.9f, cv.W * 0.36f, 1.1f);
+            return cv.ToSprite(0, 0, look.Palette.TryGetValue('A', out var map) ? map : C(120, 60, 60));
+        }
+
+        static Canvas Halved(Color32[] src, int w, int h)
+        {
+            int hw = (w + 1) / 2, hh = (h + 1) / 2;
+            var cv = new Canvas(hw + 2, hh + 2);
+            var seen = new List<Color32>(4);
+            for (int y = 0; y < hh; y++)
+            for (int x = 0; x < hw; x++)
+            {
+                seen.Clear();
+                for (int dy = 0; dy < 2; dy++)
+                for (int dx = 0; dx < 2; dx++)
+                {
+                    int sx = x * 2 + dx, sy = y * 2 + dy;
+                    if (sx < w && sy < h && src[sy * w + sx].a != 0) seen.Add(src[sy * w + sx]);
+                }
+                if (seen.Count < 2) continue; // thin bits vanish rather than smear
+                Color32 best = seen[0];
+                int bestN = 0;
+                foreach (var a in seen)
+                {
+                    int n = 0;
+                    foreach (var b in seen) if (a.r == b.r && a.g == b.g && a.b == b.b) n++;
+                    if (n > bestN) { bestN = n; best = a; }
+                }
+                cv.Set(x + 1, y + 1, best);
+            }
+            return cv;
         }
 
         // Thương đội: a laden ox cart with bales and a pennant.

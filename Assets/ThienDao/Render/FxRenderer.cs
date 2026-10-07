@@ -167,6 +167,9 @@ namespace ThienDao.Render
             if (a == null) return;
             bool beast = ev.Fx >= Fx.BeastSlain;
             var f = FightScene.Make(Time.unscaledTime, ev.X, ev.Y, (int)(ev.Tick * 31 + salt), beast ? 5 : 7);
+            // The beast in the fight, drawn as its own kind and size.
+            var who = beast ? _sim.Beasts.LookNear(ev.X, ev.Y) : null;
+            var beastLook = who != null ? SpriteLibrary.BeastUnit((int)who.Kind, who.Grade) : SpriteLibrary.Unit.Beast;
             switch (ev.Fx)
             {
                 case Fx.DuelKill: // A died at B's hand
@@ -181,13 +184,13 @@ namespace ThienDao.Render
                     f.WinnerLook = UnitRenderer.CultivatorLook(a);
                     f.WinnerColor = QiOf(a);
                     f.WinnerIdx = a.Index;
-                    f.LoserLook = SpriteLibrary.Unit.Beast;
+                    f.LoserLook = beastLook;
                     f.LoserColor = Claw;
                     f.LoserClaws = true;
                     f.LoserDies = true;
                     break;
                 default: // a beast killed A, or A fled from it
-                    f.WinnerLook = SpriteLibrary.Unit.Beast;
+                    f.WinnerLook = beastLook;
                     f.WinnerColor = Claw;
                     f.WinnerClaws = true;
                     f.LoserLook = UnitRenderer.CultivatorLook(a);

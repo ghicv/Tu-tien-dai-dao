@@ -1446,8 +1446,15 @@ namespace ThienDao.UI
             if (b == null) return;
             var sim = _game.Sim;
             var red = new Color(1f, 0.55f, 0.5f);
-            _cardSub.text = b.IsKing ? $"Yêu Vương của {b.ClanName}" : b.Clan >= 0 ? $"Thuộc {sim.Beasts.KingOf(b).ClanName}" : "Yêu thú tự do";
-            Chip(Icons.Unit(Unit.Beast), b.GradeText, $"Giai {b.Grade} · sức mạnh ngang {Realms.Names[(b.Grade + 1) / 2]}", Ui.Gold);
+            string kind = BeastSystem.KindNames[(int)b.Kind] + (BeastSystem.Flies(b.Kind) ? ", biết bay" : "");
+            _cardSub.text = b.Rampage ? $"Hung thú ({kind}) · đã tàn sát {b.Ravaged} nơi" :
+                b.IsKing ? $"Yêu Vương của {b.ClanName} ({kind})" : b.Clan >= 0 ? $"Thuộc {sim.Beasts.KingOf(b).ClanName} ({kind})" : $"Yêu thú tự do ({kind})";
+            Chip(Icons.Unit(SpriteLibrary.BeastUnit((int)b.Kind, b.Grade)), b.GradeText, $"Giai {b.Grade} · sức mạnh ngang {Realms.Names[(b.Grade + 1) / 2]}", Ui.Gold);
+            if (b.Rampage)
+            {
+                int hunters = sim.Beasts.HuntersOf(b);
+                Chip(Icons.Sword, hunters > 0 ? $"{hunters}" : "—", hunters > 0 ? $"Liên minh trảm yêu: {hunters} cao thủ đang truy sát" : "Chưa có liên minh nào dám ra tay", red);
+            }
             Chip(Icons.Hourglass, $"{b.AgeYears(sim.Clock.Tick):0}/{b.LifespanYears}", "Tuổi / thọ nguyên");
             Chip(Icons.Skull, $"{b.Kills}", "Số người đã giết", b.Kills > 0 ? red : (Color?)null);
             Chip(Icons.Orb, $"{sim.Qi.SampleQi((int)b.HomeX, (int)b.HomeY):0}", "Linh khí nơi hang ổ (càng dày, lên giai càng nhanh)");

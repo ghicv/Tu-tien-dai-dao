@@ -24,11 +24,19 @@ namespace ThienDao.Sim
         public int Kills;            // people and cultivators
         public int KilledBy = -1;    // a cultivator's index
         public bool Humanoid;        // hóa hình
+        public BeastKind Kind;       // what it looks and fights like (BeastSystem.Kinds)
+        public bool Rampage;         // hung thú: roams from town to town, killing (BeastHorde.cs)
+        public int Prey = -1;        // the settlement it is heading for
+        public long RestUntil;       // gorged after a massacre
+        public int Ravaged;          // towns it has fallen on
+        public int LastPrey = -1, PreyBefore = -1; // the last two it ravaged: it moves on rather than circling back
+        public long RampageSince, CalmUntil;        // when its rampage began; asleep again, it will not wake before CalmUntil
+        public float DeathX = -1, DeathY = -1; // where it fell (fight scenes draw its kind)
 
         public bool IsKing => Clan == Index;
         public float AgeYears(long tick) => (tick - BirthTick) / (float)SimClock.DaysPerYear;
         public int LifespanYears => BeastSystem.Lifespan[Grade];
-        public string Title => IsKing ? $"Yêu Vương {Name}" : Humanoid ? $"{Name} (hóa hình)" : Name;
+        public string Title => Rampage ? $"Hung thú {Name}" : IsKing ? $"Yêu Vương {Name}" : Humanoid ? $"{Name} (hóa hình)" : Name;
         public string GradeText => GradeNames[Grade];
     }
 
@@ -36,7 +44,7 @@ namespace ThienDao.Sim
     // growing stronger by drawing qi. They hold a lair, prey on the herds, raid villages and meet cultivators on
     // the road (yêu đan for the victor). A strong one may proclaim itself Yêu Vương and gather a yêu tộc, which
     // raids the lands of men until a sect comes to cut the king down.
-    public sealed class BeastSystem
+    public sealed partial class BeastSystem
     {
         public const int MaxAlive = 160;
         public static readonly int[] Lifespan = { 0, 80, 150, 250, 400, 600, 900, 1300, 2000, 3000 };
@@ -100,14 +108,15 @@ namespace ThienDao.Sim
 
         // ---------------------------------------------------------------- birth
 
-        public Beast Spawn(Species from, int grade, float x, float y, long tick, ref DetRandom rng)
+        public Beast Spawn(Species from, int grade, float x, float y, long tick, ref DetRandom rng, BeastKind kind = BeastKind.Count)
         {
-            string[] kinds = from == Species.Wolf ? _w.Lore.BeastFromWolf : from == Species.Deer ? _w.Lore.BeastFromDeer : _w.Lore.BeastFromRabbit;
+            if (kind == BeastKind.Count) kind = KindFor(x, y, ref rng);
             var b = new Beast
             {
                 Index = All.Count,
-                Name = $"{_w.Lore.BeastEpithets[rng.Range(0, _w.Lore.BeastEpithets.Length)]} {kinds[rng.Range(0, kinds.Length)]}",
+                Name = $"{_w.Lore.BeastEpithets[rng.Range(0, _w.Lore.BeastEpithets.Length)]} {KindName(kind, ref rng)}",
                 From = from,
+                Kind = kind,
                 Grade = Mathf.Clamp(grade, 1, 9),
                 BirthTick = tick - (long)(rng.Range(20f, 60f) * SimClock.DaysPerYear),
                 HomeX = x,
@@ -115,6 +124,7 @@ namespace ThienDao.Sim
             };
             b.Entity = _e.Spawn(Species.Beast, x, y, b.BirthTick);
             _e.Payload[b.Entity] = b.Index;
+            _e.Flying[b.Entity] = Flies(kind); // điêu, giao long and huyết bức take to the air
             All.Add(b);
             AliveCount++;
             CountByGrade[b.Grade]++;
@@ -124,6 +134,8 @@ namespace ThienDao.Sim
         void Die(Beast b, long tick, string text, int importance, Cultivator killer = null)
         {
             float x = _e.X[b.Entity], y = _e.Y[b.Entity];
+            b.DeathX = x;
+            b.DeathY = y;
             b.Alive = false;
             b.DeathTick = tick;
             if (killer != null) b.KilledBy = killer.Index;
@@ -190,7 +202,7 @@ namespace ThienDao.Sim
                     Die(b, tick, $"{b.Title} ({b.GradeText}) thọ nguyên đã tận, chết già trong hang ổ.", b.Grade >= KingGrade ? 2 : 0);
                     continue;
                 }
-                if (!_w.IsWalkable(b.HomeX, b.HomeY)) // its lair was flooded or buried
+                if (!b.Rampage && !Flies(b.Kind) && !_w.IsWalkable(b.HomeX, b.HomeY)) // its lair was flooded or buried (hung thú and fliers keep none)
                 {
                     Die(b, tick, $"{b.Title} mất hang ổ giữa thiên tai, bỏ mạng.", b.Grade >= 3 ? 1 : 0);
                     continue;
@@ -217,6 +229,15 @@ namespace ThienDao.Sim
                     }
                 }
 
+                // A hung thú does not keep a lair: it goes from town to town (BeastHorde.cs).
+                if (b.Rampage)
+                {
+                    RampageStep(b, tick, ref rng);
+                    continue;
+                }
+                // One that has gone back to sleep sleeps: no prowling, no raids, no clan, until it wakes.
+                if (tick < b.CalmUntil) continue;
+
                 // Preys on the herds around its lair.
                 int region = wild.RegionOf(b.HomeX, b.HomeY);
                 wild.Cull(Species.Deer, region, 1f - 0.003f * b.Grade);
@@ -237,6 +258,7 @@ namespace ThienDao.Sim
                 if (b.Grade >= 2 && rng.NextFloat() < 0.012f * b.Grade) Raid(b, tick, ref rng);
                 if (b.Alive) Encounter(b, tick, ref rng);
             }
+            CoalitionStep(tick);
         }
 
         // A hungry beast falls on the nearest village in its territory; if a sect guards the land, it sends someone.
@@ -322,11 +344,12 @@ namespace ThienDao.Sim
         public void YearlyStep(long tick)
         {
             Awaken(tick);
+            Emerge(tick);
             var rng = RngFor(tick, 2);
             // A strong beast with lesser ones around it proclaims itself king.
             foreach (var b in All)
             {
-                if (!b.Alive || b.Clan >= 0 || b.Grade < KingGrade) continue;
+                if (!b.Alive || b.Clan >= 0 || b.Grade < KingGrade || b.Rampage || tick < b.CalmUntil) continue;
                 int followers = 0;
                 foreach (var o in All)
                     if (o.Alive && o != b && o.Clan < 0 && o.Grade < b.Grade && Near(o, b, 160f)) followers++;

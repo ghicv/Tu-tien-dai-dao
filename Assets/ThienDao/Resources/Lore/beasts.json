@@ -7,5 +7,22 @@
   "beastFromWolf": ["Yêu Lang", "Huyết Lang", "Phong Lang", "Lang Vương", "Ảnh Lang", "Băng Lang"],
   "beastFromDeer": ["Linh Lộc", "Giác Lộc", "Bạch Lộc", "Kim Lộc"],
   "beastFromRabbit": ["Ngọc Thố", "Nguyệt Thố", "Phong Thố", "Hỏa Thố"],
+  "kinds": [
+    {"kind": "Wolf", "names": ["Yêu Lang", "Huyết Lang", "Phong Lang", "Ảnh Lang", "Băng Lang", "Thiên Lang"]},
+    {"kind": "Tiger", "names": ["Cùng Kỳ", "Yêu Hổ", "Bạch Ngạch Hổ", "Kim Văn Hổ", "Hắc Phong Hổ", "Lôi Văn Hổ", "Bạch Hổ"]},
+    {"kind": "Bear", "names": ["Yêu Hùng", "Thiết Bối Hùng", "Băng Hùng", "Hắc Hùng", "Kim Cương Hùng"]},
+    {"kind": "Serpent", "names": ["Cự Mãng", "Độc Long Mãng", "Thanh Lân Mãng", "Song Đầu Xà", "Hắc Thủy Xà", "Kim Hoàn Xà"]},
+    {"kind": "Scorpion", "names": ["Độc Hạt", "Huyết Hạt", "Kim Giáp Hạt", "Sa Hạt Vương", "Thiết Vĩ Hạt"]},
+    {"kind": "Eagle", "names": ["Yêu Điêu", "Kim Sí Đại Bằng", "Thiết Vũ Ưng", "Phong Lôi Điêu", "Thanh Vũ Hạc"]},
+    {"kind": "Fox", "names": ["Yêu Hồ", "Linh Hồ", "Ngân Hồ", "Huyễn Hồ", "Thiên Hồ"]},
+    {"kind": "Ox", "names": ["Thao Thiết", "Ma Ngưu", "Độc Giác Ngưu", "Thiết Giáp Ngưu", "Hỏa Ngưu", "Man Ngưu"]},
+    {"kind": "Ape", "names": ["Đào Ngột", "Thạch Viên", "Kim Cương Viên", "Thông Tý Viên", "Bạch Viên", "Xích Khào Viên"]},
+    {"kind": "Dragon", "names": ["Phi Long", "Giao Long", "Hắc Giao", "Tử Lân Long", "Ứng Long"]},
+    {"kind": "Qilin", "names": ["Hỏa Kỳ Lân", "Liệt Diễm Lân", "Xích Viêm Lân"]},
+    {"kind": "Bat", "names": ["Huyết Bức", "Âm Bức", "Phệ Hồn Bức", "Thiên Dực Bức"]},
+    {"kind": "Turtle", "names": ["Huyền Quy", "Bá Hạ", "Thiết Giáp Quy", "Long Quy", "Trấn Hải Quy"]},
+    {"kind": "Chaos", "names": ["Hỗn Độn"]}
+  ],
+  "greatTitles": ["Thôn Thiên", "Hỗn Thế", "Diệt Thế", "Phệ Hồn", "Liệt Thiên", "Cửu U", "Thái Cổ", "Hồng Hoang", "Bạo Ngược", "Huyết Hải"],
   "beastClans": ["Vạn Yêu Cốc", "Bách Thú Lĩnh", "Yêu Lang Tộc", "Huyết Nguyệt Sơn", "Thanh Khâu", "Hắc Phong Động", "Thiên Yêu Lâm", "Yêu Hồ Lĩnh", "Cổ Thú Uyên", "Bách Yêu Trạch", "Kim Bằng Nhai"]
 }

@@ -163,7 +163,7 @@ namespace ThienDao.Sim
         {
             if (a < 0 || b < 0 || a == b || Get(a) == null || Get(b) == null) return;
             var r = GetRelation(a, b, true);
-            if (r != null) r.Opinion = Mathf.Max(-100f, r.Opinion - amount);
+            if (r != null) r.Opinion = Mathf.Clamp(r.Opinion - amount, -100f, 100f); // a negative amount is goodwill
         }
 
         public Stance StanceBetween(int a, int b) => GetRelation(a, b, false)?.Stance ?? Stance.Neutral;

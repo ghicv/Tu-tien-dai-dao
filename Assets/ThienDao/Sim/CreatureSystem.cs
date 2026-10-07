@@ -88,7 +88,14 @@ namespace ThienDao.Sim
                     if (_e.Flying[id]) Fly(id, FlightSpeed(id));
                     else Walk(id, SpeciesInfo.Speed[(int)s], tick);
                 }
-                else if (s == Species.Beast) Walk(id, SpeciesInfo.Speed[(int)s], tick);
+                else if (s == Species.Beast)
+                {
+                    // Great beasts stride faster; điêu, giao long and huyết bức fly.
+                    var beast = _sim.Beasts.ForEntity(id);
+                    int grade = beast != null ? beast.Grade : 1;
+                    if (_e.Flying[id]) Fly(id, 6f + grade);
+                    else Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.08f * grade), tick);
+                }
                 else if (s == Species.Caravan)
                 {
                     Walk(id, SpeciesInfo.Speed[(int)s], tick);

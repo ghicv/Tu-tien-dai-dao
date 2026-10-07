@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using ThienDao.Core;
 using ThienDao.Sim;
@@ -202,6 +203,33 @@ namespace ThienDao.Tests
             Assert.Greater(steps, 1000, "people walk about");
             Assert.AreEqual(0, intoWater, "walkers find a way round instead of crossing water");
             Assert.Greater(sim.Nav.Planned, 0, "long trips were planned around obstacles");
+        }
+
+        [Test]
+        public void HungThuRavagesTownsAndTheSectsBandTogether()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 40); // Trúc Cơ and Kết Đan enough to answer the call
+            var town = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population > 60);
+            var b = sim.Beasts.RaiseHungThu(6, town.X + 0.5f, town.Y + 0.5f, sim.Clock.Tick, "thử nghiệm");
+            Assert.IsTrue(b.Rampage);
+            long start = sim.Clock.Tick;
+            Run(sim, SimClock.DaysPerYear * 6);
+            string state = $"alive={b.Alive} ravaged={b.Ravaged} kills={b.Kills} prey={b.Prey} killedBy={b.KilledBy}";
+            Assert.GreaterOrEqual(b.Ravaged, 1, "it falls on a town: " + state);
+            int places = 0;
+            var seen = new HashSet<string>();
+            bool coalition = false;
+            foreach (var e in sim.History.All)
+            {
+                if (e.Tick < start) continue;
+                if (e.Text.Contains("Liên minh trảm yêu") || e.Text.Contains("đóng chặt sơn môn")) coalition = true; // they band together, or dare not
+                if (e.Text.Contains(b.Name) && e.Text.Contains("tàn sát") && seen.Add(e.Text.Split(':')[0])) places++;
+            }
+            Assert.IsTrue(coalition, "the sects around answer it, banding together or shutting their gates: " + state);
+            // Unless the coalition cut it down first, it moves on from town to town rather than circling one.
+            if (b.Alive) Assert.Greater(places, 1, "not the same town over and over: " + state);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
         [Test]

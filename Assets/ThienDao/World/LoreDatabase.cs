@@ -20,10 +20,12 @@ namespace ThienDao.World
     [Serializable] public sealed class PeopleNames { public string[] surnames; public string[] givenNames; }
     [Serializable] public sealed class PlaceNames { public string[] places; public string[] volcanoes; public string[] thunderPlaces; public string[] ancientRuins; public string[] ancientTombs; public string[] syllables; }
     [Serializable] public sealed class ItemNames { public string[] herbs; public string[] treasures; public string[] naturalTreasures; }
+    [Serializable] public sealed class BeastKindPool { public string kind; public string[] names; }
     [Serializable] public sealed class BeastNames
     {
         public string[] beasts; public string[] beastEpithets; public string[] beastFromWolf; public string[] beastFromDeer;
         public string[] beastFromRabbit; public string[] beastClans;
+        public BeastKindPool[] kinds; public string[] greatTitles;
     }
 
     public static class LoreDatabase
@@ -86,7 +88,8 @@ namespace ThienDao.World
         public string[] Surnames, GivenNames;
         public string[] Places, Volcanoes, ThunderPlaces, AncientRuins, AncientTombs, Syllables;
         public string[] Herbs, Treasures, NaturalTreasures;
-        public string[] Beasts, BeastEpithets, BeastFromWolf, BeastFromDeer, BeastFromRabbit, BeastClans;
+        public string[] Beasts, BeastEpithets, BeastFromWolf, BeastFromDeer, BeastFromRabbit, BeastClans, GreatTitles;
+        public BeastKindPool[] BeastKinds; // each kind its names (Sim.BeastKind by name)
 
         public static WorldLore Draw(uint seed)
         {
@@ -117,6 +120,8 @@ namespace ThienDao.World
                 BeastFromDeer = LoreDatabase.Beasts.beastFromDeer,
                 BeastFromRabbit = LoreDatabase.Beasts.beastFromRabbit,
                 BeastClans = Some(LoreDatabase.Beasts.beastClans, 0.7f, 6, ref rng),
+                BeastKinds = LoreDatabase.Beasts.kinds,
+                GreatTitles = Some(LoreDatabase.Beasts.greatTitles, 0.7f, 6, ref rng),
             };
             for (int k = 1; k < (int)RegionKind.Count; k++)
             {
