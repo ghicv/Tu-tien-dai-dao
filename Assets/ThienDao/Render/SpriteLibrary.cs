@@ -86,6 +86,13 @@ namespace ThienDao.Render
                 SectHall(C(196, 146, 52)),
                 SectHall(C(104, 68, 146)),
             };
+            s[(int)ObjectType.TreeBamboo] = new[] { Bamboo(21), Bamboo(22), Bamboo(23) };
+            s[(int)ObjectType.TreeDead] = new[] { DeadTree(false, 31), DeadTree(true, 32) };
+            s[(int)ObjectType.TreePeach] = new[]
+            {
+                Oak(C(252, 196, 214), C(238, 140, 178), C(192, 88, 132), trunk, 41),
+                Oak(C(255, 222, 232), C(246, 170, 196), C(206, 112, 150), trunk, 42),
+            };
             _sprites = s;
         }
 
@@ -594,6 +601,59 @@ namespace ThienDao.Render
             cv.Outline(0.5f);
             cv.Shadow(7f, 1.2f, 3f, 1.2f);
             return cv.ToSprite(-3, 0, mid);
+        }
+
+        // Trúc: a clump of thin jointed stalks with feathery leaves.
+        static PixelSprite Bamboo(uint seed)
+        {
+            var cv = new Canvas(10, 19);
+            var hi = C(170, 214, 96);
+            var mid = C(116, 176, 70);
+            var dark = C(70, 130, 52);
+            var leaf = C(96, 168, 64);
+            int[] xs = { 2, 5, 7 };
+            for (int k = 0; k < xs.Length; k++)
+            {
+                int top = 12 + (int)(Hash.U32(seed, k, 1) % 6);
+                for (int y = 1; y <= top; y++)
+                {
+                    bool joint = (y + k) % 4 == 0;
+                    cv.Set(xs[k], y, joint ? dark : (k == 1 ? hi : mid));
+                }
+                // Leaves fan out from the upper joints.
+                for (int y = top - 6; y <= top; y += 3)
+                {
+                    int dir = (Hash.U32(seed, k, y) & 1) == 0 ? -1 : 1;
+                    cv.Set(xs[k] + dir, y, leaf);
+                    cv.Set(xs[k] + dir * 2, y + 1, leaf);
+                    cv.Set(xs[k] - dir, y - 1, mid);
+                }
+            }
+            cv.Outline(0.55f);
+            cv.Shadow(5f, 1.1f, 3.6f, 1.2f);
+            return cv.ToSprite(-2, 0, mid);
+        }
+
+        // Cây khô: a bare, blackened tree of the ash plains.
+        static PixelSprite DeadTree(bool tall, uint seed)
+        {
+            var cv = new Canvas(11, tall ? 16 : 13);
+            var bark = C(70, 60, 58);
+            var barkHi = C(104, 92, 86);
+            int top = tall ? 13 : 10;
+            for (int y = 1; y <= top; y++) cv.Set(5, y, y % 3 == 0 ? barkHi : bark);
+            cv.Set(6, 1, bark);
+            // Branches reach up and out, crooked.
+            for (int b = 0; b < 4; b++)
+            {
+                int y0 = top - 1 - b * 2;
+                int dir = b % 2 == 0 ? -1 : 1;
+                int len = 2 + (int)(Hash.U32(seed, b, 7) % 3);
+                for (int s = 1; s <= len; s++) cv.Set(5 + dir * s, y0 + s / 2, s == len ? barkHi : bark);
+            }
+            cv.Outline(0.6f);
+            cv.Shadow(5.5f, 1.1f, 3f, 1.1f);
+            return cv.ToSprite(-1, 0, bark);
         }
 
         static PixelSprite Cactus()

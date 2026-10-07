@@ -371,7 +371,7 @@ namespace ThienDao.Sim
                 ParentId = parentId,
                 FounderName = founder?.Name,
                 Treasury = treasury,
-                Demonic = Lore.IsDemonicSect(s.BaseName) || (founder != null && founder.Demonic)
+                Demonic = LoreDatabase.IsDemonicSect(s.BaseName) || (founder != null && founder.Demonic)
             };
             float hue = f.Demonic ? 0.78f + Hash.Float01(0xC0102u, s.Id, 1) * 0.2f : 0.05f + Hash.Float01(0xC0102u, s.Id, 2) * 0.6f;
             f.Color = UnityEngine.Color.HSVToRGB(hue % 1f, 0.75f, 0.95f);

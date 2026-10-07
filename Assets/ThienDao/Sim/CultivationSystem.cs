@@ -210,7 +210,7 @@ namespace ThienDao.Sim
             var c = new Cultivator
             {
                 Index = All.Count,
-                Name = Lore.PersonName(ref rng),
+                Name = _w.Lore.PersonName(ref rng),
                 Roots = roots >= 0 ? roots : RollRoots(ref rng),
                 Comprehension = rng.NextFloat(),
                 Luck = rng.NextFloat(),
@@ -870,7 +870,7 @@ namespace ThienDao.Sim
                     if (rng.NextFloat() < 0.25f)
                     {
                         c.Progress += Realms.Need(c.Realm, c.Stage) * 0.15f;
-                        string herb = Lore.Herbs[rng.Range(0, Lore.Herbs.Length)];
+                        string herb = _w.Lore.Herbs[rng.Range(0, _w.Lore.Herbs.Length)];
                         _sim.Events.Add(tick, EventKind.Fortune, c.Realm >= Realm.KetDan ? 1 : 0, $"{c.Title} tìm được {herb}, tu vi tăng tiến.", -1f, -1f, Fx.None, c.Index);
                     }
                     break;

@@ -1,0 +1,15 @@
+{
+  "places": [
+    "Thanh Ngưu", "Gia Nguyên", "Lam Châu", "Thái Nam", "Bạch Thủy", "Thanh Dương", "Hắc Phong", "Lạc Hà", "Kim Sa", "Vân Mộng",
+    "Ngọc Khê", "Thiết Lĩnh", "Bích Hồ", "Hồng Diệp", "Thạch Kiều", "Liễu Gia", "Tử Trúc", "Phù Vân", "Hoàng Sa", "Thanh Khâu",
+    "Long Môn", "Bích Lạc", "Vọng Nguyệt", "Hàn Giang", "Mộc Lan", "Lưu Hoa", "Tùng Lâm", "Cửu Khúc", "Đào Nguyên", "Yên Ba",
+    "Tây Lương", "Bắc Mạc", "Ngũ Liễu", "Song Phong", "Thất Lý", "Bách Hoa", "Lão Quân", "Thanh Thạch", "Kỳ Lân", "Hạc Minh",
+    "Thái Bình", "An Khê", "Lạc Dương", "Bình An", "Hà Khẩu", "Tùng Giang", "Bạch Mã", "Thanh Hà", "Hồng Sơn", "Vạn An",
+    "Tử Vân", "Kim Kê", "Nam Sơn", "Bắc Sơn", "Đông Lâm", "Tây Hồ", "Phượng Hoàng", "Ngọc Tuyền", "Cẩm Tú", "Thúy Bình",
+    "Hoa Khê", "Lạc Diệp", "Thạch Môn", "Long Tuyền", "Thanh Thủy", "Hạnh Hoa", "Hắc Thạch", "Bạch Hạc", "Vân Thủy", "Lục Liễu",
+    "Kim Thành", "Ngân Hà", "Thiên Thủy", "Lưỡng Giang", "Tam Hà", "Tứ Phương", "Vọng Hải", "Lâm An", "Phú Xuân", "Trường Lạc"
+  ],
+  "volcanoes": ["Hỏa Diễm Sơn", "Xích Viêm Sơn", "Địa Hỏa Phong", "Liệt Dương Sơn", "Hỏa Long Lĩnh", "Chu Tước Phong", "Viêm Ma Sơn", "Huyết Hỏa Nhai", "Phần Thiên Sơn", "Kim Ô Phong", "Hỏa Vân Lĩnh"],
+  "thunderPlaces": ["Lôi Cốc", "Kinh Lôi Nguyên", "Thiên Lôi Pha", "Tử Điện Lĩnh", "Lôi Minh Cương", "Vạn Lôi Hạp", "Cửu Tiêu Lôi Đài", "Ngũ Lôi Nhai", "Hắc Lôi Trạch", "Thanh Lôi Phong", "Lôi Hỏa Nguyên", "Thiên Phạt Đài"],
+  "syllables": ["Thanh", "Bạch", "Hắc", "Kim", "Ngọc", "Vân", "Phong", "Thủy", "Sơn", "Lâm", "Hà", "Khê", "Lĩnh", "Nguyên", "Dương", "Nguyệt", "Tinh", "Hoa", "Diệp", "Thạch", "Long", "Hạc", "Tùng", "Trúc", "Liễu", "Đào", "Mai", "Lan"]
+}

@@ -15,17 +15,179 @@ namespace ThienDao.World
         {
             uint seed = Hash.FromString(seedText);
             var w = new WorldData(seed, seedText);
+            w.Lore = WorldLore.Draw(seed);
+            var layout = LayoutRegions(seed);
+            AssignRegions(w, layout);
             GenerateHeight(w);
             bool[] river = CarveRivers(w);
             int[] waterDist = WaterDistance(w);
             for (int i = 0; i < waterDist.Length; i++) w.WaterDist[i] = (byte)Mathf.Min(waterDist[i], 255);
             GenerateClimate(w, waterDist);
             ClassifyTerrain(w, river, waterDist);
+            FinishRegions(w);
             GenerateQi(w);
+            AssignKingdoms(w, waterDist);
             var noTree = new bool[w.W * w.H];
             PlaceSettlements(w, waterDist, noTree);
             PlaceVegetation(w, noTree);
             return w;
+        }
+
+        // ---------------------------------------------------------------- đại vực (regions)
+
+        sealed class RegionLayout
+        {
+            public Vector2[] Sites;
+            public RegionKind[] Kinds;
+        }
+
+        // The continent's plan after the map of Thiên Nam: desert to the west, the righteous heartland, the demonic
+        // east, the northern highlands, the southern kingdoms and the steppe beyond. Mirrored and jittered per seed.
+        static RegionLayout LayoutRegions(uint seed)
+        {
+            var rng = new DetRandom(seed ^ 0x8E610u);
+            var plan = new (RegionKind kind, float x, float y)[]
+            {
+                (RegionKind.SaMac, 0.13f, 0.55f), (RegionKind.SaMac, 0.2f, 0.36f),
+                (RegionKind.ChinhDao, 0.36f, 0.56f), (RegionKind.ChinhDao, 0.33f, 0.38f),
+                (RegionKind.MaDao, 0.7f, 0.55f), (RegionKind.MaDao, 0.82f, 0.4f), (RegionKind.MaDao, 0.84f, 0.66f),
+                (RegionKind.ThienDaoMinh, 0.42f, 0.78f), (RegionKind.ThienDaoMinh, 0.6f, 0.82f),
+                (RegionKind.CuuQuocMinh, 0.5f, 0.27f), (RegionKind.CuuQuocMinh, 0.64f, 0.22f),
+                (RegionKind.ThaoNguyen, 0.42f, 0.07f), (RegionKind.ThaoNguyen, 0.7f, 0.06f),
+                (RegionKind.BangNguyen, 0.5f, 1.02f),
+            };
+            bool mirror = rng.NextFloat() < 0.5f;
+            var l = new RegionLayout { Sites = new Vector2[plan.Length], Kinds = new RegionKind[plan.Length] };
+            for (int k = 0; k < plan.Length; k++)
+            {
+                float x = plan[k].x + rng.Range(-0.06f, 0.06f), y = plan[k].y + rng.Range(-0.05f, 0.05f);
+                l.Sites[k] = new Vector2(mirror ? 1f - x : x, y);
+                l.Kinds[k] = plan[k].kind;
+            }
+            return l;
+        }
+
+        // Nearest site in domain-warped coordinates, so borders wander like real ones.
+        static RegionKind RegionOf(RegionLayout l, uint seed, float nx, float ny)
+        {
+            float px = nx + Noise.Fbm(seed + 31u, nx * 3.5f, ny * 3.5f, 3) * 0.09f;
+            float py = ny + Noise.Fbm(seed + 37u, nx * 3.5f + 7.1f, ny * 3.5f + 2.3f, 3) * 0.09f;
+            int best = 0;
+            float bestD = float.MaxValue;
+            for (int k = 0; k < l.Sites.Length; k++)
+            {
+                float dx = px - l.Sites[k].x, dy = py - l.Sites[k].y, d = dx * dx + dy * dy;
+                if (d < bestD) { bestD = d; best = k; }
+            }
+            return l.Kinds[best];
+        }
+
+        static void AssignRegions(WorldData w, RegionLayout l)
+        {
+            int n = w.W;
+            uint s = w.Seed;
+            Parallel.For(0, n, y =>
+            {
+                for (int x = 0; x < n; x++) w.Region[y * n + x] = (byte)RegionOf(l, s, x / (float)n, y / (float)n);
+            });
+        }
+
+        // How rugged and how varied each region's land is.
+        static readonly float[] RegionRidges = { 1f, 1f, 1.3f, 1.7f, 0.45f, 0.6f, 0.35f, 1.2f };
+        static readonly float[] RegionDetail = { 1f, 1f, 1.1f, 1.15f, 0.75f, 0.9f, 0.65f, 1f };
+        static readonly float[] RegionWarm = { 0f, 0f, 0.05f, 0.06f, 0.06f, 0.12f, 0f, -0.25f };
+        static readonly float[] RegionWet = { 0f, 0.05f, -0.05f, 0f, 0.1f, -0.42f, -0.18f, 0f };
+
+        // Sea takes no region; each region's label goes to the middle of its land.
+        static void FinishRegions(WorldData w)
+        {
+            int n = w.W;
+            var sumX = new double[(int)RegionKind.Count];
+            var sumY = new double[(int)RegionKind.Count];
+            var count = new int[(int)RegionKind.Count];
+            for (int i = 0; i < w.Region.Length; i++)
+            {
+                if (!TerrainInfo.IsLand(w.Terrain[i])) { w.Region[i] = 0; continue; }
+                int r = w.Region[i];
+                sumX[r] += i % n;
+                sumY[r] += i / n;
+                count[r]++;
+            }
+            // The sea's name goes on open water toward the north, as on the old maps.
+            float bestSea = float.MaxValue;
+            for (int y = n / 2; y < n - 24; y += 8)
+            for (int x = 64; x < n - 64; x += 8)
+            {
+                int i = y * n + x;
+                if (w.Terrain[i] != Terrain.DeepOcean) continue;
+                float d = Mathf.Abs(x - n * 0.5f) * 0.6f + (n - y) * 1f;
+                if (d < bestSea) { bestSea = d; w.SeaLabelX = x; w.SeaLabelY = y; }
+            }
+            for (int r = 1; r < (int)RegionKind.Count; r++)
+            {
+                if (count[r] < 2000) continue; // a sliver of a region is not worth naming
+                w.Regions.Add(new RegionInfo
+                {
+                    Kind = (RegionKind)r, Name = w.Lore.RegionNames[r], LandCells = count[r],
+                    LabelX = (float)(sumX[r] / count[r]), LabelY = (float)(sumY[r] / count[r])
+                });
+            }
+        }
+
+        // Mortal kingdoms: a few per region, each around its capital on good lowland near water.
+        static void AssignKingdoms(WorldData w, int[] waterDist)
+        {
+            int n = w.W;
+            var rng = new DetRandom(w.Seed ^ 0x6106D0Au);
+            var seeds = new List<Vector2Int>();
+            foreach (var region in w.Regions)
+            {
+                var names = w.Lore.Kingdoms[(int)region.Kind];
+                if (names.Length == 0) continue;
+                int want = Mathf.Clamp(region.LandCells / 28000 + 1, 1, names.Length);
+                var picker = new List<string>(names);
+                int made = 0;
+                for (int attempt = 0; attempt < 4000 && made < want; attempt++)
+                {
+                    int x = rng.Range(16, n - 16), y = rng.Range(16, n - 16);
+                    int i = y * n + x;
+                    if (w.Region[i] != (byte)region.Kind) continue;
+                    var t = w.Terrain[i];
+                    if (!TerrainInfo.IsFarmable(t)) continue; // somewhere fields will grow (hills and ash too)
+                    if (waterDist[i] < 3 || waterDist[i] > 20 || TooClose(seeds, x, y, 110)) continue;
+                    int pick = rng.Range(0, picker.Count);
+                    w.Kingdoms.Add(new Kingdom { Id = w.Kingdoms.Count, Name = picker[pick], Region = region.Kind, CapitalX = x, CapitalY = y });
+                    picker.RemoveAt(pick);
+                    seeds.Add(new Vector2Int(x, y));
+                    made++;
+                }
+            }
+            if (w.Kingdoms.Count == 0) return;
+            uint s = w.Seed;
+            Parallel.For(0, n, y =>
+            {
+                for (int x = 0; x < n; x++)
+                {
+                    int i = y * n + x;
+                    byte r = w.Region[i];
+                    if (r == 0) continue;
+                    // Warped distance to the capitals of this region; land in a region without kingdoms stays wild.
+                    float px = x + Noise.Fbm(s + 41u, x / 140f, y / 140f, 3) * 40f;
+                    float py = y + Noise.Fbm(s + 43u, x / 140f + 3.7f, y / 140f + 9.1f, 3) * 40f;
+                    int best = -1;
+                    float bestD = float.MaxValue;
+                    foreach (var k in w.Kingdoms)
+                    {
+                        if ((byte)k.Region != r) continue;
+                        float dx = px - k.CapitalX, dy = py - k.CapitalY, d = dx * dx + dy * dy;
+                        if (d < bestD) { bestD = d; best = k.Id; }
+                    }
+                    if (best >= 0 && bestD < 260f * 260f) w.KingdomOf[i] = (ushort)(best + 1);
+                }
+            });
+            foreach (var k in w.Kingdoms) k.LandCells = 0;
+            for (int i = 0; i < w.KingdomOf.Length; i++)
+                if (w.KingdomOf[i] > 0) w.Kingdoms[w.KingdomOf[i] - 1].LandCells++;
         }
 
         static void GenerateHeight(WorldData w)
@@ -46,12 +208,17 @@ namespace ThienDao.World
 
                     float continent = Noise.Fbm(s + 1u, px * 2.5f, py * 2.5f, 4);
                     float detail = Noise.Fbm(s + 2u, px * 9f, py * 9f, 5);
-                    float edge = Mathf.Max(Mathf.Abs(nx - 0.5f), Mathf.Abs(ny - 0.5f)) * 2f;
-                    float falloff = Noise.SmoothStep(0.72f, 1f, edge);
+                    // Distance to the map's rim, half square and half round, with a wandering coast.
+                    float ex = Mathf.Abs(nx - 0.5f) * 2f, ey = Mathf.Abs(ny - 0.5f) * 2f;
+                    float edge = Mathf.Lerp(Mathf.Max(ex, ey), Mathf.Sqrt(ex * ex + ey * ey) * 0.82f, 0.55f)
+                                 + Noise.Fbm(s + 13u, nx * 2.2f, ny * 2.2f, 3) * 0.16f;
+                    float falloff = Noise.SmoothStep(0.62f, 1f, edge);
+                    int region = w.Region[y * n + x];
 
-                    float v = continent + detail * 0.22f - falloff * 0.9f;
+                    float v = continent + detail * 0.22f * RegionDetail[region] - falloff * 0.9f;
                     float mountainMask = Noise.SmoothStep(0.08f, 0.35f, continent);
-                    v += Mathf.Max(0f, Noise.Ridged(s + 3u, px * 6f, py * 6f, 4) - 0.45f) * mountainMask * 0.9f;
+                    // The northern highlands and the demonic east are rugged; the southern plains and steppe are flat.
+                    v += Mathf.Max(0f, Noise.Ridged(s + 3u, px * 6f, py * 6f, 4) - 0.45f) * mountainMask * 0.9f * RegionRidges[region];
                     h[y * n + x] = v;
                 }
             });
@@ -223,6 +390,9 @@ namespace ThienDao.World
                               - Mathf.Max(0f, hv - 0.55f) * 0.9f;
                     float d = Mathf.Min(waterDist[i], MaxWaterDist) / (float)MaxWaterDist;
                     float m = 0.40f + Noise.Fbm(s + 5u, nx * 5f, ny * 5f, 4) * 0.55f + (1f - d) * 0.25f;
+                    int region = w.Region[i];
+                    t += RegionWarm[region];
+                    m += RegionWet[region];
                     w.Temperature[i] = (byte)(Mathf.Clamp01(t) * 255f);
                     w.Moisture[i] = (byte)(Mathf.Clamp01(m) * 255f);
                 }
@@ -253,6 +423,35 @@ namespace ThienDao.World
                 else if (m > 0.58f) r = Terrain.Forest;
                 else if (m < 0.30f) r = Terrain.Savanna;
                 else r = Terrain.Grass;
+
+                // Each region's own ground.
+                var region = (RegionKind)w.Region[i];
+                if (TerrainInfo.IsLand(r) && r != Terrain.River && r != Terrain.Beach)
+                {
+                    int x = i % w.W, y = i / w.W;
+                    float patch = Noise.Fbm(w.Seed + 21u, x / 70f, y / 70f, 3);
+                    switch (region)
+                    {
+                        case RegionKind.MaDao:
+                            // Ash plains in broad patches; the deserts of the east are ash too.
+                            if ((r == Terrain.Grass || r == Terrain.Savanna || r == Terrain.Tundra) && patch > -0.05f) r = Terrain.Ashland;
+                            else if (r == Terrain.Desert || r == Terrain.Snow) r = Terrain.Ashland;
+                            // No snow on the fire mountains: bare black rock, embers in the cracks.
+                            else if (r == Terrain.Peak) r = Terrain.Mountain;
+                            break;
+                        case RegionKind.SaMac:
+                            if (r == Terrain.Hills || (r == Terrain.Savanna && patch > 0f) || (r == Terrain.Desert && patch > 0.35f)) r = Terrain.Badlands;
+                            else if (r == Terrain.Grass || r == Terrain.Forest) r = waterDist[i] < 4 ? Terrain.Savanna : Terrain.Desert;
+                            break;
+                        case RegionKind.ThaoNguyen:
+                            if (r == Terrain.Forest || r == Terrain.Jungle) r = patch > 0.2f ? Terrain.Forest : Terrain.Grass;
+                            else if (r == Terrain.Desert) r = Terrain.Savanna;
+                            break;
+                        case RegionKind.BangNguyen:
+                            if (r == Terrain.Grass || r == Terrain.Forest || r == Terrain.Savanna) r = Terrain.Tundra;
+                            break;
+                    }
+                }
 
                 w.Terrain[i] = r;
             }
@@ -376,14 +575,35 @@ namespace ThienDao.World
             var rng = new DetRandom(w.Seed ^ 0xC0FFEEu);
             var villages = new List<Vector2Int>();
 
-            for (int attempt = 0; attempt < 6000 && villages.Count < 40; attempt++)
+            // Each kingdom's capital first: a big town at the heart of its land.
+            foreach (var k in w.Kingdoms)
+            {
+                var site = new VillageSite { X = k.CapitalX, Y = k.CapitalY, Roof = (byte)rng.Range(0, 4), Capital = k.Id };
+                int houses = rng.Range(12, 19);
+                for (int t = 0; t < houses * 8 && site.Houses.Count < houses; t++)
+                {
+                    int ox = rng.Range(-4, 5) * 4 + rng.Range(0, 2);
+                    int oy = rng.Range(-4, 5) * 4 + rng.Range(0, 2);
+                    int id = TryPlaceBuilding(w, ObjectType.House, k.CapitalX + ox, k.CapitalY + oy, site.Roof, noTree);
+                    if (id >= 0) site.Houses.Add(id);
+                }
+                if (site.Houses.Count < 3)
+                {
+                    foreach (int id in site.Houses) w.Objects.Remove(id);
+                    continue;
+                }
+                villages.Add(new Vector2Int(k.CapitalX, k.CapitalY));
+                w.VillageSites.Add(site);
+            }
+
+            for (int attempt = 0; attempt < 12000 && villages.Count < 40 + w.Kingdoms.Count; attempt++)
             {
                 int x = rng.Range(16, n - 16), y = rng.Range(16, n - 16);
                 int i = y * n + x;
                 Terrain t = w.Terrain[i];
-                if (t != Terrain.Grass && t != Terrain.Savanna && t != Terrain.Forest) continue;
+                if (!TerrainInfo.IsFarmable(t) || t == Terrain.Hills) continue;
                 if (waterDist[i] < 3 || waterDist[i] > 14) continue;
-                if (TooClose(villages, x, y, 70)) continue;
+                if (TooClose(villages, x, y, 60)) continue;
 
                 var site = new VillageSite { X = x, Y = y, Roof = (byte)rng.Range(0, 4) };
                 int houses = rng.Range(5, 12);
@@ -405,27 +625,40 @@ namespace ThienDao.World
                 }
             }
 
+            // Sects on rich qi: first one or two in each great region (so Ma Đạo has its demonic sects and Chính
+            // Đạo its righteous ones), then the rest wherever qi is richest.
             var sects = new List<Vector2Int>();
             ushort qiNeeded = (ushort)(WorldData.MaxQi * 0.6f);
-            for (int attempt = 0; attempt < 6000 && sects.Count < 7; attempt++)
-            {
-                int x = rng.Range(16, n - 16), y = rng.Range(16, n - 16);
-                int i = y * n + x;
-                if (w.QiCap[i] < qiNeeded) continue;
-                if (TooClose(sects, x, y, 150) || TooClose(villages, x, y, 30)) continue;
+            RegionKind[] heartlands = { RegionKind.ChinhDao, RegionKind.MaDao, RegionKind.ThienDaoMinh, RegionKind.CuuQuocMinh, RegionKind.ChinhDao, RegionKind.MaDao };
+            foreach (var region in heartlands)
+                for (int attempt = 0; attempt < 3000; attempt++)
+                    if (TrySect(w, ref rng, sects, villages, noTree, region, attempt < 2000 ? qiNeeded : (ushort)(qiNeeded * 0.7f))) break;
+            for (int attempt = 0; attempt < 6000 && sects.Count < 8; attempt++)
+                TrySect(w, ref rng, sects, villages, noTree, RegionKind.None, qiNeeded);
+        }
 
-                byte roof = (byte)rng.Range(0, 3);
-                if (TryPlaceBuilding(w, ObjectType.SectHall, x - 2, y - 2, roof, noTree) < 0) continue;
-                var site = new VillageSite { X = x, Y = y, Roof = roof, Sect = true };
-                for (int k = 0; k < 12; k++)
-                {
-                    int ox = rng.Range(-2, 3) * 4, oy = rng.Range(-2, 3) * 4;
-                    int id = TryPlaceBuilding(w, ObjectType.House, x + ox, y + oy, roof, noTree);
-                    if (id >= 0) site.Houses.Add(id);
-                }
-                sects.Add(new Vector2Int(x, y));
-                if (site.Houses.Count > 0) w.VillageSites.Add(site);
+        // region None = anywhere on land.
+        static bool TrySect(WorldData w, ref DetRandom rng, List<Vector2Int> sects, List<Vector2Int> villages, bool[] noTree, RegionKind region, ushort qiNeeded)
+        {
+            int n = w.W;
+            int x = rng.Range(16, n - 16), y = rng.Range(16, n - 16);
+            int i = y * n + x;
+            if (region != RegionKind.None && w.Region[i] != (byte)region) return false;
+            if (w.QiCap[i] < qiNeeded) return false;
+            if (TooClose(sects, x, y, 150) || TooClose(villages, x, y, 30)) return false;
+
+            byte roof = (byte)rng.Range(0, 3);
+            if (TryPlaceBuilding(w, ObjectType.SectHall, x - 2, y - 2, roof, noTree) < 0) return false;
+            var site = new VillageSite { X = x, Y = y, Roof = roof, Sect = true };
+            for (int k = 0; k < 12; k++)
+            {
+                int ox = rng.Range(-2, 3) * 4, oy = rng.Range(-2, 3) * 4;
+                int id = TryPlaceBuilding(w, ObjectType.House, x + ox, y + oy, roof, noTree);
+                if (id >= 0) site.Houses.Add(id);
             }
+            sects.Add(new Vector2Int(x, y));
+            if (site.Houses.Count > 0) w.VillageSites.Add(site);
+            return true;
         }
 
         static bool TooClose(List<Vector2Int> points, int x, int y, int minDist)
@@ -458,8 +691,39 @@ namespace ThienDao.World
                 float clump = Noise.Fbm(w.Seed + 9u, x / 40f, y / 40f, 2) * 0.5f + 0.5f;
                 float roll = Hash.Float01(s, x, y);
                 ObjectType type = PickVegetation(w, i, clump, roll, Hash.U32(s + 1u, x, y));
+                type = RegionalTree(w, i, x, y, type, roll);
                 if (type == ObjectType.None) continue;
                 w.Objects.Place(type, x, y, (byte)(Hash.U32(s + 2u, x, y) & 0xFF));
+            }
+        }
+
+        // Regions dress their land differently: bamboo groves and peach blossom in the righteous and southern
+        // lands, dead black woods on the ash plains, nothing but pine up north, stones on the mesas.
+        static ObjectType RegionalTree(WorldData w, int i, int x, int y, ObjectType type, float roll)
+        {
+            var region = (RegionKind)w.Region[i];
+            var t = w.Terrain[i];
+            float grove = Noise.Fbm(w.Seed + 55u, x / 26f, y / 26f, 2);
+            switch (region)
+            {
+                case RegionKind.ChinhDao:
+                case RegionKind.CuuQuocMinh:
+                    if (type == ObjectType.None) return t == Terrain.Grass && grove > 0.38f && roll < 0.06f ? ObjectType.TreePeach : type;
+                    if (grove > 0.28f && (t == Terrain.Forest || t == Terrain.Hills || t == Terrain.Grass)) return ObjectType.TreeBamboo;
+                    if (grove < -0.42f && t == Terrain.Grass) return ObjectType.TreePeach;
+                    return type;
+                case RegionKind.MaDao:
+                    if (t == Terrain.Ashland)
+                        return roll < 0.035f ? ObjectType.TreeDead : roll < 0.05f ? ObjectType.Rock : ObjectType.None;
+                    if (type == ObjectType.TreeOak || type == ObjectType.TreeAutumn) return grove > -0.1f ? ObjectType.TreeDead : ObjectType.TreePine;
+                    return type;
+                case RegionKind.ThienDaoMinh:
+                    return type == ObjectType.TreeOak || type == ObjectType.TreeAutumn ? ObjectType.TreePine : type;
+                case RegionKind.SaMac:
+                    if (t == Terrain.Badlands) return roll < 0.04f ? ObjectType.Rock : roll < 0.05f ? ObjectType.Cactus : ObjectType.None;
+                    return type;
+                default:
+                    return type;
             }
         }
 

@@ -1,0 +1,13 @@
+{
+  "herbs": [
+    "Ngọc Tủy Chi", "Thiên Linh Quả", "Huyết Sâm ngàn năm", "Băng Tâm Thảo", "Hỏa Linh Chi", "Kim Tủy Hoa", "Tử Hà Thảo",
+    "Vạn Niên Linh Nhũ", "Thanh Linh Thảo", "Long Diên Hương", "Thất Tinh Thảo", "Cửu Diệp Linh Chi", "Hàn Ngọc Liên", "Xích Huyết Quả",
+    "Lôi Linh Mộc", "Thiên Tâm Hoa", "Bích Ngọc Trúc", "Kim Linh Sâm"
+  ],
+  "treasures": [
+    "Thanh Trúc Phong Vân Kiếm", "Huyền Thiết Phi Thiên Thuẫn", "Kim Lôi Trúc phi kiếm", "Phong Lôi Sí", "Hư Thiên Đỉnh mảnh vỡ",
+    "Ngũ Hành Hoàn", "Huyết Ngọc Châu", "Tử Mẫu Âm Dương Thoa", "Bát Quái Kính", "Hàn Băng Kiếm", "Liệt Hỏa Phiến", "Ngân Nguyệt Câu",
+    "Thất Tinh Kiếm", "Huyền Âm Phướn", "Cửu Long Đỉnh", "Tử Kim Linh", "Phá Thiên Thương", "Bích Thủy Kính", "Kim Giáp Phù", "Thiên Lôi Châu"
+  ],
+  "naturalTreasures": ["Vạn Niên Linh Nhũ", "Địa Hỏa Linh Tủy", "Lôi Linh Tinh Thạch", "Thiên Niên Hàn Ngọc", "Cửu Khúc Linh Sâm", "Long Huyết Thạch", "Thái Âm Chân Thủy", "Ngũ Sắc Linh Thạch", "Thiên Ngoại Vẫn Thiết"]
+}

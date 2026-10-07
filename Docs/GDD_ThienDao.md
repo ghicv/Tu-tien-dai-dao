@@ -11,7 +11,7 @@
 1. **Simulation LOD (mức chi tiết theo tầm quan trọng).** Không mô phỏng mọi phàm nhân như một cá thể đầy đủ. Phàm nhân trong làng/thành là *dân số dạng số liệu*; chỉ cá thể "đáng chú ý" (tu sĩ, có linh căn, lãnh đạo, yêu thú mạnh, người vừa gặp kỳ ngộ) mới được "nâng cấp" thành entity đầy đủ. Đây là chìa khóa để chạy hàng triệu năm mà vẫn nhẹ.
 2. **Mọi thứ là dữ liệu + quy luật, không phải script.** Câu chuyện sinh ra từ: nhu cầu khan hiếm + tính cách + quan hệ + xác suất. Không viết sự kiện cốt truyện.
 3. **Simulation tách khỏi rendering.** Simulation chạy trên mảng dữ liệu thuần C#, deterministic theo seed. Rendering chỉ đọc state và vẽ.
-4. **Toàn bộ tên gọi và lore dựa trên Phàm Nhân Tu Tiên:** tông môn, địa danh (Thôn / Trấn / Thành), đan dược, linh thạch, yêu thú, cảnh giới. Danh mục tên nằm ở `Assets/ThienDao/Sim/Lore.cs`; nội dung mới phải lấy tên từ đây hoặc bổ sung vào đây.
+4. **Toàn bộ tên gọi và lore dựa trên Phàm Nhân Tu Tiên:** tông môn, địa danh (Thôn / Trấn / Thành), đan dược, linh thạch, yêu thú, cảnh giới. Danh mục tên nằm ở `Assets/ThienDao/Resources/Lore/*.json`, chia theo loại (thế giới, tông môn, người, địa danh, vật phẩm, yêu thú). Mỗi thế giới bốc thăm một phần (`WorldLore.Draw`). Nội dung mới phải lấy tên từ đây hoặc bổ sung vào đây.
 
 ---
 
@@ -96,6 +96,21 @@ Tất cả là **mảng phẳng** index `y*W + x`. Target **PC**: map mặc đ�
 | Yêu thú lớn | 2×2 – 4×4 | |
 
 - Logic chỉ dùng footprint (chặn đường, chiếm đất, cháy lan). Hình vẽ chỉ là trang trí phía trên.
+
+### 2.1c Đại vực và nước phàm nhân (đã có, devlog 18)
+
+- **Bố cục theo bản đồ Thiên Nam.** Mỗi cell thuộc một đại vực (`WorldData.Region`):
+  - Chính Đạo, Ma Đạo, Thiên Đạo Minh, Cửu Quốc Minh, Sa Mạc Bạo Phong, Mộ Lan Thảo Nguyên, Cực Bắc Băng Nguyên.
+  - Biển (Vô Biên Hải) là vùng 0.
+- **Mỗi vùng có khí hậu, độ cao núi và địa hình đặc trưng riêng:**
+  - Ma Đạo: Đất tro.
+  - Sa Mạc: Hoàng thổ.
+  - Băng Nguyên: lãnh nguyên.
+- **Nước phàm nhân:**
+  - Mỗi vùng chứa vài nước (`WorldData.KingdomOf`), lãnh thổ là Voronoi quanh kinh thành.
+  - Làng biết mình thuộc nước nào.
+  - Sau này mỗi nước sẽ thành một thế lực phàm nhân.
+- **Hiển thị:** tông màu riêng cho mỗi vùng, nét đứt ở biên giới vùng, nét chấm ở biên giới nước, và texture riêng cho từng loại đất (`Render/TerrainTexture.cs`).
 
 ### 2.2 Linh khí & linh mạch
 

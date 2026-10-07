@@ -48,7 +48,7 @@ namespace ThienDao.Sim
         readonly WorldData _w;
         readonly EntityStore _e;
         public readonly List<Beast> All = new List<Beast>();
-        readonly Lore.Picker _clanNames = new Lore.Picker(Lore.BeastClans);
+        readonly Lore.Picker _clanNames;
         public int AliveCount { get; private set; }
         public readonly int[] CountByGrade = new int[10];
 
@@ -56,6 +56,7 @@ namespace ThienDao.Sim
         {
             _sim = sim;
             _w = sim.World;
+            _clanNames = new Lore.Picker(_w.Lore.BeastClans, _w.Lore.Syllables);
             _e = sim.Entities;
             SeedInitial();
         }
@@ -101,11 +102,11 @@ namespace ThienDao.Sim
 
         public Beast Spawn(Species from, int grade, float x, float y, long tick, ref DetRandom rng)
         {
-            string[] kinds = from == Species.Wolf ? Lore.BeastFromWolf : from == Species.Deer ? Lore.BeastFromDeer : Lore.BeastFromRabbit;
+            string[] kinds = from == Species.Wolf ? _w.Lore.BeastFromWolf : from == Species.Deer ? _w.Lore.BeastFromDeer : _w.Lore.BeastFromRabbit;
             var b = new Beast
             {
                 Index = All.Count,
-                Name = $"{Lore.BeastEpithets[rng.Range(0, Lore.BeastEpithets.Length)]} {kinds[rng.Range(0, kinds.Length)]}",
+                Name = $"{_w.Lore.BeastEpithets[rng.Range(0, _w.Lore.BeastEpithets.Length)]} {kinds[rng.Range(0, kinds.Length)]}",
                 From = from,
                 Grade = Mathf.Clamp(grade, 1, 9),
                 BirthTick = tick - (long)(rng.Range(20f, 60f) * SimClock.DaysPerYear),
@@ -332,7 +333,7 @@ namespace ThienDao.Sim
                 if (followers < 2) continue;
                 b.Clan = b.Index;
                 b.ClanName = _clanNames.Next(ref rng); // each yêu tộc its own name
-                if (System.Array.IndexOf(Lore.BeastClans, b.ClanName) < 0) b.ClanName += " Yêu Tộc";
+                if (System.Array.IndexOf(LoreDatabase.Beasts.beastClans, b.ClanName) < 0) b.ClanName += " Yêu Tộc";
                 foreach (var o in All)
                     if (o.Alive && o != b && o.Clan < 0 && o.Grade < b.Grade && Near(o, b, 160f)) o.Clan = b.Index;
                 _sim.Events.Add(tick, EventKind.Beast, 3, $"{b.Name} ({b.GradeText}) tự xưng Yêu Vương, thu phục {followers} yêu thú, lập nên {b.ClanName}.",

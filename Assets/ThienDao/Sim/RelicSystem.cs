@@ -95,7 +95,7 @@ namespace ThienDao.Sim
             if (r == null) return;
             r.Sect = s.Id;
             r.Origin = $"tông môn bị diệt năm {Year(tick)}";
-            r.Treasure = rng.NextFloat() < 0.5f ? Lore.Treasures[rng.Range(0, Lore.Treasures.Length)] : null;
+            r.Treasure = rng.NextFloat() < 0.5f ? _w.Lore.Treasures[rng.Range(0, _w.Lore.Treasures.Length)] : null;
             r.Stones = rng.Range(200f, 800f);
             r.Pills = rng.Range(0, 3);
             r.Layers = 2;
@@ -106,7 +106,7 @@ namespace ThienDao.Sim
         {
             var rng = RngFor(tick, 200000 + l.X * 31 + l.Y);
             if (rng.NextFloat() >= 0.5f) return;
-            string what = Lore.NaturalTreasures[rng.Range(0, Lore.NaturalTreasures.Length)];
+            string what = _w.Lore.NaturalTreasures[rng.Range(0, _w.Lore.NaturalTreasures.Length)];
             var r = Add(RelicKind.Treasure, $"{what} ở {l.Name}", l.X + rng.Range(-l.R, l.R + 1), l.Y + rng.Range(-l.R, l.R + 1), 2 + rng.Range(0, 3), tick);
             if (r == null) return;
             r.Origin = l.Origin;

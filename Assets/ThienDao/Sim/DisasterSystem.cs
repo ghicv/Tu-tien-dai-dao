@@ -87,8 +87,8 @@ namespace ThienDao.Sim
         readonly Dictionary<int, long> _immuneUntil = new Dictionary<int, long>(); // settlement id → no new epidemic before
         readonly List<int> _ids = new List<int>();
         readonly List<Settlement> _near = new List<Settlement>();
-        readonly Lore.Picker _thunderNames = new Lore.Picker(Lore.ThunderPlaces);
-        readonly Lore.Picker _volcanoNames = new Lore.Picker(Lore.Volcanoes);
+        readonly Lore.Picker _thunderNames;
+        readonly Lore.Picker _volcanoNames;
 
         public readonly List<Landmark> Landmarks = new List<Landmark>();
 
@@ -96,6 +96,8 @@ namespace ThienDao.Sim
         {
             _sim = sim;
             _w = sim.World;
+            _thunderNames = new Lore.Picker(_w.Lore.ThunderPlaces, _w.Lore.Syllables);
+            _volcanoNames = new Lore.Picker(_w.Lore.Volcanoes, _w.Lore.Syllables);
         }
 
         public int DroughtCount => _droughts.Count;

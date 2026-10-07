@@ -1,0 +1,11 @@
+{
+  "beasts": ["Huyết Ngọc Tri Chu", "Phệ Kim Trùng", "Thiết Giáp Ngô Công", "Hỏa Lân Thú", "Băng Phượng", "Giao Long", "Kim Sí Đại Bằng", "Thôn Thiên Mãng", "Bạch Hổ Yêu", "Hắc Giao"],
+  "beastEpithets": [
+    "Xích Mục", "Bạch Mao", "Hắc Phong", "Kim Giác", "Huyết Nha", "Ngân Bối", "Thiết Trảo", "Thanh Lân", "Tử Văn", "Cuồng Phong",
+    "Liệt Diễm", "Hàn Sương", "Độc Giác", "Song Đầu", "Lôi Văn", "Âm Phong", "Cửu Vĩ", "Kim Đồng", "Thiết Bối", "Huyết Ảnh", "Băng Lân", "Phi Thiên"
+  ],
+  "beastFromWolf": ["Yêu Lang", "Huyết Lang", "Phong Lang", "Lang Vương", "Ảnh Lang", "Băng Lang"],
+  "beastFromDeer": ["Linh Lộc", "Giác Lộc", "Bạch Lộc", "Kim Lộc"],
+  "beastFromRabbit": ["Ngọc Thố", "Nguyệt Thố", "Phong Thố", "Hỏa Thố"],
+  "beastClans": ["Vạn Yêu Cốc", "Bách Thú Lĩnh", "Yêu Lang Tộc", "Huyết Nguyệt Sơn", "Thanh Khâu", "Hắc Phong Động", "Thiên Yêu Lâm", "Yêu Hồ Lĩnh", "Cổ Thú Uyên", "Bách Yêu Trạch", "Kim Bằng Nhai"]
+}

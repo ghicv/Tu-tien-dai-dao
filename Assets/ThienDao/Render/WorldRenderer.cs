@@ -300,9 +300,12 @@ namespace ThienDao.Render
             uint seed = _world.Seed ^ 0x5EEDu;
             int x0 = cx * ChunkCells, y0 = cy * ChunkCells;
             var foam = new Color32(236, 246, 255, 255);
-            var soil = new Color32(128, 92, 56, 255);
+            var region = _world.Region;
+            var buffer = _buffer;
 
-            for (int ly = 0; ly < ChunkCells; ly++)
+            // Rows of cells in parallel: the ground textures are pure functions of position, and each row writes
+            // its own band of the buffer.
+            Parallel.For(0, ChunkCells, ly =>
             {
                 int y = y0 + ly;
                 for (int lx = 0; lx < ChunkCells; lx++)
@@ -321,11 +324,11 @@ namespace ThienDao.Render
                     bool foamA = water && TerrainInfo.IsLand(ta);
                     bool foamL = water && TerrainInfo.IsLand(tl);
                     bool foamR = water && TerrainInfo.IsLand(trr);
-                    bool veg = TerrainInfo.IsVegetated(t);
-                    bool farm = t == Terrain.Farmland;
+                    var reg = (RegionKind)region[i];
                     float amp = TerrainInfo.PixelNoiseAmp(t) * 2f;
                     Color32 baseC = _cellColor[i];
                     int rowBase = ly * CellPx * ChunkPx + lx * CellPx;
+                    byte borderR = BorderRight(x, y, i), borderT = BorderTop(x, y, i);
 
                     for (int py = 0; py < CellPx; py++)
                     for (int px = 0; px < CellPx; px++)
@@ -333,13 +336,11 @@ namespace ThienDao.Render
                         int wx = x * CellPx + px, wy = y * CellPx + py;
                         uint n = Hash.U32(seed, wx, wy);
                         float f = 1f + ((n & 255) / 255f - 0.5f) * amp;
-                        if (veg && ((n >> 8) & 15) == 0) f *= 0.86f;
 
                         Color32 c;
                         if (water)
                         {
-                            if ((wy + (wx >> 2)) % 9 == 0 && ((n >> 8) & 3) == 0) f *= 1.07f;
-                            c = SpriteLibrary.Shade(baseC, f);
+                            c = TerrainTexture.Paint(t, reg, baseC, f, wx, wy, n, seed);
                             if ((foamB && py == 0) || (foamA && py == CellPx - 1) || (foamL && px == 0) || (foamR && px == CellPx - 1))
                                 c = Color32.Lerp(c, foam, 0.45f);
                         }
@@ -349,13 +350,18 @@ namespace ThienDao.Render
                             if (tierA < tr && py == CellPx - 1) f *= 1.12f;
                             if (tierL < tr && px == 0) f *= 1.06f;
                             if (tierR < tr && px == CellPx - 1) f *= 0.86f;
-                            // Crop rows run across cells so neighbouring fields read as one field.
-                            c = farm && (wy & 3) == 0 ? SpriteLibrary.Shade(soil, f) : SpriteLibrary.Shade(baseC, f);
+                            // Patterns run in world pixels, so dunes, cracks and crop rows flow across cells.
+                            c = TerrainTexture.Paint(t, reg, baseC, f, wx, wy, n, seed);
+                            // Region borders: long dashes; kingdom borders: dots.
+                            if (borderR != 0 && px == CellPx - 1 && (borderR == 2 ? (wy % 6) < 4 : (wy & 3) == 0))
+                                c = SpriteLibrary.Shade(c, borderR == 2 ? 0.55f : 0.72f);
+                            if (borderT != 0 && py == CellPx - 1 && (borderT == 2 ? (wx % 6) < 4 : (wx & 3) == 0))
+                                c = SpriteLibrary.Shade(c, borderT == 2 ? 0.55f : 0.72f);
                         }
-                        _buffer[rowBase + py * ChunkPx + px] = c;
+                        buffer[rowBase + py * ChunkPx + px] = c;
                     }
                 }
-            }
+            });
 
             _sortTmp.Clear();
             _sortTmp.AddRange(ch.Objects);
@@ -517,22 +523,61 @@ namespace ThienDao.Render
             else if (TerrainInfo.IsHighland(t)) f = 0.92f + (hv - 0.7f) * 0.5f;
             else f = 1.03f - (hv - 0.5f) * 0.35f;
             f *= 0.97f + (Hash.U32(_world.Seed ^ 0x99u, x, y) & 255) / 255f * 0.06f;
+            f *= TerrainTexture.Macro(t, x, y, _world.Seed ^ 0x3ACu);
             if (t == Terrain.Lava) f = 0.85f + (Hash.U32(_world.Seed ^ 0x1A7Au, x, y) & 255) / 255f * 0.35f; // glowing, crusted in patches
             var c = SpriteLibrary.Shade(TerrainInfo.Colors[(int)t], f);
             // Thương lộ: packed earth where caravans have worn a road.
             if ((_world.Zone[i] & ZoneFlags.Road) != 0 && TerrainInfo.IsLand(t)) c = Color32.Lerp(c, new Color32(186, 150, 104, 255), 0.6f);
             // Lôi địa: the ground keeps a violet sheen while lôi khí lingers.
             if ((_world.Zone[i] & ZoneFlags.Thunder) != 0) c = Color32.Lerp(c, new Color32(150, 112, 230, 255), 0.3f);
+            // Each great region has its own cast of light: the crimson of Ma Đạo, the cold of the north, …
+            if (TerrainInfo.IsLand(t) && t != Terrain.Snow && t != Terrain.Peak && t != Terrain.Lava) // snow stays white
+            {
+                int r = _world.Region[i];
+                float amount = RegionLore.TintAmount[r];
+                if (amount > 0f) c = Color32.Lerp(c, RegionLore.Tint[r], amount);
+            }
             return c;
+        }
+
+        // Borders on the ground: a dashed dark line between great regions, a dotted one between kingdoms.
+        // Drawn on a cell's right and top edges only, so each border is drawn once.
+        byte BorderRight(int x, int y, int i)
+        {
+            if (x >= _world.W - 1) return 0;
+            return BorderBetween(i, i + 1);
+        }
+
+        byte BorderTop(int x, int y, int i)
+        {
+            if (y >= _world.H - 1) return 0;
+            return BorderBetween(i, i + _world.W);
+        }
+
+        byte BorderBetween(int a, int b)
+        {
+            if (!TerrainInfo.IsLand(_world.Terrain[a]) || !TerrainInfo.IsLand(_world.Terrain[b])) return 0;
+            if (_world.Region[a] != _world.Region[b]) return 2;
+            var ka = _world.KingdomOf[a];
+            var kb = _world.KingdomOf[b];
+            return ka != kb && ka > 0 && kb > 0 ? (byte)1 : (byte)0;
         }
 
         Color32 OverviewColor(int i)
         {
             var c = _cellColor[i];
             int id = _world.Objects.CellObject[i];
-            if (id < 0) return c;
-            ref var o = ref _world.Objects.Get(id);
-            return Color32.Lerp(c, SpriteLibrary.Get(o.Type, o.Variant).MapColor, 0.65f);
+            if (id >= 0)
+            {
+                ref var o = ref _world.Objects.Get(id);
+                c = Color32.Lerp(c, SpriteLibrary.Get(o.Type, o.Variant).MapColor, 0.65f);
+            }
+            // Borders stay readable on the zoomed-out map.
+            int x = i % _world.W, y = i / _world.W;
+            byte b = (byte)Mathf.Max(BorderRight(x, y, i), BorderTop(x, y, i));
+            if (b == 2 && ((x + y) % 3) != 0) c = SpriteLibrary.Shade(c, 0.6f);
+            else if (b == 1 && ((x + y) & 1) == 0) c = SpriteLibrary.Shade(c, 0.78f);
+            return c;
         }
 
         void BuildOverview()

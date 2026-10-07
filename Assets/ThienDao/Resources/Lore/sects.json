@@ -1,0 +1,14 @@
+{
+  "righteousSects": [
+    "Hoàng Phong Cốc", "Yểm Nguyệt Tông", "Thất Huyền Môn", "Linh Thú Sơn", "Thanh Hư Môn", "Cự Kiếm Môn", "Thiên Khuyết Bảo",
+    "Hóa Đao Ổ", "Lạc Vân Tông", "Cổ Kiếm Môn", "Bách Xảo Viện", "Thái Nhất Môn", "Tinh Cung", "Diệu Âm Môn", "Vạn Pháp Môn",
+    "Cửu Tiên Cung", "Thiên Lan Thánh Điện", "Huyền Thiên Tông", "Thanh Vân Môn", "Kim Cương Tự", "Thiên Kiếm Tông", "Tử Tiêu Cung",
+    "Bích Vân Cốc", "Thái Chân Môn", "Hạo Nhiên Các", "Thiên Cực Môn", "Thủy Ảnh Tông", "Nghê Hà Trai", "Loan Minh Tông", "Hóa Ý Môn",
+    "Phù Vân Tông", "Lưu Vân Tông", "Ngọc Đỉnh Tông", "Thiên Sơn Phái", "Bạch Vân Quán", "Huyền Kiếm Các", "Thanh Liên Tông", "Vạn Kiếm Môn"
+  ],
+  "demonicSects": [
+    "Quỷ Linh Môn", "Hợp Hoan Tông", "Ngự Linh Tông", "Thiên Sát Tông", "Âm La Tông", "Thiên Ma Tông", "Độc Thánh Môn", "Ma Diễm Môn",
+    "Huyết Sát Tông", "Vạn Độc Môn", "Thiên Huyễn Tông", "Âm Minh Tông", "Thi Hồn Tông", "Cửu U Ma Cung", "Hắc Sát Giáo", "Huyết Ma Giáo"
+  ],
+  "sectSuffixes": ["Tông", "Môn", "Cốc", "Phái", "Cung", "Các", "Sơn"]
+}

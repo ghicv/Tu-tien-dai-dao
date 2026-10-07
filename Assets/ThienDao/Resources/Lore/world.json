@@ -1,0 +1,19 @@
+{
+  "continents": ["Thiên Nam", "Đại Tấn", "Loạn Tinh", "Mộ Lan", "Lạc Vân", "Thiên Uyên", "Linh Hoàn", "Đông Hoang", "Tây Mạc", "Huyền Thiên", "Bắc Minh", "Thương Lan"],
+  "seas": ["Vô Biên Hải", "Loạn Tinh Hải", "Đông Hải", "Vô Tận Hải", "Thiên Nam Hải", "Bắc Minh Hải", "Thương Lan Hải", "Tử Vân Hải"],
+  "regions": [
+    { "kind": "ChinhDao", "names": ["Chính Đạo", "Chính Đạo Minh", "Huyền Môn Chính Đạo", "Thiên Nam Chính Đạo"],
+      "kingdoms": ["Việt Quốc", "Phong Đô Quốc", "Hắc Thủy Quốc", "Khương Quốc", "Tử Kim Quốc", "Lam Quốc", "Tề Quốc", "Hạ Quốc", "Ngụy Quốc", "Thục Quốc"] },
+    { "kind": "MaDao", "names": ["Ma Đạo", "Ma Đạo Lục Tông", "Âm Ma Vực", "Huyết Ma Vực"],
+      "kingdoms": ["Thiên La Quốc", "Hoàng Quốc", "Đông Kỳ Quốc", "Thiên Ngô Quốc", "Khô Lâu Quốc", "Hắc Phong Quốc", "Âm Sơn Quốc", "Xích Thổ Quốc"] },
+    { "kind": "ThienDaoMinh", "names": ["Thiên Đạo Minh", "Bắc Lương", "Thiên Kiếm Vực", "Hàn Sơn Vực"],
+      "kingdoms": ["Hoa Vũ Quốc", "Thái Vân Quốc", "Khê Quốc", "Đông Dư Quốc", "Bắc Lương Quốc", "Tuyết Sơn Quốc", "Vân Trung Quốc"] },
+    { "kind": "CuuQuocMinh", "names": ["Cửu Quốc Minh", "Nam Cương", "Bách Quốc Liên Minh", "Thất Quốc Minh"],
+      "kingdoms": ["Nguyên Vũ Quốc", "Đô Kim Quốc", "Ngu Quốc", "Mộ Quốc", "Kỳ Quốc", "Nam Chiếu Quốc", "Lĩnh Nam Quốc", "Kim Lăng Quốc", "Vân Nam Quốc"] },
+    { "kind": "SaMac", "names": ["Sa Mạc Bạo Phong", "Đại Hoang Sa", "Hoàng Sa Vực", "Xích Sa Mạc"],
+      "kingdoms": ["Hoàng Sa Bộ", "Phong Sa Bộ", "Xích Sa Bộ", "Lạc Đà Bộ"] },
+    { "kind": "ThaoNguyen", "names": ["Mộ Lan Thảo Nguyên", "Bích Thảo Nguyên", "Vạn Mã Nguyên", "Thiên Lang Nguyên"],
+      "kingdoms": ["Mộ Lan Bộ", "Bạch Lang Bộ", "Thương Ưng Bộ", "Hắc Mã Bộ", "Kim Điêu Bộ"] },
+    { "kind": "BangNguyen", "names": ["Cực Bắc Băng Nguyên", "Vạn Niên Hàn Địa", "Bắc Minh Băng Vực"], "kingdoms": [] }
+  ]
+}

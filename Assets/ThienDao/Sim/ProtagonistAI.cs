@@ -268,7 +268,7 @@ namespace ThienDao.Sim
                         float cost = TreasurePrice(c);
                         c.Stones -= cost;
                         c.Treasures++;
-                        c.TreasureName = Lore.Treasures[rng.Range(0, Lore.Treasures.Length)];
+                        c.TreasureName = _w.Lore.Treasures[rng.Range(0, _w.Lore.Treasures.Length)];
                         Note(c, tick, 1, $"{c.Title} dốc {cost:0} linh thạch, mua được pháp bảo {c.TreasureName}.");
                     }
                     else Note(c, tick, 0, $"{c.Title} dạo phường thị mà không đủ linh thạch mua thứ mình cần.");
@@ -301,7 +301,7 @@ namespace ThienDao.Sim
                     if (r < 0.08f)
                     {
                         c.Treasures++;
-                        c.TreasureName = Lore.Treasures[rng.Range(0, Lore.Treasures.Length)];
+                        c.TreasureName = _w.Lore.Treasures[rng.Range(0, _w.Lore.Treasures.Length)];
                         Note(c, tick, 2, $"{c.Title} phát hiện động phủ của cổ tu sĩ, đoạt được pháp bảo {c.TreasureName}!", Fx.Blessing);
                     }
                     else if (r < 0.2f)
@@ -311,7 +311,7 @@ namespace ThienDao.Sim
                     }
                     else if (r < 0.5f)
                     {
-                        string herb = Lore.Herbs[rng.Range(0, Lore.Herbs.Length)];
+                        string herb = _w.Lore.Herbs[rng.Range(0, _w.Lore.Herbs.Length)];
                         c.Progress += Realms.Need(c.Realm, c.Stage) * 0.25f;
                         c.Stones += rng.Range(20f, 80f) * (int)c.Realm;
                         Note(c, tick, 1, $"{c.Title} hái được {herb}, luyện hóa một phần, phần còn lại đổi lấy linh thạch.");

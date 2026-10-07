@@ -18,6 +18,8 @@ namespace ThienDao.Sim
         public bool Alive = true;
         public long FoundedTick;
         public int ParentId = -1;
+        public int Kingdom = -1;   // the mortal kingdom whose land it stands on
+        public bool Capital;       // that kingdom's capital
 
         public readonly int[] Cohorts = new int[AgeGroups];
         public float Food;
@@ -44,7 +46,7 @@ namespace ThienDao.Sim
         }
 
         // A sect town carries its sect's name; other places are styled Thôn / Trấn / Thành by size.
-        public string Name => Sect ? BaseName : BaseName + " " + Lore.Tier(Population);
+        public string Name => Sect || Capital ? BaseName : BaseName + " " + Lore.Tier(Population);
 
         public int Workers => Sum(3, 11);       // 15–59
         public int FertileAdults => Sum(3, 8);  // 15–44
@@ -78,8 +80,9 @@ namespace ThienDao.Sim
         // Starvation takes the youngest and oldest first.
         static readonly int[] FrailtyOrder = { 0, 16, 15, 14, 13, 1, 12, 11, 2, 10, 3, 9, 4, 8, 5, 7, 6 };
 
-        readonly Lore.Picker _placeNames = new Lore.Picker(Lore.Places);
-        readonly Lore.Picker _sectNames = new Lore.Picker(Lore.Sects);
+        readonly Lore.Picker _placeNames;
+        readonly Lore.Picker _sectNames;
+        readonly Lore.Picker _demonicSectNames;
 
         sealed class MigrantGroup
         {
@@ -105,11 +108,18 @@ namespace ThienDao.Sim
             _w = sim.World;
             _w.Objects.Removed += OnObjectRemoved;
             _w.TerrainChanged += HandleTerrainChanged;
+            _placeNames = new Lore.Picker(_w.Lore.Places, _w.Lore.Syllables);
+            _sectNames = new Lore.Picker(_w.Lore.RighteousSects, _w.Lore.Syllables);
+            _demonicSectNames = new Lore.Picker(_w.Lore.DemonicSects, _w.Lore.Syllables);
 
             var rng = new DetRandom(_w.Seed ^ 0x5E771Eu);
             foreach (var site in _w.VillageSites)
             {
-                var s = Create(site.X, site.Y, site.Roof, site.Sect, 0, ref rng);
+                // Ma Đạo's sects take demonic names; a capital takes its kingdom's.
+                string name = site.Capital >= 0 ? _w.Kingdoms[site.Capital].CapitalName
+                    : site.Sect && _w.RegionAt(_w.Idx(site.X, site.Y)) == RegionKind.MaDao ? _demonicSectNames.Next(ref rng) : null;
+                var s = Create(site.X, site.Y, site.Roof, site.Sect, 0, ref rng, name);
+                s.Capital = site.Capital >= 0;
                 foreach (int h in site.Houses) AdoptHouse(s, h);
                 int pop = site.Houses.Count * rng.Range(4, 6);
                 DistributeInitial(s, pop, ref rng);
@@ -199,7 +209,8 @@ namespace ThienDao.Sim
                 Y = y,
                 Roof = roof,
                 Sect = sect,
-                FoundedTick = tick
+                FoundedTick = tick,
+                Kingdom = _w.InBounds(x, y) ? _w.KingdomOf[_w.Idx(x, y)] - 1 : -1
             };
             All.Add(s);
             AliveCount++;
@@ -267,17 +278,15 @@ namespace ThienDao.Sim
         public string NewSectName(bool demonic, ref DetRandom rng)
         {
             var free = new List<string>();
-            foreach (var n in demonic ? Lore.DemonicSects : Lore.RighteousSects)
+            foreach (var n in demonic ? _w.Lore.DemonicSects : _w.Lore.RighteousSects)
                 if (!NameTaken(n)) free.Add(n);
-            foreach (var n in Lore.Sects)
-                if (Lore.IsDemonicSect(n) == demonic && !NameTaken(n) && !free.Contains(n)) free.Add(n);
             if (free.Count > 0) return free[rng.Range(0, free.Count)];
             for (int k = 0; k < 30; k++)
             {
-                string g = Lore.GeneratedSectName(ref rng);
+                string g = Lore.GeneratedSectName(_w.Lore, ref rng);
                 if (!NameTaken(g)) return g;
             }
-            return Lore.GeneratedSectName(ref rng) + " " + All.Count;
+            return Lore.GeneratedSectName(_w.Lore, ref rng) + " " + All.Count;
         }
 
         bool NameTaken(string name)
@@ -864,7 +873,7 @@ namespace ThienDao.Sim
             if (x < 8 || y < 8 || x >= _w.W - 8 || y >= _w.H - 8) return false;
             int i = _w.Idx(x, y);
             var t = _w.Terrain[i];
-            if (t != Terrain.Grass && t != Terrain.Savanna && t != Terrain.Forest) return false;
+            if (!TerrainInfo.IsFarmable(t) || t == Terrain.Hills) return false;
             if ((_w.Zone[i] & ZoneFlags.Thunder) != 0) return false; // mortals give lôi địa a wide berth
             if (needWater && (_w.WaterDist[i] < 2 || _w.WaterDist[i] > 14)) return false;
             for (int yy = y - 6; yy <= y + 6; yy++)

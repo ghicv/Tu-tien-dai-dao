@@ -62,13 +62,14 @@ namespace ThienDao.Sim
             {
                 case 0:
                     return t == Terrain.Forest ? 0.8f : t == Terrain.Grass ? 0.5f : t == Terrain.Jungle || t == Terrain.Hills ? 0.4f :
-                        t == Terrain.Tundra || t == Terrain.Savanna ? 0.3f : 0f;
+                        t == Terrain.Tundra || t == Terrain.Savanna ? 0.3f : t == Terrain.Ashland ? 0.15f : 0f;
                 case 1:
                     return t == Terrain.Grass ? 0.8f : t == Terrain.Savanna ? 0.6f :
-                        t == Terrain.Forest || t == Terrain.Tundra || t == Terrain.Hills ? 0.3f : t == Terrain.Beach ? 0.1f : 0f;
+                        t == Terrain.Forest || t == Terrain.Tundra || t == Terrain.Hills ? 0.3f :
+                        t == Terrain.Ashland ? 0.2f : t == Terrain.Badlands ? 0.15f : t == Terrain.Beach ? 0.1f : 0f;
                 default:
                     return t == Terrain.Tundra ? 0.4f : t == Terrain.Forest || t == Terrain.Hills ? 0.3f :
-                        t == Terrain.Snow ? 0.2f : t == Terrain.Grass ? 0.1f : 0f;
+                        t == Terrain.Badlands ? 0.25f : t == Terrain.Snow || t == Terrain.Ashland ? 0.2f : t == Terrain.Grass ? 0.1f : 0f;
             }
         }
 

@@ -1373,7 +1373,11 @@ namespace ThienDao.UI
                 }
             }
             EndChips();
-            body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#8890a8>Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" +
+            var wd = _game.World;
+            var kingdom = s.Kingdom >= 0 && s.Kingdom < wd.Kingdoms.Count ? wd.Kingdoms[s.Kingdom] : null;
+            string regionName = wd.Lore.RegionNames[wd.Region[wd.Idx(s.X, s.Y)]];
+            body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#e8d8a8>{(s.Capital ? "Kinh thành của " : "")}{(kingdom != null ? kingdom.Name + " · " : "")}{regionName}</color>");
+            body.Append("\n").Append($"<color=#8890a8>Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" +
                         (s.ParentId >= 0 ? $" · di dân từ {sim.Settlements.All[s.ParentId].Name}" : "") + "</color>");
             _cardBody.text = body.ToString();
             _cardBody.gameObject.SetActive(true);
@@ -1523,6 +1527,10 @@ namespace ThienDao.UI
             var terrain = w.Terrain[i];
             float tempC = -20f + (w.Temperature[i] / 255f + sim.Clock.SeasonalTemperatureOffset) * 60f;
             sb.Append($"<color=#ffd873>Ô ({x}, {y})</color> {TerrainInfo.Names[(int)terrain]} · độ cao {w.Height[i]:0.00}\n");
+            // Where on the continent: great region and kingdom.
+            var kingdom = w.KingdomAt(i);
+            string regionName = TerrainInfo.IsLand(terrain) ? w.Lore.RegionNames[w.Region[i]] : w.Lore.Sea;
+            sb.Append($"<color=#e8d8a8>{w.Lore.Continent} đại lục · {regionName}{(kingdom != null ? " · " + kingdom.Name : "")}</color>\n");
             sb.Append($"Nhiệt độ {tempC:0}°C · độ ẩm {w.Moisture[i] * 100 / 255}%");
             if (TerrainInfo.IsLand(terrain)) sb.Append($" · màu mỡ {w.Fertility(i) * 100f:0}%");
             sb.Append('\n');
@@ -1579,7 +1587,21 @@ namespace ThienDao.UI
             var sim = _game.Sim;
             var cam = _game.Camera.Cam;
             int used = 0;
-            if (ShowLabels && _game.Camera.PixelsPerCell >= 3f)
+            float ppc = _game.Camera.PixelsPerCell;
+            var world = _game.World;
+            if (ShowLabels && ppc < 6f)
+            {
+                // The map of the continent: great regions in wide capitals, kingdoms beneath, the sea by name.
+                var regionColor = new Color(1f, 0.96f, 0.86f, 0.9f);
+                foreach (var r in world.Regions)
+                    PlaceLabel(ref used, cam, new Vector3(r.LabelX, r.LabelY, 0f), Spaced(r.Name), regionColor, ppc < 2f ? 40 : 34);
+                if (world.SeaLabelX >= 0)
+                    PlaceLabel(ref used, cam, new Vector3(world.SeaLabelX, world.SeaLabelY, 0f), Spaced(world.Lore.Sea), new Color(0.82f, 0.9f, 1f, 0.85f), 36);
+                if (ppc >= 1.2f)
+                    foreach (var k in world.Kingdoms)
+                        PlaceLabel(ref used, cam, new Vector3(k.CapitalX + 0.5f, k.CapitalY - 6f, 0f), k.Name, new Color(1f, 0.88f, 0.62f, 0.95f), 26);
+            }
+            if (ShowLabels && ppc >= 3f)
             {
                 foreach (var s in sim.Settlements.All)
                 {
@@ -1675,6 +1697,18 @@ namespace ThienDao.UI
                 _hoverHint.rectTransform.anchorMin = _hoverHint.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 _hoverHint.rectTransform.anchoredPosition = local + new Vector2(18f, 12f);
             }
+        }
+
+        // "MA ĐẠO" → "M A   Đ Ạ O": wide map lettering.
+        static string Spaced(string name)
+        {
+            var sb = new StringBuilder();
+            foreach (char ch in name.ToUpperInvariant())
+            {
+                if (sb.Length > 0) sb.Append(' ');
+                sb.Append(ch == ' ' ? ' ' : ch);
+            }
+            return sb.ToString();
         }
 
         void PlaceLabel(ref int used, Camera cam, Vector3 world, string text, Color color, int size)
