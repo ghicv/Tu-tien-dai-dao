@@ -6,7 +6,28 @@
 
 ---
 
-## 0. Ba nguyên tắc thiết kế xuyên suốt
+## 0. Nguyên tắc thiết kế xuyên suốt
+
+### 0.0 Quy tắc sandbox (người chơi chốt, 2026-10-07): đặt trên mọi quyết định khác
+
+- **Mười trụ cột:**
+  - **Player Agency:** người chơi tự quyết, và có nhiều cách để làm một việc.
+  - **Interconnected Systems:** nhân vật, kinh tế, chiến đấu, tự nhiên, xã hội liên kết và tác động lẫn nhau.
+  - **Emergent Gameplay:** luật đơn giản kết hợp lại sinh ra tình huống không viết sẵn.
+  - **Meaningful Consequences:** hành động gây ra thay đổi thật.
+  - **Discovery & Experimentation:** luôn khuyến khích thử "nếu… thì sao?".
+  - **Clear Feedback:** thế giới phản hồi trực quan, rõ ràng.
+  - **Soft Goals:** mục tiêu mở, người chơi tự đặt mục tiêu.
+  - **Progression:** thế giới và nhân vật phát triển.
+  - **Replayability:** mỗi lần chơi là một câu chuyện khác.
+  - **Low Friction:** dễ bắt đầu, càng chơi càng khám phá được nhiều.
+- **Ưu tiên hệ thống tương tác và tự sinh nội dung**, hơn là thêm số lượng tính năng hay nội dung.
+- **Vòng lặp mục tiêu:** Hành động của người chơi → Hệ thống tương tác → Sự kiện tự phát → Hậu quả → Phản hồi → Khám phá → "Nếu… thì sao?" → thử tiếp.
+- **Kiểm tra bắt buộc cho mỗi tính năng mới:**
+  1. Nó đọc những hệ nào, và thay đổi những hệ nào? Thứ chỉ để nhìn cũng phải móc vào mô phỏng.
+  2. Người chơi gây ra hoặc tác động vào nó bằng cách nào?
+  3. Thế giới cho thấy hậu quả ở đâu: map, hiệu ứng, sử sách, thẻ thông tin?
+- **Kèm theo:** hiệu năng đặt lên đầu nhưng không cắt chiều sâu; mọi hình ảnh là pixel art.
 
 1. **Simulation LOD (mức chi tiết theo tầm quan trọng).** Không mô phỏng mọi phàm nhân như một cá thể đầy đủ. Phàm nhân trong làng/thành là *dân số dạng số liệu*; chỉ cá thể "đáng chú ý" (tu sĩ, có linh căn, lãnh đạo, yêu thú mạnh, người vừa gặp kỳ ngộ) mới được "nâng cấp" thành entity đầy đủ. Đây là chìa khóa để chạy hàng triệu năm mà vẫn nhẹ.
 2. **Mọi thứ là dữ liệu + quy luật, không phải script.** Câu chuyện sinh ra từ: nhu cầu khan hiếm + tính cách + quan hệ + xác suất. Không viết sự kiện cốt truyện.
