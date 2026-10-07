@@ -1295,6 +1295,7 @@ namespace ThienDao.UI
                 else
                 {
                     Chip(Icons.ForRealm(c.Realm, c.Demonic), Realms.Names[(int)c.Realm], $"{c.RealmText}{(c.Demonic ? " · ma tu" : "")}", c.Demonic ? new Color(1f, 0.5f, 0.5f) : Ui.Gold);
+                    HpChip(CombatSystem.HpOf(c), CombatSystem.MaxHp(c), CombatSystem.Wounded(c) ? "trọng thương, ở nhà dưỡng thương; sức chiến đấu giảm" : "");
                     Chip(Icons.Seed, $"{RootShort(c.Roots)} · {SpiritRoots.Elements(c.Roots)}",
                         $"{SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}) · tốc độ tu luyện ×{SpiritRoots.SpeedMultiplier(c.Roots):0.0}");
                     float qi = sim.Qi.SampleQi((int)c.HomeX, (int)c.HomeY), need = Realms.RequiredQi[(int)c.Realm];
@@ -1408,6 +1409,7 @@ namespace ThienDao.UI
             string regionName = wd.Lore.RegionNames[wd.Region[wd.Idx(s.X, s.Y)]];
             body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#e8d8a8>{(s.Capital ? "Kinh thành của " : "")}{(kingdom != null ? kingdom.Name + " · " : "")}{regionName}</color>");
             body.Append(BuildingsLine(s));
+            body.Append($"\n<color=#ff8a80>Phàm nhân: {SpeciesInfo.Hp[(int)Species.Migrants]:0} máu mỗi người</color><color=#8890a8> · trước yêu thú và tu sĩ thì chỉ là con kiến</color>");
             body.Append("\n").Append($"<color=#8890a8>Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" +
                         (s.ParentId >= 0 ? $" · di dân từ {sim.Settlements.All[s.ParentId].Name}" : "") + "</color>");
             _cardBody.text = body.ToString();
@@ -1441,6 +1443,14 @@ namespace ThienDao.UI
             if (_reviveButton.Frame.gameObject.activeSelf != on) _reviveButton.Frame.gameObject.SetActive(on);
         }
 
+        // Sinh lực (máu): current / whole, red when low; the tooltip says what the wounds mean.
+        void HpChip(float hp, float max, string note)
+        {
+            float frac = max > 0f ? hp / max : 1f;
+            var color = frac < 0.4f ? new Color(1f, 0.45f, 0.42f) : frac < 0.75f ? new Color(1f, 0.8f, 0.5f) : (Color?)null;
+            Chip(Icons.Blood, $"{hp:N0}/{max:N0}", "Sinh lực (máu)" + (note.Length > 0 ? " · " + note : ""), color);
+        }
+
         void BeastChips(Beast b)
         {
             if (b == null) return;
@@ -1450,6 +1460,7 @@ namespace ThienDao.UI
             _cardSub.text = b.Rampage ? $"Hung thú ({kind}) · đã tàn sát {b.Ravaged} nơi" :
                 b.IsKing ? $"Yêu Vương của {b.ClanName} ({kind})" : b.Clan >= 0 ? $"Thuộc {sim.Beasts.KingOf(b).ClanName} ({kind})" : $"Yêu thú tự do ({kind})";
             Chip(Icons.Unit(SpriteLibrary.BeastUnit((int)b.Kind, b.Grade)), b.GradeText, $"Giai {b.Grade} · sức mạnh ngang {Realms.Names[(b.Grade + 1) / 2]}", Ui.Gold);
+            HpChip(BeastSystem.HpOf(b), BeastSystem.MaxHp(b), b.Rampage ? "hung thú hồi máu chậm: vết thương từ các trận trước vẫn còn" : "");
             if (b.Rampage)
             {
                 int hunters = sim.Beasts.HuntersOf(b);
@@ -1526,7 +1537,8 @@ namespace ThienDao.UI
                     }
                     var all = sim.Settlements.All;
                     sb.Append($"{all[c.From].Name} → {all[c.To].Name}\n");
-                    sb.Append($"Chở {c.Amount:0} {TradeSystem.GoodNames[(int)c.Good]} · đi được {(sim.Clock.Tick - c.Start) / (float)SimClock.DaysPerMonth:0} tháng");
+                    sb.Append($"Chở {c.Amount:0} {TradeSystem.GoodNames[(int)c.Good]} · đi được {(sim.Clock.Tick - c.Start) / (float)SimClock.DaysPerMonth:0} tháng\n");
+                    sb.Append($"<color=#ff8a80>Sinh lực: {SpeciesInfo.Hp[(int)Species.Caravan]:0} máu mỗi người</color> · phàm nhân, gặp yêu thú hay lũ lụt là mất mạng");
                     break;
                 }
                 case InspectKind.Migrants:
@@ -1536,6 +1548,7 @@ namespace ThienDao.UI
                         break;
                     }
                     sb.Append($"{people} người · lương thực mang theo {food / Mathf.Max(1, people):0.0} tháng\n");
+                    sb.Append($"<color=#ff8a80>Sinh lực: {SpeciesInfo.Hp[(int)Species.Migrants]:0} máu mỗi người</color> (cả đoàn {people * SpeciesInfo.Hp[(int)Species.Migrants]:N0})\n");
                     if (from != null) sb.Append($"Rời {from.Name} đi tìm đất lập làng mới\n");
                     sb.Append($"Đi được {(sim.Clock.Tick - sim.Entities.BirthTick[t.Entity]) / (float)SimClock.DaysPerMonth:0} tháng");
                     break;
@@ -1547,6 +1560,7 @@ namespace ThienDao.UI
                     int rx = t.Region % wild.RW, ry = t.Region / wild.RW;
                     sb.Append($"<color=#ffd873>{wild.At(kind, t.Region):N0} con</color> trong vùng ({rx}, {ry}) rộng {WildlifeSystem.Region}×{WildlifeSystem.Region} ô\n");
                     sb.Append("<color=#8890a8>Trên map chỉ vẽ vài con tượng trưng.</color>\n");
+                    sb.Append($"<color=#ff8a80>Sinh lực: {SpeciesInfo.Hp[(int)kind]:0} máu mỗi con</color>\n");
                     sb.Append(kind == Species.Wolf ? "Săn hươu và thỏ trong vùng.\n" : "Ăn cỏ; bị sói săn và dân làng đi săn.\n");
                     sb.Append($"Cả vùng: hươu {wild.At(Species.Deer, t.Region):N0} · thỏ {wild.At(Species.Rabbit, t.Region):N0} · sói {wild.At(Species.Wolf, t.Region):N0}\n");
                     int b = WildlifeSystem.Region / ForageSystem.Block;

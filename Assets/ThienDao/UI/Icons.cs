@@ -680,6 +680,23 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Sinh lực (máu): a drop of blood.
+        public static Sprite Blood => Glyph("blood", new[]
+        {
+            ".....kk.....",
+            ".....kk.....",
+            "....krrk....",
+            "....krrk....",
+            "...krrrrk...",
+            "..krwrrrrk..",
+            "..krwrrrrk..",
+            ".krrrrrrrrk.",
+            ".krrrrrrrrk.",
+            ".krrrrrrrrk.",
+            "..krrrrrrk..",
+            "...kkkkkk...",
+        }, P);
+
         public static Sprite Sword => Glyph("sword", new[]
         {
             "..........kk",

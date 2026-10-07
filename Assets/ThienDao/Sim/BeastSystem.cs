@@ -31,6 +31,7 @@ namespace ThienDao.Sim
         public int Ravaged;          // towns it has fallen on
         public int LastPrey = -1, PreyBefore = -1; // the last two it ravaged: it moves on rather than circling back
         public long RampageSince, CalmUntil;        // when its rampage began; asleep again, it will not wake before CalmUntil
+        public float Hp = -1f;                      // sinh lực; -1 = whole (BeastSystem.HpOf); a hung thú keeps its wounds
         public float DeathX = -1, DeathY = -1; // where it fell (fight scenes draw its kind)
 
         public bool IsKing => Clan == Index;
@@ -87,7 +88,13 @@ namespace ThienDao.Sim
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0xBEA57u, (int)tick, salt));
 
         // Fighting strength, on the cultivators' scale: two grades to a realm.
-        public static float Strength(Beast b) => Realms.Power[(b.Grade + 1) / 2] * (b.Grade % 2 == 0 ? 2.2f : 1f) * (b.IsKing ? 1.3f : 1f);
+        public static float Strength(Beast b) => Realms.Power[(b.Grade + 1) / 2] * (b.Grade % 2 == 0 ? 2.2f : 1f) * (b.IsKing ? 1.3f : 1f) * (0.5f + 0.5f * HpFrac(b));
+
+        // Sinh lực: like a cultivator of the matching realm, a hide half again thicker on the even grades.
+        public static float MaxHp(Beast b) => Realms.Hp[(b.Grade + 1) / 2] * (b.Grade % 2 == 0 ? 1.6f : 1f) * (b.IsKing || b.Rampage ? 1.3f : 1f);
+        public static float HpOf(Beast b) => b.Hp < 0f ? MaxHp(b) : Mathf.Min(b.Hp, MaxHp(b));
+        public static float HpFrac(Beast b) => b.Hp < 0f ? 1f : Mathf.Clamp01(b.Hp / MaxHp(b));
+        public static void Hurt(Beast b, float share) => b.Hp = Mathf.Max(1f, HpOf(b) - MaxHp(b) * Mathf.Clamp01(share));
 
         public Beast ForEntity(int entity)
         {
@@ -229,6 +236,13 @@ namespace ThienDao.Sim
                     }
                 }
 
+                // Wounds close in the lair; a roaming hung thú heals slowly, so the last hunt's blows still tell.
+                if (b.Hp >= 0f)
+                {
+                    b.Hp += MaxHp(b) * (b.Rampage ? 0.04f : 0.12f);
+                    if (b.Hp >= MaxHp(b)) b.Hp = -1f;
+                }
+
                 // A hung thú does not keep a lair: it goes from town to town (BeastHorde.cs).
                 if (b.Rampage)
                 {
@@ -315,6 +329,7 @@ namespace ThienDao.Sim
             string who = $"{c.Title} ({_sim.Cultivation.SectName(c)})";
             if (sc >= sb)
             {
+                CombatSystem.Hurt(c, Mathf.Clamp(0.45f * sb / Mathf.Max(0.01f, sc), 0.05f, 0.7f)); // claws leave their marks
                 c.Kills++;
                 // Yêu đan: worth linh thạch, and from a strong beast, a pill for the next gate.
                 c.Stones += 25f * b.Grade * b.Grade;
@@ -326,6 +341,7 @@ namespace ThienDao.Sim
                 return;
             }
             b.Kills++;
+            Hurt(b, Mathf.Clamp(0.45f * sc / Mathf.Max(0.01f, sb), 0.05f, 0.7f));
             float death = Mathf.Clamp(0.5f * sb / Mathf.Max(1f, sc), 0.2f, 0.9f);
             if (rng.NextFloat() < death)
             {
@@ -333,6 +349,7 @@ namespace ThienDao.Sim
                 return;
             }
             c.Progress *= 0.75f;
+            c.Hp = Mathf.Max(1f, Mathf.Min(CombatSystem.HpOf(c), CombatSystem.MaxHp(c) * rng.Range(0.1f, 0.35f)));
             float fx = _e.X[c.Entity], fy = _e.Y[c.Entity];
             _sim.Cultivation.ReturnHome(c);
             _sim.Events.Add(tick, EventKind.Beast, 1, $"{who} {context}, không địch nổi {b.Title}, trọng thương bỏ chạy.",
@@ -423,6 +440,7 @@ namespace ThienDao.Sim
                 StateHash.Add(ref h, b.Alive ? b.Index : -b.Index - 1);
                 StateHash.Add(ref h, b.Grade | ((long)b.Clan << 8) | ((long)b.Kills << 32));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(b.Progress));
+                StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(b.Hp));
             }
         }
     }

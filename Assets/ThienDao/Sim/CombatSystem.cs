@@ -19,10 +19,30 @@ namespace ThienDao.Sim
 
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_sim.World.Seed ^ 0xD0E1u, (int)tick, salt));
 
-        // Realm dominates; stage, tâm cảnh, khí vận and the demonic path tilt it.
+        // Realm dominates; stage, tâm cảnh, khí vận and the demonic path tilt it; wounds take up to half of it away.
         public static float Strength(Cultivator c) =>
             Realms.Power[(int)c.Realm] * (1f + c.Stage * 0.15f) * (0.7f + 0.3f * c.DaoHeart) * (0.9f + 0.2f * c.Luck) * (c.Demonic ? 1.15f : 1f) *
-            (1f + 0.12f * Mathf.Min(3, c.Treasures)); // pháp bảo
+            (1f + 0.12f * Mathf.Min(3, c.Treasures)) * (0.5f + 0.5f * HpFrac(c)); // pháp bảo; wounds
+
+        // ---------------------------------------------------------------- sinh lực (máu)
+
+        public static float MaxHp(Cultivator c) => Realms.Hp[(int)c.Realm] * (1f + 0.1f * c.Stage);
+        public static float HpOf(Cultivator c) => c.Hp < 0f ? MaxHp(c) : Mathf.Min(c.Hp, MaxHp(c));
+        public static float HpFrac(Cultivator c) => c.Hp < 0f ? 1f : Mathf.Clamp01(c.Hp / MaxHp(c));
+
+        // A wound: a share of the whole taken away. Never kills on its own (deaths are decided where they happen).
+        public static void Hurt(Cultivator c, float share) => c.Hp = Mathf.Max(1f, HpOf(c) - MaxHp(c) * Mathf.Clamp01(share));
+
+        // Mending, a share of the whole a month; whole again, the wound is forgotten.
+        public static void Heal(Cultivator c, float share)
+        {
+            if (c.Hp < 0f) return;
+            c.Hp += MaxHp(c) * share;
+            if (c.Hp >= MaxHp(c)) c.Hp = -1f;
+        }
+
+        // Too hurt to go looking for trouble.
+        public static bool Wounded(Cultivator c, float below = 0.4f) => HpFrac(c) < below;
 
         // Returns the winner. The loser dies with probability deathBase × 2^(realm gap) (to the death: much higher),
         // otherwise flees badly hurt. The winner takes the loser's storage bag.
@@ -42,6 +62,9 @@ namespace ThienDao.Sim
                 int r = (int)loser.Realm - (int)Realm.KetDan + 2;
                 _sim.Scars.Disc((int)x, (int)y, r, ScarKind.Scorch, 11 + r, 4, (uint)tick ^ (uint)(winner.Index * 977 + loser.Index));
             }
+            // Nobody walks away whole: the closer the fight, the deeper the winner's wounds.
+            float ws = winner == a ? sa : sb, ls = winner == a ? sb : sa;
+            Hurt(winner, Mathf.Clamp(0.45f * ls / Mathf.Max(0.01f, ws), 0.05f, 0.7f));
             if (rng.NextFloat() < p)
             {
                 Kill(winner, loser, tick, $"{winner.Title} ({Sect(winner)}) {context}, chém giết {loser.Title} ({Sect(loser)}).", imp);
@@ -50,6 +73,7 @@ namespace ThienDao.Sim
             {
                 loser.Progress *= 0.7f;
                 loser.DaoHeart = Mathf.Max(0f, loser.DaoHeart - 0.05f);
+                loser.Hp = Mathf.Max(1f, Mathf.Min(HpOf(loser), MaxHp(loser) * rng.Range(0.15f, 0.4f))); // trọng thương: home to heal
                 _sim.Cultivation.ReturnHome(loser);
                 _sim.Events.Add(tick, EventKind.Duel, Mathf.Max(0, imp - 1),
                     $"{winner.Title} ({Sect(winner)}) {context}, đánh {loser.Title} trọng thương bỏ chạy.", x, y, Fx.DuelFlee, winner.Index, loser.Index, winner.SectId, loser.SectId);

@@ -22,6 +22,7 @@ namespace ThienDao.Sim
         // Years to recover before the next attempt from this realm's peak.
         public static readonly int[] AttemptCooldownYears = { 1, 1, 3, 3, 3, 3 };
         public static readonly float[] Power = { 0f, 1f, 6f, 36f, 200f, 1200f };              // rough fighting strength per realm
+        public static readonly float[] Hp = { 30f, 100f, 300f, 1000f, 3000f, 10000f };        // sinh lực (máu) per realm, +10% a stage
 
         public static float LuyenKhiLayerNeed(int layer) => 10f + layer * 4f; // layer 1..13
 

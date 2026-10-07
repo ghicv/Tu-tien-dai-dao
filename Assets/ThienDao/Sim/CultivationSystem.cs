@@ -66,6 +66,7 @@ namespace ThienDao.Sim
         public float Stones;         // own linh thạch
         public int Pills;            // breakthrough pills for the next gate
         public int Treasures;        // pháp bảo
+        public float Hp = -1f;       // sinh lực; -1 = whole (CombatSystem.HpOf)
         public string TreasureName;
         public Goal Goal;
         public string GoalText;
@@ -290,6 +291,8 @@ namespace ThienDao.Sim
                 var c = All[k];
                 if (!c.Alive) continue;
                 var rng = RngFor(tick, c.Index);
+                // Wounds mend: quickly at home in the cave or sect, slowly on the road.
+                CombatSystem.Heal(c, IsAtHome(c) ? 0.25f : 0.06f);
 
                 if (c.AgeYears(tick) >= c.LifespanYears)
                 {
@@ -310,7 +313,7 @@ namespace ThienDao.Sim
                     SendTo(c, c.HomeX, c.HomeY, Trip.Return);
                     continue;
                 }
-                else if (!c.Away && !c.Watched && CanRoam(c) && rng.NextFloat() < OutingChancePerMonth)
+                else if (!c.Away && !c.Watched && CanRoam(c) && !CombatSystem.Wounded(c) && rng.NextFloat() < OutingChancePerMonth) // the wounded stay in to heal
                 {
                     StartOuting(c, ref rng);
                     continue;
@@ -440,7 +443,11 @@ namespace ThienDao.Sim
             int radius = Mathf.Clamp(4 + 2 * (int)next, 6, 16);
             _sim.Disasters.TribulationStrikes(c, px, py, radius, divine, shielded, tick, ref rng);
             if (ambushed) return false;
-            if (rng.NextFloat() < survive) return true;
+            if (rng.NextFloat() < survive)
+            {
+                CombatSystem.Hurt(c, rng.Range(0.3f, 0.75f)); // through the lightning, but scorched to the bone
+                return true;
+            }
             Die(c, tick, $"{who} vẫn lạc dưới thiên kiếp.", 3, Fx.Lightning);
             return false;
         }
@@ -1038,6 +1045,7 @@ namespace ThienDao.Sim
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.DaoHeart));
                 StateHash.Add(ref h, c.SectId | (c.AtWar ? 1L << 32 : 0) | (c.Watched ? 1L << 33 : 0) | ((long)c.Pills << 40) | ((long)c.Goal << 50));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Stones));
+                StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Hp));
             }
         }
     }

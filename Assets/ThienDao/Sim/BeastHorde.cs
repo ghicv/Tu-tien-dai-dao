@@ -317,7 +317,7 @@ namespace ThienDao.Sim
                 var picked = new List<Cultivator>();
                 foreach (var c in _sim.Cultivation.All)
                 {
-                    if (!c.Alive || c.SectId != f.Id || c.Watched || c.AtWar || c.Realm < minRealm || !_sim.Cultivation.IsAtHome(c)) continue;
+                    if (!c.Alive || c.SectId != f.Id || c.Watched || c.AtWar || c.Realm < minRealm || !_sim.Cultivation.IsAtHome(c) || CombatSystem.Wounded(c, 0.6f)) continue;
                     picked.Add(c);
                 }
                 if (picked.Count == 0) continue;
@@ -387,7 +387,8 @@ namespace ThienDao.Sim
             foreach (int i in co.Who)
                 if (all[i].Alive) fighters.Add(all[i]);
             float bx = _e.X[b.Entity], by = _e.Y[b.Entity];
-            float hide = Strength(b) * 3f;
+            // Its blood against everyone's blows: a beast as strong as the whole band takes about three rounds to fell.
+            float hide = HpOf(b), full = MaxHp(b), bs = Strength(b);
             int fallen = 0, fled = 0, round = 0, start = fighters.Count;
             Cultivator lastBlow = null;
             while (hide > 0f && fighters.Count > 0 && round < 12)
@@ -395,7 +396,7 @@ namespace ThienDao.Sim
                 round++;
                 foreach (var c in fighters)
                 {
-                    hide -= CombatSystem.Strength(c) * rng.Range(0.6f, 1.4f);
+                    hide -= full * CombatSystem.Strength(c) / (3f * Mathf.Max(0.01f, bs)) * rng.Range(0.6f, 1.4f);
                     if (hide <= 0f) { lastBlow = c; break; }
                 }
                 if (hide <= 0f) break;
@@ -409,7 +410,7 @@ namespace ThienDao.Sim
                     _sim.Cultivation.Perish(target, tick, $"{target.Title} ({_sim.Cultivation.SectName(target)}) vây đánh {b.Title}, bị nó xé nát.",
                         target.Realm >= Realm.KetDan ? 2 : 1, Fx.BeastKill);
                 }
-                else if (rng.NextFloat() < 0.3f)
+                else if (Wound(target, rng.Range(0.3f, 0.6f)) || rng.NextFloat() < 0.15f) // torn open: too hurt to go on, or simply afraid
                 {
                     fled++;
                     fighters.Remove(target);
@@ -426,6 +427,7 @@ namespace ThienDao.Sim
             // Where they fought, the land keeps the blood and the fear.
             _sim.Scars.Disc((int)bx, (int)by, 7, ScarKind.Battlefield, 12, 4, (uint)tick ^ 0xB3A57u);
             if (fallen > 0) _sim.Disasters.MarkBattlefield((int)bx, (int)by, 7, fallen, tick, $"trận trảm yêu {b.Name} năm {tick / SimClock.DaysPerYear + 1}");
+            b.Hp = Mathf.Max(1f, hide); // what they took from it stays taken
 
             if (hide <= 0f && lastBlow != null)
             {
@@ -462,6 +464,13 @@ namespace ThienDao.Sim
                 $"Liên minh trảm yêu thất bại: {fallen} tu sĩ vẫn lạc, {fled} người bỏ chạy, {b.Title} càng thêm hung hãn.", bx, by, Fx.Stampede);
             _nextCall[b.Index] = tick + SimClock.DaysPerYear;
             FormCoalitionLater(b, co.Attempt + 1);
+        }
+
+        // A blow that did not kill: true if it left them too torn up to keep fighting.
+        static bool Wound(Cultivator c, float share)
+        {
+            CombatSystem.Hurt(c, share);
+            return CombatSystem.Wounded(c, 0.3f);
         }
 
         // The next call comes after a year, from farther away (CoalitionStep re-forms it at the next massacre).

@@ -351,7 +351,7 @@ namespace ThienDao.Sim
             Cultivator rogue = null, devil = null;
             foreach (var c in _sim.Cultivation.All)
             {
-                if (!c.Alive || c.Watched || c.AtWar || c.HuntTarget >= 0 || !_sim.Cultivation.IsAtHome(c) || c.Realm < Realm.TrucCo) continue;
+                if (!c.Alive || c.Watched || c.AtWar || c.HuntTarget >= 0 || !_sim.Cultivation.IsAtHome(c) || c.Realm < Realm.TrucCo || CombatSystem.Wounded(c, 0.6f)) continue;
                 float dx = c.HomeX - r.X, dy = c.HomeY - r.Y;
                 if (dx * dx + dy * dy > ContestReach * ContestReach) continue;
                 if (c.SectId < 0)
