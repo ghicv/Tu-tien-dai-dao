@@ -33,7 +33,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 26 | [26-quyen-nang-phuc-hoa.md](26-quyen-nang-phuc-hoa.md) | Quyền năng còn thiếu: thả tu sĩ theo cảnh giới, đánh thức hung thú, thả yêu thú theo giai, ban pháp bảo, giáng tâm ma, phế tu vi, thiên tài địa bảo, mở bí cảnh | `b6f55db` |
 | 27 | [27-cau-nguyen-thien-menh.md](27-cau-nguyen-thien-menh.md) | Tín ngưỡng và cầu nguyện (đáp lời bằng mưa, ban phúc, thiên phạt; miếu thờ, người có linh căn, tà giáo), Thiên mệnh: 3 mục tiêu mềm thế giới tự gợi ý, Thiên uy | `296639d` |
 | 28 | [28-cong-phap-truyen-thua.md](28-cong-phap-truyen-thua.md) | Công pháp 5 phẩm (trần cảnh giới, hợp linh căn, ma công), truyền thừa qua tông môn, bí cảnh, giết người đoạt bảo, tông chủ sáng tạo; thất truyền khi diệt môn và khôi phục sơn môn dưới tên cũ; Ban công pháp | `4b8c316` |
-| 29 | [29-tri-thuc-tin-don.md](29-tri-thuc-tin-don.md) | Tri thức và tin đồn: tin loang theo tháng, nhảy theo thương đội và di dân, bị thổi phồng; chỉ tông đã nghe mới tranh đoạt, thám hiểm, trảm yêu; tông nghe muộn đến muộn; nghe tin tông suy yếu thì dòm ngó; vòng tin đồn trên map | `—` |
+| 29 | [29-tri-thuc-tin-don.md](29-tri-thuc-tin-don.md) | Tri thức và tin đồn: tin loang theo tháng, nhảy theo thương đội và di dân, bị thổi phồng; chỉ tông đã nghe mới tranh đoạt, thám hiểm, trảm yêu; tông nghe muộn đến muộn; nghe tin tông suy yếu thì dòm ngó; vòng tin đồn trên map | `4cc7987` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).
