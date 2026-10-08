@@ -395,6 +395,49 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void MethodsCapTheClimbAndFallenSectsRiseAgainFromTheirLegacy()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var ts = sim.Techniques;
+            foreach (var f in sim.Factions.All)
+                if (f.Alive) Assert.IsNotNull(ts.OfSect(f.Id), "every sect keeps a trấn phái công pháp");
+            foreach (var c in sim.Cultivation.All)
+                if (c.Alive && c.SectId >= 0) Assert.AreNotEqual(ts.Basic, ts.Of(c), "disciples learn their sect's method");
+
+            // The common method carries no one past Trúc Cơ.
+            var x = sim.Cultivation.All.Find(o => o.Alive && o.SectId < 0) ?? sim.Cultivation.All.Find(o => o.Alive);
+            x.Technique = 0;
+            Assert.IsTrue(ts.Allows(x, Realm.TrucCo));
+            Assert.IsFalse(ts.Allows(x, Realm.KetDan), "phàm phẩm stops at Trúc Cơ");
+            // Ban công pháp: a cực phẩm method, all the way to Hóa Thần.
+            sim.Enqueue(new DivineActCommand(DivineAct.GrantTechnique, 0, 0, x.Index));
+            sim.ApplyPending();
+            Assert.AreEqual(5, ts.Of(x).Grade);
+            Assert.IsTrue(ts.Allows(x, Realm.HoaThan));
+
+            // A sect falls: its method falls with it (heaven took no copy) ...
+            var sect = sim.Settlements.All.Find(s => s.Alive && s.Sect && !sim.Factions.Get(s.Id).Demonic);
+            var method = ts.OfSect(sect.Id);
+            sim.Enqueue(new DivineActCommand(DivineAct.Annihilate, sect.X, sect.Y, -1, sect.Id));
+            sim.ApplyPending();
+            Assert.IsNull(ts.OfSect(sect.Id));
+            Assert.AreEqual(sect.Id, method.LostWith);
+            // ... and a tán tu who recovers it raises the old sect again, under its old name.
+            var heir = sim.Cultivation.All.Find(o => o.Alive && o.SectId < 0 && !o.Demonic && o != x);
+            Assert.IsNotNull(heir);
+            heir.Technique = method.Index;
+            Assert.AreEqual(sect, ts.RevivableSect(heir));
+            var revived = sim.Factions.TryFound(heir, sim.Clock.Tick);
+            if (revived != null)
+            {
+                Assert.AreEqual(sect.BaseName, sim.Settlements.All[revived.Id].BaseName, "the old name lives again");
+                Assert.AreEqual(method, ts.OfSect(revived.Id), "and so does its method");
+            }
+            Run(sim, SimClock.DaysPerYear * 3);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));

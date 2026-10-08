@@ -35,6 +35,7 @@ namespace ThienDao.Sim
         public readonly SettlementSystem Settlements;
         public readonly CultivationSystem Cultivation;
         public readonly FactionSystem Factions;
+        public readonly TechniqueSystem Techniques;
         public readonly CombatSystem Combat;
         public readonly HistoryLog History = new HistoryLog();
         public readonly StoryDetector Stories;
@@ -80,6 +81,7 @@ namespace ThienDao.Sim
             Wildlife = new WildlifeSystem(world, Forage); // after villages have cleared their first fields
             Cultivation = new CultivationSystem(this);
             Factions = new FactionSystem(this); // needs the sect members to weigh each sect's power
+            Techniques = new TechniqueSystem(this); // công pháp for every sect and every one alive; before the relics that hold some
             Combat = new CombatSystem(this);
             Stories = new StoryDetector(this);
             Protagonists = new ProtagonistAI(this);
@@ -150,7 +152,8 @@ namespace ThienDao.Sim
             if (Clock.IsYearStart)
             {
                 Settlements.YearlyStep(tick); Mark(5, ref t);
-                Cultivation.YearlyStep(tick); Mark(6, ref t);
+                Cultivation.YearlyStep(tick);
+                Techniques.YearlyStep(tick); Mark(6, ref t);
                 Factions.YearlyStep(tick); Mark(12, ref t);
                 Combat.YearlyStep(tick); Mark(7, ref t);
                 Disasters.YearlyStep(tick);
@@ -239,6 +242,7 @@ namespace ThienDao.Sim
             Relics.HashInto(ref h);
             Trade.HashInto(ref h);
             Eras.HashInto(ref h);
+            Techniques.HashInto(ref h);
             Faith.HashInto(ref h);
             Destiny.HashInto(ref h);
             return h;

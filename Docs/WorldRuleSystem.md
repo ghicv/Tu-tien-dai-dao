@@ -1,6 +1,6 @@
 # Hệ quy luật thế giới Thiên Đạo (đối chiếu `Docs/WorldRules.md`)
 
-**Cập nhật:** 2026-10-07, sau devlog 27.
+**Cập nhật:** 2026-10-08, sau devlog 28 (công pháp và truyền thừa đã có).
 
 **Tài liệu này dùng để:**
 - Đối chiếu từng yêu cầu trong `WorldRules.md` với mô phỏng hiện có.
@@ -13,7 +13,7 @@
 **Tóm tắt:**
 - Khung chuỗi nhân quả của thế giới đã chạy: Environment → Life → Resource → Cultivation → Society → Economy → Faction → Conflict → History.
 - Còn thiếu năm mảng lớn:
-  1. **Công pháp và truyền thừa** (Technique).
+  1. ~~Công pháp và truyền thừa~~ (đã cài ở devlog 28).
   2. **Tri thức và tin đồn** (Knowledge).
   3. **Gia tộc, huyết thống và nội chiến của nước phàm nhân** (Family, Rebellion, Civil war).
   4. **Ngày/đêm.**
@@ -54,7 +54,8 @@ flowchart LR
     BT --> TRIB[Thiên kiếp]
     BT --> DEV[Tẩu hỏa / ma đạo]
     CUL --> LIFE2[Thọ nguyên]
-    TECH[Công pháp]:::todo -.-> CUL
+    TECH[Công pháp] --> CUL
+    TECH --> BT
   end
   subgraph SOC[Xã hội và kinh tế]
     CUL --> SECT[Tông môn]
@@ -82,6 +83,8 @@ flowchart LR
     WAR --> RELIC
     QI --> TREAS[Thiên tài địa bảo] --> CONTEST[Tranh đoạt] --> REL
     RELIC --> CUL
+    RELIC --> TECH
+    WAR --> TECH
   end
   WAR --> HIST[Sử sách / truyền kỳ / thời đại]
   DUEL --> HIST
@@ -212,7 +215,7 @@ flowchart LR
 |---|---|---|
 | Spiritual Root | **Có** | Ngũ hành, thiên linh căn, dị linh căn; Thiên Đạo ban hoặc tẩy luyện được |
 | Spiritual Energy / Speed | **Có** | Tốc độ theo linh khí tại chỗ, so với mức yêu cầu của cảnh giới |
-| Technique (công pháp) | **Chưa** | Đề xuất N2 |
+| Technique (công pháp) | **Có** | Devlog 28: 5 phẩm, trần cảnh giới, hợp linh căn, ma công (`TechniqueSystem`) |
 | Realm | **Có** | Luyện Khí (13 tầng) → Trúc Cơ → Kết Đan → Nguyên Anh → Hóa Thần |
 | Bottleneck | **Có** | Đỉnh tầng thì phải đột phá; thất bại thì chờ hồi lại nhiều năm; Hóa Thần cần linh khí ≥ 8.000 |
 | Breakthrough | **Có** | Tỉ lệ theo ngộ tính, đạo tâm, khí vận, đan (Trúc Cơ Đan của tông môn hoặc đan tự mua) |
@@ -223,7 +226,7 @@ flowchart LR
 | Tribulation | **Có** | Từ Nguyên Anh; Thiên Đạo giáng được; để lại lôi địa; kẻ thù có thể đánh lén người đang độ kiếp |
 | Ascension (phi thăng) | **Chưa** | Đề xuất N3 |
 
-Công thức hiện tại là **Talent × Environment × Resources × Time × Risk**, chưa có **Technique**.
+Công thức hiện tại là **Talent × Environment × Resources × Technique × Time × Risk**.
 
 ### Luật R4: Đột phá
 | Trường | Nội dung |
@@ -405,7 +408,7 @@ Mọi sự kiện cơ duyên đều sinh ra từ trạng thái thế giới:
 | Cổ mộ / thượng cổ di tích | Có sẵn từ khi tạo thế giới ở nơi hoang vắng; Thiên Đạo mở thêm được | **Có** |
 | Chiến trường cổ | Trận lớn, nhiều người chết; oán khí sinh yêu thú, hút ma tu | **Có** |
 | Thiên tài địa bảo | Nơi linh khí đậm nhất ngưng tụ; bảo quang xung thiên, cả thiên hạ tới tranh | **Có** |
-| Truyền thừa | Pháp bảo của người đã chết nằm trong bí cảnh | **Một phần**: chưa có công pháp (N2) |
+| Truyền thừa | Pháp bảo và ngọc giản công pháp của người chết, tông bị diệt, thượng cổ; khôi phục sơn môn từ công pháp thất truyền | **Có** (devlog 28) |
 | Linh thảo, pháp bảo | Linh khí đậm; giết người hoặc thám hiểm | **Có** |
 | Cấm địa | Lôi địa, chiến trường cổ, núi lửa | **Có** |
 | Thiên kiếp, đại kiếp | Đột phá / Thiên Đạo; đại kiếp tự đến hoặc do Thiên Đạo | **Có** |
@@ -447,7 +450,7 @@ Mọi quyền năng đi qua `IWorldCommand` vào mô phỏng; hậu quả hiện
 
 Thứ tự xếp theo số chuỗi phản ứng mới tạo ra trên mỗi đơn vị công sức, và theo hiệu năng.
 
-### N2: Công pháp và truyền thừa (ưu tiên 1)
+### N2: Công pháp và truyền thừa (ĐÃ CÀI, devlog 28)
 | Trường | Nội dung |
 |---|---|
 | Input | Tông môn và tu sĩ giữ công pháp (phẩm, ngũ hành, cảnh giới tối đa); linh căn của người học |

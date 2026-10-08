@@ -28,6 +28,7 @@ namespace ThienDao.Sim
         public int Layers = 1;       // explorations left before it is empty
         public bool Open => Layers > 0;
         public int ObjectId = -1;    // its building on the map (RelicCave … RelicTreasure), -1 if none stands
+        public int Technique = -1;   // a ngọc giản inside (index into Techniques.All), -1 if none: truyền thừa (TechniqueSystem)
     }
 
     // Bí cảnh (GDD §11): the past becomes the present. Strong cultivators who die leave their caves (and whatever
@@ -130,7 +131,18 @@ namespace ThienDao.Sim
                 r.Stones = rng.Range(600f, 1800f) * tier / 3f;
                 r.Pills = rng.Range(1, 5);
                 r.Layers = 3;
+                r.Technique = AncientMethod(tier, tomb && Hash.Float01(_w.Seed ^ 0xA9C1Eu, k, 3) < 0.33f, 0); // a cổ mộ may hold a ma công
             }
+        }
+
+        // A thượng cổ method, lost since before the sects: of the relic's tier (trung phẩm to cực phẩm).
+        int AncientMethod(int tier, bool demonic, long tick)
+        {
+            if (_sim.Techniques == null) return -1;
+            var t = _sim.Techniques.New(Mathf.Clamp(tier, 3, 5), -2, demonic, -1, tick);
+            t.Ancient = true;
+            t.Lost = true;
+            return t.Index;
         }
 
         // Far from every village, on ground a building can stand on: tombs in the hills, ruins wherever.
@@ -193,6 +205,7 @@ namespace ThienDao.Sim
             r.Stones = c.Stones * 0.8f + 50f * (int)c.Realm;
             r.Pills = c.Pills;
             r.Layers = (int)c.Realm >= (int)Realm.NguyenAnh ? 2 : 1;
+            if (c.Technique > 0) r.Technique = c.Technique; // their method, written down for whoever comes after
         }
 
         // A sect was wiped out: its scripture hall lies in ruins on the old mountain gate.
@@ -204,6 +217,7 @@ namespace ThienDao.Sim
             if (r == null) return;
             r.Sect = s.Id;
             r.Origin = $"tông môn bị diệt năm {Year(tick)}";
+            r.Technique = _sim.Techniques?.OfSect(s.Id)?.Index ?? -1; // the scripture hall: its trấn phái công pháp lies in the ruins
             r.Treasure = rng.NextFloat() < 0.5f ? _w.Lore.Treasures[rng.Range(0, _w.Lore.Treasures.Length)] : null;
             r.Stones = rng.Range(200f, 800f);
             r.Pills = rng.Range(0, 3);
@@ -245,6 +259,7 @@ namespace ThienDao.Sim
                 var rng = RngFor(tick, 300000 + r.Index);
                 // Fortune and insight find what the eyes pass over; the older and grander, the better hidden.
                 float chance = 0.12f * (0.5f + c.Luck) * (0.7f + 0.6f * c.Comprehension) / r.Tier;
+                if (_sim.Techniques != null && _sim.Techniques.Capped(c)) chance *= 2.5f; // stuck at their method's ceiling, they search harder
                 if (rng.NextFloat() >= chance) continue;
                 r.Discovered = true;
                 r.DiscoveredBy = c.Index;
@@ -347,6 +362,7 @@ namespace ThienDao.Sim
             var r = Add(RelicKind.Ancient, lore.AncientRuins[rng.Range(0, lore.AncientRuins.Length)], x, y, tier, tick, true);
             if (r == null) return null;
             r.Origin = $"bí cảnh Thiên Đạo mở ra năm {Year(tick)}";
+            r.Technique = AncientMethod(tier, false, tick);
             r.Treasure = lore.Treasures[rng.Range(0, lore.Treasures.Length)];
             r.Stones = rng.Range(600f, 1800f) * tier / 3f;
             r.Pills = rng.Range(1, 5);
@@ -374,7 +390,8 @@ namespace ThienDao.Sim
 
         readonly List<Contest> _contests = new List<Contest>();
 
-        public bool Worthy(Relic r) => r.Tier >= 3 || r.Kind == RelicKind.Treasure || r.Kind == RelicKind.Tomb || r.Kind == RelicKind.Ancient;
+        public bool Worthy(Relic r) => r.Tier >= 3 || r.Kind == RelicKind.Treasure || r.Kind == RelicKind.Tomb || r.Kind == RelicKind.Ancient ||
+                                       (r.Technique >= 0 && _sim.Techniques != null && _sim.Techniques.All[r.Technique].Grade >= 3); // a truyền thừa is worth a fight
 
         Contest ContestOver(Relic r)
         {
@@ -559,6 +576,20 @@ namespace ThienDao.Sim
                 c.Pills += r.Pills;
                 gains.Add($"{r.Pills} viên đan");
                 r.Pills = 0;
+            }
+            // A ngọc giản: taken up if it is the better method, and brought home to the sect if it beats the sect's own.
+            if (r.Technique >= 0 && _sim.Techniques != null)
+            {
+                var t = _sim.Techniques.All[r.Technique];
+                bool wasLost = t.Lost;
+                bool learned = _sim.Techniques.Learn(c, t, tick, out bool fell);
+                bool offered = _sim.Techniques.Offer(c, t, tick);
+                if (learned || offered)
+                {
+                    gains.Add($"ngọc giản {t.Name} ({t.GradeText}, {t.ElementText})" + (wasLost ? ", công pháp thất truyền nay tái hiện nhân gian" : "") +
+                              (offered ? ", dâng về làm trấn phái công pháp" : "") + (fell ? ", từ đó sa vào ma đạo" : ""));
+                    r.Technique = -1;
+                }
             }
             // Truyền thừa: the Dao of the one who lived here; a natural wonder feeds the body instead.
             float insight = r.Kind == RelicKind.Treasure ? 0.6f : 0.4f * r.Tier;

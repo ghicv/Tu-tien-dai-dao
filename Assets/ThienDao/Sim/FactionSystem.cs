@@ -470,6 +470,7 @@ namespace ThienDao.Sim
             _sim.Scars.Disc(s.X, s.Y, 7f, ScarKind.Scorch, 14, 5, (uint)tick ^ 0xD3u); // the mountain gate burns
             _sim.Stories?.OnFactionDestroyed(winner, loser, tick);
             _sim.Relics?.OnSectDestroyed(s, NameOf(loser.Id), tick);
+            _sim.Techniques?.OnSectDestroyed(loser.Id, winner?.Id ?? -1, tick); // after the relic has its copy: the victor seizes it, or it is lost
             SectGone(loser.Id, tick);
             _sim.Settlements.ConvertSectToVillage(s, tick);
             // The victor takes what lies within its reach.
@@ -485,7 +486,11 @@ namespace ThienDao.Sim
         void SyncWithSettlements(long tick)
         {
             foreach (var s in _sim.Settlements.All)
-                if (s.Alive && s.Sect && Get(s.Id) == null) Create(s, tick, -1, null, 100f);
+            {
+                if (!s.Alive || !s.Sect || Get(s.Id) != null) continue;
+                var nf = Create(s, tick, -1, null, 100f);
+                _sim.Techniques?.EnsureSect(nf, tick); // a hall set down with no founder still teaches something
+            }
             foreach (var f in All)
             {
                 if (!f.Alive) continue;
@@ -658,6 +663,10 @@ namespace ThienDao.Sim
                     if (a.ParentId == b.Id || b.ParentId == a.Id) target -= 20f; // the bitterness of a schism lingers
                     // A sect without linh thạch covets a neighbour sitting on linh mạch.
                     if (border > 0 && ((a.Treasury < 50f && b.LeyTiles >= 3) || (b.Treasury < 50f && a.LeyTiles >= 3))) target -= 15f;
+                    // A sect with a poor method eyes the scripture hall next door.
+                    var ma = border > 0 ? _sim.Techniques?.OfSect(a.Id) : null;
+                    var mb = border > 0 ? _sim.Techniques?.OfSect(b.Id) : null;
+                    if (ma != null && mb != null && Mathf.Abs(ma.Grade - mb.Grade) >= 2) target -= 10f;
                     float common = 0f;
                     foreach (var c in All) // a common enemy, or a common threat, draws sects together
                     {
@@ -975,6 +984,7 @@ namespace ThienDao.Sim
                 if (!c.Alive || c.SectId >= 0 || !_sim.Cultivation.IsAtHome(c)) continue;
                 float chance = c.Realm >= Realm.NguyenAnh ? 0.12f : c.Realm == Realm.KetDan ? 0.05f :
                     c.Realm == Realm.TrucCo && Realms.IsPeak(c.Realm, c.Stage) ? 0.01f : 0f;
+                if (chance > 0f && _sim.Techniques?.RevivableSect(c) != null) chance += 0.08f; // the heir of a fallen sect means to raise it again
                 if (chance <= 0f || rng.NextFloat() >= chance * (0.4f + c.Ambition)) continue;
                 FoundBy(c, tick, ref rng);
             }
@@ -1005,9 +1015,13 @@ namespace ThienDao.Sim
                     _sim.Cultivation.JoinSect(o, _sim.Settlements.All[f.Id], tick);
                     followers++;
                 }
-                _sim.Events.Add(tick, EventKind.Founding, c.Realm >= Realm.KetDan ? 3 : 2,
-                    $"{c.Title} khai tông lập phái, sáng lập {NameOf(f.Id)}{(f.Demonic ? " (ma đạo)" : "")}" +
-                    (followers > 0 ? $", {followers} tán tu theo về." : "."), x + 0.5f, y + 0.5f, Fx.LightPillar, c.Index, -1, f.Id);
+                var method = _sim.Techniques?.Of(c);
+                string founded = _revived != null
+                    ? $"{c.Title} mang {method.Name} thất truyền, khôi phục sơn môn {NameOf(f.Id)} đã bị diệt" +
+                      (_revivedFoe >= 0 ? $"; mối thù với {NameOf(_revivedFoe)} sống lại" : "")
+                    : $"{c.Title} khai tông lập phái, sáng lập {NameOf(f.Id)}{(f.Demonic ? " (ma đạo)" : "")}" + (method != null ? $", truyền {method.Name}" : "");
+                _sim.Events.Add(tick, EventKind.Founding, c.Realm >= Realm.KetDan || _revived != null ? 3 : 2,
+                    founded + (followers > 0 ? $", {followers} tán tu theo về." : "."), x + 0.5f, y + 0.5f, Fx.LightPillar, c.Index, -1, f.Id, _revivedFoe);
                 return f;
             }
         }
@@ -1078,14 +1092,25 @@ namespace ThienDao.Sim
                 x + 0.5f, y + 0.5f, misfit ? Fx.DemonBlast : Fx.LightPillar, leader.Index, -1, from.Id, f.Id);
         }
 
+        // Set by Found when the new sect raised a fallen one again (its name, its method): FoundBy tells it.
+        [System.NonSerialized] Settlement _revived;
+        [System.NonSerialized] int _revivedFoe = -1;
+
         Faction Found(Cultivator leader, int x, int y, Faction parent, long tick, ref DetRandom rng)
         {
-            string name = _sim.Settlements.NewSectName(leader.Demonic, ref rng);
+            // Carrying the method of a fallen sect, they raise that sect again under its old name.
+            var old = parent == null ? _sim.Techniques?.RevivableSect(leader) : null;
+            int foe = old != null ? _sim.Techniques.Of(leader).LostBy : -1;
+            string name = old != null ? old.BaseName : _sim.Settlements.NewSectName(leader.Demonic, ref rng);
             var s = _sim.Settlements.FoundSect(x, y, name, tick);
             if (s == null) return null;
             var f = Create(s, tick, parent?.Id ?? -1, leader, 40f + 60f * (int)leader.Realm);
             _sim.Cultivation.JoinSect(leader, s, tick);
             _sim.Cultivation.SetMaster(s.Id, leader);
+            _sim.Techniques?.OnFounded(f, leader, tick); // the founder's method becomes the sect's
+            _revived = old;
+            _revivedFoe = old != null && foe >= 0 && Get(foe) != null && Get(foe).Alive ? foe : -1;
+            if (_revivedFoe >= 0) Grievance(f.Id, _revivedFoe, 60f); // the old blood debt comes back with the name
             TerritoryChanged?.Invoke(); // holds its seat tile now; it grows with the yearly expansion
             return f;
         }

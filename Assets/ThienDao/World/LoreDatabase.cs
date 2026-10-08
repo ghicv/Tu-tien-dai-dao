@@ -19,7 +19,12 @@ namespace ThienDao.World
     [Serializable] public sealed class SectNames { public string[] righteousSects; public string[] demonicSects; public string[] sectSuffixes; }
     [Serializable] public sealed class PeopleNames { public string[] surnames; public string[] givenNames; }
     [Serializable] public sealed class PlaceNames { public string[] places; public string[] volcanoes; public string[] thunderPlaces; public string[] ancientRuins; public string[] ancientTombs; public string[] syllables; }
-    [Serializable] public sealed class ItemNames { public string[] herbs; public string[] treasures; public string[] naturalTreasures; }
+    [Serializable] public sealed class TechniquePool { public string element; public string[] names; }
+    [Serializable] public sealed class ItemNames
+    {
+        public string[] herbs; public string[] treasures; public string[] naturalTreasures;
+        public string basicTechnique; public TechniquePool[] techniques; public string[] demonicTechniques; // công pháp (devlog 28)
+    }
     [Serializable] public sealed class BeastKindPool { public string kind; public string[] names; }
     [Serializable] public sealed class BeastNames
     {
@@ -88,6 +93,9 @@ namespace ThienDao.World
         public string[] Surnames, GivenNames;
         public string[] Places, Volcanoes, ThunderPlaces, AncientRuins, AncientTombs, Syllables;
         public string[] Herbs, Treasures, NaturalTreasures;
+        public string BasicTechnique;            // công pháp: whole pools, no draw (so adding them left every old world as it was)
+        public TechniquePool[] Techniques;
+        public string[] DemonicTechniques;
         public string[] Beasts, BeastEpithets, BeastFromWolf, BeastFromDeer, BeastFromRabbit, BeastClans, GreatTitles;
         public BeastKindPool[] BeastKinds; // each kind its names (Sim.BeastKind by name)
 
@@ -122,6 +130,9 @@ namespace ThienDao.World
                 BeastClans = Some(LoreDatabase.Beasts.beastClans, 0.7f, 6, ref rng),
                 BeastKinds = LoreDatabase.Beasts.kinds,
                 GreatTitles = Some(LoreDatabase.Beasts.greatTitles, 0.7f, 6, ref rng),
+                BasicTechnique = LoreDatabase.Items.basicTechnique ?? "Dẫn Khí Quyết",
+                Techniques = LoreDatabase.Items.techniques ?? new TechniquePool[0],
+                DemonicTechniques = LoreDatabase.Items.demonicTechniques ?? new string[0],
             };
             for (int k = 1; k < (int)RegionKind.Count; k++)
             {

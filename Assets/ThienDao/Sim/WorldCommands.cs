@@ -233,7 +233,7 @@ namespace ThienDao.Sim
         }
     }
 
-    public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation, Revive, Annihilate, GrantTreasure, HeartDemon, Cripple }
+    public enum DivineAct : byte { GrantRoot, Bless, Smite, Tribulation, Revive, Annihilate, GrantTreasure, HeartDemon, Cripple, GrantTechnique }
 
     // Thiên Đạo acting on one being: the chosen cultivator (Target, an index into Cultivation.All) or a mortal of
     // the chosen village (Village, a settlement id), or for a thiên phạt the chosen yêu thú (Beast, an index into
@@ -286,6 +286,7 @@ namespace ThienDao.Sim
             if (Act == DivineAct.GrantTreasure) { sim.Cultivation.GrantTreasure(chosen, tick); return; }
             if (Act == DivineAct.HeartDemon) { sim.Cultivation.HeartDemon(chosen, tick); return; }
             if (Act == DivineAct.Cripple) { sim.Cultivation.Cripple(chosen, tick); return; }
+            if (Act == DivineAct.GrantTechnique) { sim.Techniques.Bestow(chosen, tick); return; }
             if (Act == DivineAct.Bless && chosen == null && village != null)
             {
                 village.Food += village.Population * 6f; // a good harvest for the chosen village

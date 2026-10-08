@@ -360,7 +360,7 @@ namespace ThienDao
             int target = t.Kind == InspectKind.Cultivator && t.Cultivator != null ? t.Cultivator.Index : -1;
             int village = t.Kind == InspectKind.Settlement && t.Settlement != null ? t.Settlement.Id : -1;
             if (act == DivineAct.GrantRoot && target < 0 && village < 0) return; // nobody chosen
-            if ((act == DivineAct.Tribulation || act == DivineAct.GrantTreasure || act == DivineAct.HeartDemon || act == DivineAct.Cripple) && target < 0) return; // these fall on a cultivator only
+            if ((act == DivineAct.Tribulation || act == DivineAct.GrantTreasure || act == DivineAct.HeartDemon || act == DivineAct.Cripple || act == DivineAct.GrantTechnique) && target < 0) return; // these fall on a cultivator only
             if (act == DivineAct.Annihilate && (village < 0 || !t.Settlement.Sect)) return; // diệt môn needs a sect
             var beast = t.Kind == InspectKind.Beast ? Sim.Beasts.ForEntity(t.Entity) : null;
             int x = t.CellX, y = t.CellY;

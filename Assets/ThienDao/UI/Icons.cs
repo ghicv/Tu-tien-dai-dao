@@ -680,6 +680,23 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Ngọc giản (công pháp): jade slips bound with a red cord, a glyph glowing on the top one.
+        public static Sprite JadeSlip => Glyph("jadeslip", new[]
+        {
+            "............",
+            "..kkkkkkkk..",
+            ".kgggggggwk.",
+            ".kgwgggyggk.",
+            ".kkkkkkkkkk.",
+            ".kgggggggwk.",
+            ".rrrrrrrrrr.",
+            ".kgggggggwk.",
+            ".kkkkkkkkkk.",
+            ".kgggggggwk.",
+            "..kkkkkkkk..",
+            "............",
+        }, P);
+
         // Hương khói (cầu nguyện, tín ngưỡng): a bronze burner, three lit sticks, smoke curling up.
         public static Sprite Incense => Glyph("incense", new[]
         {

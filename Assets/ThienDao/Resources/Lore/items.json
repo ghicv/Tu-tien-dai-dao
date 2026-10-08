@@ -9,5 +9,18 @@
     "Ngũ Hành Hoàn", "Huyết Ngọc Châu", "Tử Mẫu Âm Dương Thoa", "Bát Quái Kính", "Hàn Băng Kiếm", "Liệt Hỏa Phiến", "Ngân Nguyệt Câu",
     "Thất Tinh Kiếm", "Huyền Âm Phướn", "Cửu Long Đỉnh", "Tử Kim Linh", "Phá Thiên Thương", "Bích Thủy Kính", "Kim Giáp Phù", "Thiên Lôi Châu"
   ],
-  "naturalTreasures": ["Vạn Niên Linh Nhũ", "Địa Hỏa Linh Tủy", "Lôi Linh Tinh Thạch", "Thiên Niên Hàn Ngọc", "Cửu Khúc Linh Sâm", "Long Huyết Thạch", "Thái Âm Chân Thủy", "Ngũ Sắc Linh Thạch", "Thiên Ngoại Vẫn Thiết"]
+  "naturalTreasures": ["Vạn Niên Linh Nhũ", "Địa Hỏa Linh Tủy", "Lôi Linh Tinh Thạch", "Thiên Niên Hàn Ngọc", "Cửu Khúc Linh Sâm", "Long Huyết Thạch", "Thái Âm Chân Thủy", "Ngũ Sắc Linh Thạch", "Thiên Ngoại Vẫn Thiết"],
+  "basicTechnique": "Dẫn Khí Quyết",
+  "techniques": [
+    { "element": "", "names": ["Đại Diễn Quyết", "Thanh Nguyên Kiếm Quyết", "Luyện Thần Thuật", "Minh Vương Quyết", "Thái Huyền Kinh", "Cửu Chuyển Huyền Công", "Vô Tướng Quyết", "Hỗn Nguyên Nhất Khí Công"] },
+    { "element": "Kim", "names": ["Kim Cương Quyết", "Canh Kim Kiếm Quyết", "Kim Quang Bất Hoại Công", "Thái Bạch Kim Chương"] },
+    { "element": "Mộc", "names": ["Trường Xuân Công", "Ất Mộc Thanh Linh Quyết", "Thanh Mộc Trường Sinh Kinh", "Vạn Mộc Hồi Xuân Quyết"] },
+    { "element": "Thủy", "names": ["Huyền Thủy Chân Kinh", "Quý Thủy Chân Quyết", "Bích Hải Triều Sinh Công", "Nhược Thủy Huyền Công"] },
+    { "element": "Hỏa", "names": ["Ly Hỏa Chân Quyết", "Xích Viêm Phần Thiên Công", "Bính Hỏa Thần Công", "Chu Tước Phần Thiên Kinh"] },
+    { "element": "Thổ", "names": ["Hậu Thổ Chân Kinh", "Mậu Thổ Huyền Công", "Hoàng Long Trấn Nhạc Quyết", "Huyền Hoàng Bất Diệt Thể"] },
+    { "element": "Lôi", "names": ["Thiên Lôi Chân Quyết", "Tử Tiêu Thần Lôi Kinh", "Cửu Tiêu Lôi Âm Công"] },
+    { "element": "Phong", "names": ["Thanh Phong Ngự Không Quyết", "Cuồng Phong Huyền Kinh", "Phù Dao Cửu Vạn Công"] },
+    { "element": "Băng", "names": ["Hàn Băng Huyền Công", "Huyền Âm Kinh", "Cửu U Hàn Băng Quyết"] }
+  ],
+  "demonicTechniques": ["Phạm Thánh Chân Ma Công", "Huyết Sát Ma Công", "Thiên Ma Giải Thể Đại Pháp", "Âm Hồn Luyện Thi Thuật", "Vạn Hồn Phệ Tâm Quyết", "Huyết Ảnh Đại Pháp", "Cửu U Ma Điển"]
 }

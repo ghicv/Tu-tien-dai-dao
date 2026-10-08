@@ -67,6 +67,7 @@ namespace ThienDao.Sim
         public int Pills;            // breakthrough pills for the next gate
         public int Treasures;        // pháp bảo
         public float Hp = -1f;       // sinh lực; -1 = whole (CombatSystem.HpOf)
+        public int Technique;        // công pháp (index into Techniques.All); 0 = the common Dẫn Khí Quyết (TechniqueSystem)
         public string TreasureName;
         public Goal Goal;
         public string GoalText;
@@ -336,7 +337,9 @@ namespace ThienDao.Sim
                     bool desperate = c.AgeYears(tick) > c.LifespanYears * DesperateAge && c.Progress >= need * 0.6f;
                     bool placeAllows = c.Realm != Realm.NguyenAnh ||
                                        _sim.Qi.SampleQi((int)_e.X[c.Entity], (int)_e.Y[c.Entity]) >= Realms.HoaThanMinQi;
-                    if ((ready || desperate) && placeAllows) TryBreakthrough(c, tick, !ready, ref rng);
+                    // Bình cảnh công pháp: no method, no way up, however ready they are.
+                    bool methodAllows = _sim.Techniques == null || _sim.Techniques.Allows(c, c.Realm + 1);
+                    if ((ready || desperate) && placeAllows && methodAllows) TryBreakthrough(c, tick, !ready, ref rng);
                 }
             }
         }
@@ -347,6 +350,7 @@ namespace ThienDao.Sim
             float qi = _sim.Qi.SampleQi((int)x, (int)y);
             float qiFactor = Mathf.Clamp(qi / Realms.RequiredQi[(int)c.Realm], 0f, 1.5f);
             float gain = SpiritRoots.SpeedMultiplier(c.Roots) * qiFactor * (0.6f + 0.8f * c.Comprehension) * (0.7f + 0.6f * c.DaoHeart);
+            gain *= _sim.Techniques?.Speed(c) ?? 1f; // công pháp: its grade, and whether its element is among the roots
             if (c.Demonic)
             {
                 gain *= 1.5f; // ma đạo: fast, at a price
@@ -396,7 +400,7 @@ namespace ThienDao.Sim
             c.Progress *= 0.6f;
             c.DaoHeart = Mathf.Max(0f, c.DaoHeart - 0.1f);
             c.FailedAttempts++;
-            float deviation = 0.12f * (1.3f - c.DaoHeart) * (1f + c.FailedAttempts * 0.2f);
+            float deviation = 0.12f * (1.3f - c.DaoHeart) * (1f + c.FailedAttempts * 0.2f) * (_sim.Techniques != null && _sim.Techniques.Of(c).Demonic ? 1.3f : 1f); // ma công bites back
             if (rng.NextFloat() >= deviation)
             {
                 _sim.Events.Add(tick, EventKind.BreakthroughFailed, c.Realm >= Realm.TrucCo ? 1 : 0, $"{who} đột phá {Realms.Names[(int)next]} thất bại.");
@@ -635,6 +639,7 @@ namespace ThienDao.Sim
             c.HomeY = sect.Y + 0.5f + rng.Range(-2f, 2f);
             SendTo(c, c.HomeX, c.HomeY, Trip.Return);
             AssignMaster(c, sect.Id, ref rng);
+            _sim.Techniques?.OnJoin(c, sect.Id); // the sect's method, if it serves them better
         }
 
         // Bái sư: a Kết Đan+ elder of the sect if there is one, otherwise someone of a higher realm.
@@ -1056,6 +1061,9 @@ namespace ThienDao.Sim
             if (realm < Realm.LuyenKhi || realm > Realm.HoaThan || !_w.IsWalkable(x, y)) return null;
             var rng = RngFor(tick, 720000 + All.Count);
             var c = Create(ref rng, realm, 0, DescendAge[(int)realm] * rng.Range(0.8f, 1.2f), -1, x, y, tick);
+            // A method that can carry them at least one realm further (a Hóa Thần is given a cực phẩm one).
+            int grade = realm <= Realm.TrucCo ? 2 : (int)realm;
+            if (_sim.Techniques != null) c.Technique = _sim.Techniques.New(grade, -2, false, -1, tick).Index;
             c.Blessed = true;
             _sim.Events.Add(tick, EventKind.Divine, realm >= Realm.KetDan ? 2 : 1,
                 $"Thiên Đạo đưa {c.Title} ({Realms.Names[(int)realm]}, {SpiritRoots.Kind(c.Roots)}) xuống nhân gian, làm một tán tu.",
@@ -1140,6 +1148,7 @@ namespace ThienDao.Sim
                 StateHash.Add(ref h, c.SectId | (c.AtWar ? 1L << 32 : 0) | (c.Watched ? 1L << 33 : 0) | ((long)c.Pills << 40) | ((long)c.Goal << 50));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Stones));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Hp));
+                StateHash.Add(ref h, c.Technique);
             }
         }
     }

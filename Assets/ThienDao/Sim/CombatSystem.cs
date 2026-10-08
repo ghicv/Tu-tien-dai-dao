@@ -101,6 +101,7 @@ namespace ThienDao.Sim
                 if (killer.TreasureName == null || killer.Treasures == 1) killer.TreasureName = victim.TreasureName;
             }
             _sim.Cultivation.Slay(victim, killer, tick, text, importance);
+            _sim.Techniques?.Plunder(killer, victim, tick); // their ngọc giản too
 
             foreach (var c in _sim.Cultivation.All)
             {

@@ -100,6 +100,7 @@ namespace ThienDao.UI
             { BrushTool.GrantTreasure, "Ban pháp bảo — bấm vào tu sĩ: thêm một pháp bảo (đánh mạnh hơn, dễ vượt thiên kiếp hơn), nhưng ma tu sẽ thèm khát" },
             { BrushTool.HeartDemon, "Giáng tâm ma — bấm vào tu sĩ: đạo tâm lung lay, tu vi trì trệ; đạo tâm càng yếu càng dễ tẩu hỏa nhập ma, tụt cảnh giới hoặc sa vào ma đạo" },
             { BrushTool.Cripple, "Phế tu vi — bấm vào tu sĩ: mất trọn một đại cảnh giới, sức, máu và thọ nguyên giảm theo" },
+            { BrushTool.GrantTechnique, "Ban công pháp — bấm vào tu sĩ: truyền một bộ công pháp cực phẩm hợp linh căn (tu nhanh, tới tận Hóa Thần); tông môn của người đó lập làm trấn phái công pháp" },
             { BrushTool.PlaceTreasure, "Thiên tài địa bảo — đặt một linh vật ở chỗ bấm (linh khí càng đậm phẩm càng cao): bảo quang xung thiên, các tông môn kéo đến tranh đoạt" },
             { BrushTool.OpenRealm, "Mở bí cảnh — xé mở một thượng cổ di tích ba tầng ở chỗ bấm: có pháp bảo, linh thạch, đan dược và hiểm nguy; tu sĩ bốn phương tranh nhau vào" },
         };
@@ -403,6 +404,7 @@ namespace ThienDao.UI
                     AddTool(BrushTool.Bless, Icons.Star);
                     AddTool(BrushTool.Smite, Icons.Bolt);
                     AddTool(BrushTool.Tribulation, Icons.Tribulation);
+                    AddTool(BrushTool.GrantTechnique, Icons.JadeSlip);
                     AddTool(BrushTool.GrantTreasure, Icons.Sword);
                     AddTool(BrushTool.HeartDemon, Icons.HeartDemon);
                     AddTool(BrushTool.Cripple, Icons.Cripple);
@@ -688,13 +690,14 @@ namespace ThienDao.UI
             var acts = new[]
             {
                 (DivineAct.GrantRoot, Icons.Seed), (DivineAct.Bless, Icons.Star), (DivineAct.Smite, Icons.Bolt), (DivineAct.Tribulation, Icons.Tribulation),
-                (DivineAct.Annihilate, Icons.Wrath), (DivineAct.GrantTreasure, Icons.Sword), (DivineAct.HeartDemon, Icons.HeartDemon), (DivineAct.Cripple, Icons.Cripple)
+                (DivineAct.Annihilate, Icons.Wrath), (DivineAct.GrantTreasure, Icons.Sword), (DivineAct.HeartDemon, Icons.HeartDemon), (DivineAct.Cripple, Icons.Cripple),
+                (DivineAct.GrantTechnique, Icons.JadeSlip)
             };
             for (int k = 0; k < acts.Length; k++)
             {
                 var act = acts[k].Item1;
-                _divineButtons[k] = Ui.Button(actsRow, acts[k].Item2, DivineTipPerson[k], () => _game.ActOnSelected(act), 44f);
-                Size(_divineButtons[k].Frame, 44f, 44f);
+                _divineButtons[k] = Ui.Button(actsRow, acts[k].Item2, DivineTipPerson[k], () => _game.ActOnSelected(act), 40f);
+                Size(_divineButtons[k].Frame, 40f, 40f);
             }
             _card.gameObject.SetActive(false);
         }
@@ -732,7 +735,7 @@ namespace ThienDao.UI
             _chipCount = 0;
         }
 
-        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[8];
+        readonly Ui.IconButton[] _divineButtons = new Ui.IconButton[9];
         Ui.IconButton _reviveButton;
         RectTransform _actsRow;
         const int SmiteButton = 2, AnnihilateButton = 4;
@@ -747,7 +750,8 @@ namespace ThienDao.UI
             "",
             "Ban pháp bảo: đánh mạnh hơn, dễ vượt thiên kiếp hơn; ma tu sẽ thèm khát",
             "Giáng tâm ma: đạo tâm lung lay; đạo tâm yếu thì dễ tẩu hỏa nhập ma, tụt cảnh giới hoặc sa vào ma đạo",
-            "Phế tu vi: mất trọn một đại cảnh giới, sức, máu và thọ nguyên giảm theo"
+            "Phế tu vi: mất trọn một đại cảnh giới, sức, máu và thọ nguyên giảm theo",
+            "Ban công pháp: truyền một bộ công pháp cực phẩm hợp linh căn; tông môn sẽ lập làm trấn phái công pháp"
         };
 
         static readonly string[] DivineTipVillage =
@@ -757,7 +761,7 @@ namespace ThienDao.UI
             "Thiên phạt: thiên lôi đánh xuống làng",
             "",
             "Diệt môn: thiên phạt san bằng sơn môn, tu sĩ trong núi vẫn lạc, nơi đó hóa lôi địa",
-            "", "", ""
+            "", "", "", ""
         };
 
         void ShowDivineButtons(bool show, bool village, bool sect = false, bool creature = false)
@@ -1437,6 +1441,7 @@ namespace ThienDao.UI
                 {
                     Chip(Icons.ForRealm(c.Realm, c.Demonic), Realms.Names[(int)c.Realm], $"{c.RealmText}{(c.Demonic ? " · ma tu" : "")}", c.Demonic ? new Color(1f, 0.5f, 0.5f) : Ui.Gold);
                     HpChip(CombatSystem.HpOf(c), CombatSystem.MaxHp(c), CombatSystem.Wounded(c) ? "trọng thương, ở nhà dưỡng thương; sức chiến đấu giảm" : "");
+                    MethodChip(c);
                     Chip(Icons.Seed, $"{RootShort(c.Roots)} · {SpiritRoots.Elements(c.Roots)}",
                         $"{SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}) · tốc độ tu luyện ×{SpiritRoots.SpeedMultiplier(c.Roots):0.0}");
                     float qi = sim.Qi.SampleQi((int)c.HomeX, (int)c.HomeY), need = Realms.RequiredQi[(int)c.Realm];
@@ -1535,6 +1540,12 @@ namespace ThienDao.UI
                     if (m.Alive && m.SectId == s.Id) count[(int)m.Realm]++;
                 for (var r = Realm.LuyenKhi; r < Realm.Count; r++)
                     if (count[(int)r] > 0) Chip(Icons.ForRealm(r), $"{count[(int)r]}", Realms.Names[(int)r]);
+                var method = sim.Techniques.OfSect(s.Id);
+                if (method != null)
+                    Chip(Icons.JadeSlip, method.Name,
+                        $"Trấn phái công pháp: {method.GradeText}{(method.Demonic ? ", ma công" : "")}, hệ {method.ElementText}, đệ tử tu được tới {Realms.Names[(int)method.Ceiling]}. " +
+                        "Tông bị diệt thì công pháp thất truyền vào phế tích; ai nhặt được có thể khôi phục sơn môn",
+                        method.Grade >= 4 ? new Color(1f, 0.85f, 0.45f) : (Color?)null);
                 if (f != null && f.Alive)
                 {
                     Chip(Icons.Banner, $"{f.Tiles}", "Vùng lãnh thổ");
@@ -1595,6 +1606,20 @@ namespace ThienDao.UI
         }
 
         // Sinh lực (máu): current / whole, red when low; the tooltip says what the wounds mean.
+        // Công pháp: its name, and a warning when it is the ceiling holding them back.
+        void MethodChip(Cultivator c)
+        {
+            var ts = _game.Sim.Techniques;
+            var t = ts.Of(c);
+            bool capped = ts.Capped(c);
+            string fit = t.Element < 0 ? "vạn năng" : (c.Roots & (1 << t.Element)) != 0 ? $"hệ {t.ElementText}, hợp linh căn" : $"hệ {t.ElementText}, không hợp linh căn";
+            Chip(Icons.JadeSlip, t.Name,
+                $"Công pháp {t.GradeText}{(t.Demonic ? " (ma công)" : "")} · {fit} · tốc độ tu luyện ×{TechniqueSystem.SpeedFor(t, c):0.00} · tu được tới {Realms.Names[(int)t.Ceiling]}" +
+                (t.Sect >= 0 ? $" · trấn phái công pháp của {_game.Sim.Factions.NameOf(t.Sect)}" : "") +
+                (capped ? ". Đã chạm trần công pháp: phải tìm được công pháp cao hơn (bí cảnh, sư môn, đoạt từ kẻ khác) mới đột phá được" : ""),
+                capped ? new Color(1f, 0.55f, 0.5f) : t.Grade >= 4 ? new Color(1f, 0.85f, 0.45f) : (Color?)null);
+        }
+
         void HpChip(float hp, float max, string note)
         {
             float frac = max > 0f ? hp / max : 1f;
@@ -1753,6 +1778,7 @@ namespace ThienDao.UI
             if (r.Treasure != null) inside.Add(r.Kind == RelicKind.Treasure ? $"linh vật {r.Treasure}" : $"pháp bảo {r.Treasure}");
             if (r.Stones > 0f) inside.Add($"{r.Stones:0} linh thạch");
             if (r.Pills > 0) inside.Add($"{r.Pills} viên đan");
+            if (r.Technique >= 0) { var t = sim.Techniques.All[r.Technique]; inside.Add($"ngọc giản {t.Name} ({t.GradeText}, tới {Realms.Names[(int)t.Ceiling]}{(t.Lost ? ", thất truyền" : "")})"); }
             inside.Add(r.Kind == RelicKind.Treasure ? "thọ nguyên" : "truyền thừa");
             sb.Append($"\nBên trong: {string.Join(", ", inside)} · còn {r.Layers} tầng");
             sb.Append(sim.Relics.Contested(r) ? "\n<color=#ff8070>Các thế lực đang tranh đoạt cơ duyên nơi đây.</color>"
@@ -1917,7 +1943,7 @@ namespace ThienDao.UI
                     hint = h.Kind == InspectKind.Settlement ? $"Ban phúc → {h.Settlement.Name}" : who != null ? $"Ban cơ duyên → {who}" : "Ban cơ duyên → tu sĩ gần nhất";
                 else if (tool == BrushTool.Annihilate)
                     hint = h.Kind == InspectKind.Settlement && h.Settlement.Sect ? $"Diệt môn → {h.Settlement.Name}" : "Chọn một tông môn để diệt";
-                else if (tool == BrushTool.GrantTreasure || tool == BrushTool.HeartDemon || tool == BrushTool.Cripple)
+                else if (tool == BrushTool.GrantTreasure || tool == BrushTool.HeartDemon || tool == BrushTool.Cripple || tool == BrushTool.GrantTechnique)
                     hint = h.Kind == InspectKind.Cultivator
                         ? $"{WorldBrush.ToolNames[(int)tool]} → {who} ({h.Cultivator.RealmText}{(tool == BrushTool.HeartDemon ? $", đạo tâm {h.Cultivator.DaoHeart * 100f:0}%" : "")})"
                         : $"Chọn một tu sĩ để {WorldBrush.ToolNames[(int)tool].ToLower()}";

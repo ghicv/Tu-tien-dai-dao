@@ -51,7 +51,8 @@ namespace ThienDao.Player
         HeartDemon,
         Cripple,
         PlaceTreasure,
-        OpenRealm
+        OpenRealm,
+        GrantTechnique // devlog 28
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -64,7 +65,7 @@ namespace ThienDao.Player
             "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
             "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
             "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn", "Thả yêu thú",
-            "Thả tu sĩ", "Đánh thức hung thú", "Ban pháp bảo", "Giáng tâm ma", "Phế tu vi", "Thiên tài địa bảo", "Mở bí cảnh"
+            "Thả tu sĩ", "Đánh thức hung thú", "Ban pháp bảo", "Giáng tâm ma", "Phế tu vi", "Thiên tài địa bảo", "Mở bí cảnh", "Ban công pháp"
         };
 
         readonly Simulation _sim;
@@ -103,7 +104,7 @@ namespace ThienDao.Player
 
         public static bool IsDivineTool(BrushTool t) =>
             t == BrushTool.GrantRoot || t == BrushTool.Bless || t == BrushTool.Smite || t == BrushTool.Tribulation || t == BrushTool.Annihilate ||
-            t == BrushTool.GrantTreasure || t == BrushTool.HeartDemon || t == BrushTool.Cripple;
+            t == BrushTool.GrantTreasure || t == BrushTool.HeartDemon || t == BrushTool.Cripple || t == BrushTool.GrantTechnique;
 
         public static DivineAct ActFor(BrushTool t)
         {
@@ -116,6 +117,7 @@ namespace ThienDao.Player
                 case BrushTool.GrantTreasure: return DivineAct.GrantTreasure;
                 case BrushTool.HeartDemon: return DivineAct.HeartDemon;
                 case BrushTool.Cripple: return DivineAct.Cripple;
+                case BrushTool.GrantTechnique: return DivineAct.GrantTechnique;
                 default: return DivineAct.Smite;
             }
         }
