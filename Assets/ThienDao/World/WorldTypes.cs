@@ -31,7 +31,8 @@ namespace ThienDao.World
     public static class ZoneFlags
     {
         public const byte Thunder = 1; // lôi địa: where heaven's tribulation fell; thick lôi khí, no fields, no trees
-        public const byte Road = 2;    // thương lộ: worn into the ground by caravans
+        public const byte Road = 2;    // đường đất: packed into the ground by walkers and carts (PathSystem)
+        public const byte Trail = 8;   // đường mòn: grass worn through by walkers; packed further it becomes a road
         public const byte Wall = 4;    // tường thành: the walls of a thành or a capital (SettlementSystem)
     }
 

@@ -84,6 +84,7 @@ namespace ThienDao.Render
             _world.TerrainChanged += HandleTerrainChanged;
             _world.QiCapChanged += HandleQiCapChanged;
             _world.LookChanged += HandleTerrainChanged; // a scar repaints the ground like any change of land
+            _world.PathsChanged += HandleTerrainChanged; // and so does a new trail or road
             _qi.Changed += HandleQiChanged;
 
             if (_material == null)
@@ -131,6 +132,7 @@ namespace ThienDao.Render
                 _world.TerrainChanged -= HandleTerrainChanged;
                 _world.QiCapChanged -= HandleQiCapChanged;
                 _world.LookChanged -= HandleTerrainChanged;
+                _world.PathsChanged -= HandleTerrainChanged;
             }
             if (_qi != null) _qi.Changed -= HandleQiChanged;
             if (_factions != null) _factions.TerritoryChanged -= HandleTerritoryChanged;
@@ -341,6 +343,24 @@ namespace ThienDao.Render
                     bool wallR = wall && x < w - 1 && (zones[i + 1] & ZoneFlags.Wall) != 0;
                     bool wallB = wall && y > 0 && (zones[i - w] & ZoneFlags.Wall) != 0;
                     bool wallT = wall && y < h - 1 && (zones[i + w] & ZoneFlags.Wall) != 0;
+                    // Đường mòn / đường đất: which trodden neighbours the path joins.
+                    const byte PathMask = ZoneFlags.Road | ZoneFlags.Trail;
+                    bool path = !water && !wall && (zones[i] & PathMask) != 0;
+                    bool road = path && (zones[i] & ZoneFlags.Road) != 0;
+                    int links = 0;
+                    if (path)
+                    {
+                        bool l = x > 0, r = x < w - 1, b = y > 0, tp = y < h - 1;
+                        if (l && (zones[i - 1] & PathMask) != 0) links |= TerrainTexture.LinkL;
+                        if (r && (zones[i + 1] & PathMask) != 0) links |= TerrainTexture.LinkR;
+                        if (b && (zones[i - w] & PathMask) != 0) links |= TerrainTexture.LinkB;
+                        if (tp && (zones[i + w] & PathMask) != 0) links |= TerrainTexture.LinkT;
+                        // Diagonals only where no straight neighbour already makes the turn.
+                        if (l && b && (links & (TerrainTexture.LinkL | TerrainTexture.LinkB)) == 0 && (zones[i - w - 1] & PathMask) != 0) links |= TerrainTexture.LinkBL;
+                        if (r && b && (links & (TerrainTexture.LinkR | TerrainTexture.LinkB)) == 0 && (zones[i - w + 1] & PathMask) != 0) links |= TerrainTexture.LinkBR;
+                        if (l && tp && (links & (TerrainTexture.LinkL | TerrainTexture.LinkT)) == 0 && (zones[i + w - 1] & PathMask) != 0) links |= TerrainTexture.LinkTL;
+                        if (r && tp && (links & (TerrainTexture.LinkR | TerrainTexture.LinkT)) == 0 && (zones[i + w + 1] & PathMask) != 0) links |= TerrainTexture.LinkTR;
+                    }
                     float amp = TerrainInfo.PixelNoiseAmp(t) * 2f;
                     Color32 baseC = _cellColor[i];
                     int rowBase = ly * CellPx * ChunkPx + lx * CellPx;
@@ -369,6 +389,7 @@ namespace ThienDao.Render
                             // Patterns run in world pixels, so dunes, cracks and crop rows flow across cells.
                             c = TerrainTexture.Paint(t, reg, baseC, f, wx, wy, n, seed);
                             if (scarred) c = TerrainTexture.Scarred(c, scar, scarL, scarR, scarB, scarT, px, py, wx, wy, n, seed);
+                            if (path) c = TerrainTexture.PathPixel(c, px, py, wx, wy, road, links, n);
                             if (wall) c = TerrainTexture.WallPixel(px, py, wx, wy, wallL, wallR, wallB, wallT, n);
                             // Region borders: long dashes; kingdom borders: dots.
                             if (borderR != 0 && px == CellPx - 1 && (borderR == 2 ? (wy % 6) < 4 : (wy & 3) == 0))
@@ -593,8 +614,6 @@ namespace ThienDao.Render
             f *= TerrainTexture.Macro(t, x, y, _world.Seed ^ 0x3ACu);
             if (t == Terrain.Lava) f = 0.85f + (Hash.U32(_world.Seed ^ 0x1A7Au, x, y) & 255) / 255f * 0.35f; // glowing, crusted in patches
             var c = SpriteLibrary.Shade(TerrainInfo.Colors[(int)t], f);
-            // Thương lộ: packed earth where caravans have worn a road.
-            if ((_world.Zone[i] & ZoneFlags.Road) != 0 && TerrainInfo.IsLand(t)) c = Color32.Lerp(c, new Color32(186, 150, 104, 255), 0.6f);
             // Lôi địa: the ground keeps a violet sheen while lôi khí lingers.
             if ((_world.Zone[i] & ZoneFlags.Thunder) != 0) c = Color32.Lerp(c, new Color32(150, 112, 230, 255), 0.3f);
             // Each great region has its own cast of light: the crimson of Ma Đạo, the cold of the north, …
@@ -636,6 +655,8 @@ namespace ThienDao.Render
             byte scar = _world.Scar[i];
             if (scar != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = TerrainTexture.ScarTint(ScarInfo.Kind(scar), ScarInfo.Strength(scar), c);
             if ((_world.Zone[i] & ZoneFlags.Wall) != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = TerrainTexture.WallMap;
+            else if ((_world.Zone[i] & ZoneFlags.Road) != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = Color32.Lerp(c, TerrainTexture.RoadMap, 0.6f); // far off, a road is a line of earth
+            else if ((_world.Zone[i] & ZoneFlags.Trail) != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = Color32.Lerp(c, TerrainTexture.RoadMap, 0.3f);
             int id = _world.Objects.CellObject[i];
             if (id >= 0)
             {

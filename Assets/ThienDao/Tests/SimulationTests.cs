@@ -288,6 +288,7 @@ namespace ThienDao.Tests
             foreach (var c in new[] { hoaThan, ketDan })
             {
                 e.Flying[c.Entity] = true;
+                c.Travelling = true; // only those on the road are moved
                 e.TX[c.Entity] = UnityEngine.Mathf.Clamp(e.X[c.Entity] + 200f, 1f, sim.World.W - 2f);
                 e.TY[c.Entity] = e.Y[c.Entity];
             }
@@ -530,6 +531,32 @@ namespace ThienDao.Tests
             founder.Nemesis = -1;
             sim.Combat.Kill(killer, kin, sim.Clock.Tick, "thử nghiệm", 1);
             Assert.AreEqual(killer.Index, founder.Nemesis, "the head of the house will hunt the killer");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void WalkersWearTrailsIntoRoadsAndGrassTakesThemBack()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var w = sim.World;
+            var town = sim.Settlements.All.Find(s => s.Alive && !s.Sect);
+            int x = town.X + 12, y = town.Y;
+            bool Open(int cx, int cy) { var tt = w.Terrain[w.Idx(cx, cy)]; return TerrainInfo.IsWalkable(tt) && TerrainInfo.IsLand(tt) && tt != Terrain.Farmland && w.Zone[w.Idx(cx, cy)] == 0; }
+            for (int k = 0; k < 200 && !Open(x, y); k++) { x++; if (k % 20 == 19) { x -= 20; y++; } }
+            int i = w.Idx(x, y);
+            Assert.IsTrue(Open(x, y), "a patch of open ground to walk on");
+            float grass = sim.Nav.SpeedAt(x + 0.5f, y + 0.5f);
+            for (int k = 0; k < PathSystem.TrailAt; k++) sim.Paths.Tread(x, y, 1);
+            Assert.AreNotEqual(0, w.Zone[i] & ZoneFlags.Trail, "trodden often, the grass wears into a trail");
+            Assert.Greater(sim.Nav.SpeedAt(x + 0.5f, y + 0.5f), grass, "easier going than the grass");
+            for (int k = PathSystem.TrailAt; k < PathSystem.RoadAt; k++) sim.Paths.Tread(x, y, 1);
+            Assert.AreNotEqual(0, w.Zone[i] & ZoneFlags.Road, "kept in use, the trail is packed into a road");
+            // No one walks it any more: a road falls back to a trail, then to grass.
+            for (int k = 0; k < 30; k++) sim.Paths.YearlyStep();
+            Assert.AreEqual(0, w.Zone[i] & (ZoneFlags.Road | ZoneFlags.Trail), "grass takes it back");
+            // In a living world the walkers draw their own roads.
+            Run(sim, SimClock.DaysPerYear * 40);
+            Assert.Greater(sim.Paths.TrailCells + sim.Paths.RoadCells, 50, "the roads between towns draw themselves");
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 

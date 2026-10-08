@@ -14,6 +14,7 @@ namespace ThienDao.Sim
     {
         public const int G = 4;
         public const float RoadBonus = 1.6f;
+        public const float TrailBonus = 1.3f; // đường mòn: easier going than the grass beside it
         const int PlanBudget = 32;      // A* searches per day
         const int NodeLimit = 6000;     // nodes one search may expand
         const float DirectReach = 40f;  // short trips in plain sight need no search
@@ -37,6 +38,7 @@ namespace ThienDao.Sim
         readonly byte[] _cost;         // per node: 0 impassable, else time to cross (10 = open grass)
         readonly byte[] _door;         // per node: the walkable cell nearest its centre (x + y * G), where routes pass
         readonly bool[] _full;         // per node: every cell walkable (straight lines across it need no per-cell check)
+        readonly bool[] _path;         // per node: a trail or road runs through it (routes keep to it instead of cutting across)
         readonly Dictionary<int, Route> _routes = new Dictionary<int, Route>();
         int _plansToday;
         long _planDay = -1;
@@ -53,6 +55,13 @@ namespace ThienDao.Sim
 
         public int Planned { get; private set; }
 
+        // The same roads are walked again and again (caravans between two markets, migrants out of one town): a route
+        // found between two nodes is remembered, and reused until the land between opens or closes somewhere.
+        // Saved with the world, so a loaded game walks the same roads as one that never stopped.
+        const int CacheMax = 4096; // every pair of neighbouring villages has its road (PathSystem), and caravans theirs
+        readonly Dictionary<long, int[]> _cache = new Dictionary<long, int[]>();
+        public static long CacheHits;
+
         // Where walking time goes, for the perf probe: not part of the world.
         public static readonly string[] ProfNames = { "Tìm đường A*", "Kiểm tra đi thẳng", "Đánh số vùng liên thông" };
         public static readonly double[] ProfMs = new double[3];
@@ -68,6 +77,7 @@ namespace ThienDao.Sim
             _cost = new byte[_nw * _nh];
             _door = new byte[_nw * _nh];
             _full = new bool[_nw * _nh];
+            _path = new bool[_nw * _nh];
             Rebuild(0, 0, _w.W - 1, _w.H - 1);
             _w.TerrainChanged += Rebuild;
             sim.Entities.Died += (id, s, cause) => _routes.Remove(id);
@@ -79,8 +89,14 @@ namespace ThienDao.Sim
             if (!_w.InBounds(cx, cy)) return 0f;
             int i = _w.Idx(cx, cy);
             float s = TerrainInfo.WalkSpeed[(int)_w.Terrain[i]];
-            return (_w.Zone[i] & ZoneFlags.Road) != 0 ? s * RoadBonus : s;
+            byte z = _w.Zone[i];
+            return (z & ZoneFlags.Road) != 0 ? s * RoadBonus : (z & ZoneFlags.Trail) != 0 ? s * TrailBonus : s;
         }
+
+        static bool OnPath(byte zone) => (zone & (ZoneFlags.Road | ZoneFlags.Trail)) != 0;
+
+        // Trails and roads appeared or faded here (PathSystem): the nodes' cost and doors follow.
+        public void RebuildArea(int x0, int y0, int x1, int y1) => Rebuild(x0, y0, x1, y1);
 
         void Rebuild(int x0, int y0, int x1, int y1)
         {
@@ -89,8 +105,8 @@ namespace ThienDao.Sim
             for (int ny = ny0; ny <= ny1; ny++)
             for (int nx = nx0; nx <= nx1; nx++)
             {
-                int open = 0, door = 0;
-                float time = 0f, doorD = float.MaxValue;
+                int open = 0, door = 0, path = 0;
+                float time = 0f, pathTime = 0f, doorD = float.MaxValue;
                 for (int y = ny * G; y < ny * G + G; y++)
                 for (int x = nx * G; x < nx * G + G; x++)
                 {
@@ -98,16 +114,22 @@ namespace ThienDao.Sim
                     if (s <= 0f) continue;
                     open++;
                     time += 10f / s;
-                    // A route through this node passes its most central dry cell, never a wet one.
-                    float cdx = x - nx * G - (G - 1) * 0.5f, cdy = y - ny * G - (G - 1) * 0.5f, cd = cdx * cdx + cdy * cdy;
+                    bool onPath = OnPath(_w.Zone[_w.Idx(x, y)]);
+                    if (onPath) { path++; pathTime += 10f / s; }
+                    // A route through this node passes its most central dry cell, never a wet one; where a trail or
+                    // road crosses the node, its door is on the trail, so routes keep to it.
+                    float cdx = x - nx * G - (G - 1) * 0.5f, cdy = y - ny * G - (G - 1) * 0.5f, cd = cdx * cdx + cdy * cdy - (onPath ? 100f : 0f);
                     if (cd < doorD) { doorD = cd; door = (x - nx * G) + (y - ny * G) * G; }
                 }
                 _door[ny * _nw + nx] = (byte)door;
                 _full[ny * _nw + nx] = open == G * G;
+                _path[ny * _nw + nx] = path >= 2;
                 // Mostly water or rock: not a way through (a single walkable cell would leave walkers stuck on it).
-                byte c = open < 6 ? (byte)0 : (byte)Mathf.Clamp(time / open, 1f, 255f);
+                // A node a trail runs through costs what walking the trail costs, not the rough ground beside it.
+                float cross = path >= 2 ? pathTime / path : open > 0 ? time / open : 0f;
+                byte c = open < 6 ? (byte)0 : (byte)Mathf.Clamp(cross, 1f, 255f);
                 int node = ny * _nw + nx;
-                if ((c == 0) != (_cost[node] == 0)) _zonesDirty = true;
+                if ((c == 0) != (_cost[node] == 0)) { _zonesDirty = true; _cache.Clear(); } // a way opened or closed: old routes may be wrong
                 _cost[node] = c;
             }
         }
@@ -181,6 +203,22 @@ namespace ThienDao.Sim
 
         public bool Failed(int id) => _routes.TryGetValue(id, out var r) && r.Failed;
 
+        // A way between two points for those the sim does not walk one by one (PathSystem: villagers' everyday
+        // traffic): straight where the land allows, else the planned route (from the cache once known). Waypoints
+        // packed x | y << 16, ending at the target; null when there is no way on foot.
+        [NonSerialized] Route _scratch;
+
+        public List<int> Way(float sx, float sy, float tx, float ty, List<int> into)
+        {
+            into.Clear();
+            if (LineClear(sx, sy, tx, ty)) { into.Add(Pack(tx, ty)); return into; }
+            _scratch ??= new Route();
+            Plan(_scratch, sx, sy, tx, ty);
+            if (_scratch.Failed) return null;
+            into.AddRange(_scratch.Points);
+            return into;
+        }
+
         static void Direct(Route route, float tx, float ty)
         {
             route.Points.Clear();
@@ -210,6 +248,14 @@ namespace ThienDao.Sim
                 ZoneRebuilds++;
             }
             if (_zone[start] != _zone[goal]) { route.Failed = true; return; }
+            long key = ((long)start << 32) | (uint)goal;
+            if (_cache.TryGetValue(key, out var known))
+            {
+                CacheHits++;
+                route.Points.AddRange(known);
+                route.Points.Add(Pack(tx, ty));
+                return;
+            }
 
             int n = _nw * _nh;
             if (_g == null || _g.Length != n)
@@ -267,11 +313,14 @@ namespace ThienDao.Sim
             for (int k = 1; k < nodes.Count; k++)
             {
                 // String pulling: skip a waypoint while the next one is in a straight, walkable line.
-                if (k + 1 < nodes.Count && LineClear(ax, ay, Cx(nodes[k + 1]), Cy(nodes[k + 1]))) continue;
+                // A node on a trail or road is kept: walkers follow the road the land has worn, not the straight line.
+                if (k + 1 < nodes.Count && !_path[nodes[k]] && LineClear(ax, ay, Cx(nodes[k + 1]), Cy(nodes[k + 1]))) continue;
                 route.Points.Add(Pack(Cx(nodes[k]), Cy(nodes[k])));
                 ax = Cx(nodes[k]);
                 ay = Cy(nodes[k]);
             }
+            if (_cache.Count >= CacheMax) _cache.Clear();
+            _cache[key] = route.Points.ToArray(); // the way, without its exact end
             route.Points.Add(Pack(tx, ty));
         }
 

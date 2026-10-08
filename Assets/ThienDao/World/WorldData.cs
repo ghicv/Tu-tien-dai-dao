@@ -59,6 +59,7 @@ namespace ThienDao.World
         public event Action<int, int, int, int> TerrainChanged;
         public event Action<int, int, int, int> QiCapChanged;
         public event Action<int, int, int, int> LookChanged; // only the look of the ground (scars, walls); no system needs to react
+        public event Action<int, int, int, int> PathsChanged; // trails and roads appeared or faded (PathSystem): only the map redraws
 
         public WorldData(uint seed, string seedText)
         {
@@ -96,5 +97,6 @@ namespace ThienDao.World
         public void NotifyTerrainChanged(int x0, int y0, int x1, int y1) => TerrainChanged?.Invoke(x0, y0, x1, y1);
         public void NotifyQiCapChanged(int x0, int y0, int x1, int y1) => QiCapChanged?.Invoke(x0, y0, x1, y1);
         public void NotifyLookChanged(int x0, int y0, int x1, int y1) => LookChanged?.Invoke(x0, y0, x1, y1);
+        public void NotifyPathsChanged(int x0, int y0, int x1, int y1) => PathsChanged?.Invoke(x0, y0, x1, y1);
     }
 }

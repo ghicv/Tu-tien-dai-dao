@@ -1353,7 +1353,7 @@ namespace ThienDao.UI
             _statChips[k++].Set(Icons.Crown, $"{kings}", "Yêu Vương (mỗi người một yêu tộc)");
             _statChips[k++].Set(Icons.Book, $"{found}/{open}", "Bí cảnh đã lộ diện / còn chưa bị vét sạch");
             _statChips[k++].Set(Icons.Unit(Unit.Caravan), $"{sim.Trade.CaravanCount}", $"Thương đội đang đi · đã giao {sim.Trade.Delivered:N0} chuyến");
-            _statChips[k++].Set(Icons.Tag, $"{sim.Trade.Roads:N0}", "Ô thương lộ (đường do thương đội đi mòn)");
+            _statChips[k++].Set(Icons.Tag, $"{sim.Paths.RoadCells:N0} · {sim.Paths.TrailCells:N0}", "Ô đường đất · ô đường mòn: người đi bộ, di dân, thương đội đi nhiều thành đường; bỏ không thì cỏ mọc lại");
             _statChips[k++].Set(Icons.Orb, $"{sim.Eras.QiFactor(sim.Clock.Tick) * 100f:0}%", $"Linh khí thiên địa theo chu kỳ ({(sim.Eras.Waxing(sim.Clock.Tick) ? "đang dâng" : "đang suy")})");
             while (k < _statChips.Length) _statChips[k++].Hide();
         }
@@ -1878,6 +1878,8 @@ namespace ThienDao.UI
             sb.Append($"<color=#e8d8a8>{w.Lore.Continent} đại lục · {regionName}{(kingdom != null ? " · " + kingdom.Name : "")}</color>\n");
             sb.Append($"Nhiệt độ {tempC:0}°C · độ ẩm {w.Moisture[i] * 100 / 255}%");
             if (TerrainInfo.IsLand(terrain)) sb.Append($" · màu mỡ {w.Fertility(i) * 100f:0}%");
+            if ((w.Zone[i] & ZoneFlags.Road) != 0) sb.Append($" · <color=#e0c08a>đường đất</color> ({sim.Paths.TreadsAt(i)} lượt qua)");
+            else if ((w.Zone[i] & ZoneFlags.Trail) != 0) sb.Append($" · <color=#e0c08a>đường mòn</color> ({sim.Paths.TreadsAt(i)}/{PathSystem.RoadAt} lượt để thành đường đất)");
             sb.Append('\n');
             sb.Append($"Linh khí {sim.Qi.SampleQi(x, y):0} / trần {w.QiCap[i]}{(w.LeyLine[i] ? " · <color=#9fe0ff>LINH MẠCH</color>" : "")}\n");
             if (TerrainInfo.IsLand(terrain))

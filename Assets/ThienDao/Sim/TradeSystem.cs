@@ -32,14 +32,12 @@ namespace ThienDao.Sim
         static readonly float[] BasePrice = { 1f, 10f, 40f };
         const int MaxCaravans = 60;
         const float Reach = 200f;
-        const int RoadTraffic = 10; // caravan-days on a cell before it is worn into a road
 
         readonly Simulation _sim;
         readonly WorldData _w;
         readonly List<Market> _markets = new List<Market>();
         readonly List<Caravan> _caravans = new List<Caravan>();
-        readonly ushort[] _traffic;
-        public int Roads { get; private set; }
+        public int Roads => _sim.Paths?.RoadCells ?? 0; // cells of đường đất (PathSystem)
         public int CaravanCount => _caravans.Count;
         public long Delivered { get; private set; } // caravans that reached their market
 
@@ -47,7 +45,6 @@ namespace ThienDao.Sim
         {
             _sim = sim;
             _w = sim.World;
-            _traffic = new ushort[_w.W * _w.H];
         }
 
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0x7EADu, (int)tick, salt));
@@ -191,19 +188,7 @@ namespace ThienDao.Sim
         // Called by CreatureSystem after a caravan moved.
         public void Walked(int id, long tick)
         {
-            var e = _sim.Entities;
-            int x = (int)e.X[id], y = (int)e.Y[id];
-            if (_w.InBounds(x, y))
-            {
-                int i = _w.Idx(x, y);
-                if (_traffic[i] < ushort.MaxValue) _traffic[i]++;
-                if (_traffic[i] == RoadTraffic && (_w.Zone[i] & ZoneFlags.Road) == 0 && TerrainInfo.IsLand(_w.Terrain[i]))
-                {
-                    _w.Zone[i] |= ZoneFlags.Road;
-                    Roads++;
-                    _w.NotifyTerrainChanged(x, y, x, y);
-                }
-            }
+            var e = _sim.Entities; // the road it wears is PathSystem's (CreatureSystem treads it)
             bool arrived = (e.TX[id] - e.X[id]) * (e.TX[id] - e.X[id]) + (e.TY[id] - e.Y[id]) * (e.TY[id] - e.Y[id]) < 0.09f;
             bool stuck = _sim.Creatures.Stuck(id); // no road there on foot
             if (arrived || stuck || tick - e.BirthTick[id] > 320) Arrive(id, tick, arrived);

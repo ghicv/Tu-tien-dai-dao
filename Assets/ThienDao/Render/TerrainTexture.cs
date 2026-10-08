@@ -359,6 +359,48 @@ namespace ThienDao.Render
             return c;
         }
 
+        // ---------------------------------------------------------------- đường mòn, đường đất (PathSystem)
+
+        static readonly Color32 RoadEarth = new Color32(160, 126, 86, 255);
+        static readonly Color32 TrailEarth = new Color32(178, 152, 108, 255);
+        public static readonly Color32 RoadMap = new Color32(168, 134, 92, 255);
+
+        // Neighbour bits for PathPixel: 1 left, 2 right, 4 below, 8 above, 16 below-left, 32 below-right,
+        // 64 above-left, 128 above-right.
+        public const int LinkL = 1, LinkR = 2, LinkB = 4, LinkT = 8, LinkBL = 16, LinkBR = 32, LinkTL = 64, LinkTR = 128;
+
+        // One pixel of a worn path seen from above, joined to the trodden cells around it (the diagonals too, so
+        // a path that wanders across the grid still reads as one line). A road is a band of packed earth with two
+        // darker wheel ruts and the odd pebble; a trail is a narrower strip of grass worn through to the dirt in
+        // patches. Pixels inside the band are painted; the rest of the cell keeps its ground.
+        public static Color32 PathPixel(Color32 under, int px, int py, int wx, int wy, bool road, int links, uint n)
+        {
+            float cx = px - 3.5f, cy = py - 3.5f;
+            float hw = road ? 2.6f : 1.1f, dw = hw * 1.45f;
+            bool alongX = Mathf.Abs(cy) <= hw && ((cx <= 0f && (links & LinkL) != 0) || (cx >= 0f && (links & LinkR) != 0));
+            bool alongY = Mathf.Abs(cx) <= hw && ((cy <= 0f && (links & LinkB) != 0) || (cy >= 0f && (links & LinkT) != 0));
+            bool diag = (cx <= 0f && cy <= 0f && (links & LinkBL) != 0 && Mathf.Abs(cx - cy) <= dw) ||
+                        (cx >= 0f && cy <= 0f && (links & LinkBR) != 0 && Mathf.Abs(cx + cy) <= dw) ||
+                        (cx <= 0f && cy >= 0f && (links & LinkTL) != 0 && Mathf.Abs(cx + cy) <= dw) ||
+                        (cx >= 0f && cy >= 0f && (links & LinkTR) != 0 && Mathf.Abs(cx - cy) <= dw);
+            bool hub = Mathf.Abs(cx) <= hw && Mathf.Abs(cy) <= hw;
+            if (!(hub || alongX || alongY || diag)) return under;
+            if (!road)
+            {
+                if (((n >> 9) & 3) == 0) return under; // tufts of grass still standing in the trail
+                return Color32.Lerp(under, SpriteLibrary.Shade(TrailEarth, 0.94f + ((n >> 13) & 7) * 0.02f), 0.6f);
+            }
+            float f = 0.93f + ((n >> 11) & 7) * 0.018f;
+            // Wheel ruts: two darker lines along the way the road runs.
+            bool rut = (alongX && !alongY && Mathf.Abs(Mathf.Abs(cy) - 1.5f) < 0.5f) || (alongY && !alongX && Mathf.Abs(Mathf.Abs(cx) - 1.5f) < 0.5f);
+            if (rut) f *= 0.84f;
+            if (((n >> 15) & 31) == 0) f *= 1.2f; // a pebble
+            var c = SpriteLibrary.Shade(RoadEarth, f);
+            // The verge: the outermost pixels of the band mix with the grass, in a hard checker (no blur).
+            bool edge = (alongX && Mathf.Abs(cy) > hw - 0.6f) || (alongY && Mathf.Abs(cx) > hw - 0.6f);
+            return edge && ((wx + wy) & 1) == 0 ? Color32.Lerp(under, c, 0.5f) : c;
+        }
+
         // ---------------------------------------------------------------- per cell
 
         // Broad patches at cell scale, so the textures still read on the far map (one pixel per cell).

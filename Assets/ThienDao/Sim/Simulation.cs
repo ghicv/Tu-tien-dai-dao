@@ -29,6 +29,7 @@ namespace ThienDao.Sim
         public readonly QiSystem Qi;
         public readonly ForageSystem Forage;
         public readonly NavSystem Nav;
+        public readonly PathSystem Paths;
         public readonly EntityStore Entities = new EntityStore();
         public readonly CreatureSystem Creatures;
         public readonly WildlifeSystem Wildlife;
@@ -78,6 +79,7 @@ namespace ThienDao.Sim
             Forage = new ForageSystem(world);
             world.TerrainChanged += Forage.RebuildCapBlocks; // must exist before settlements start clearing fields
             world.LookChanged += Forage.RebuildCapBlocks;    // scars change how much grass grows
+            Paths = new PathSystem(this);  // trails and roads worn by walkers (before the routes that follow them)
             Nav = new NavSystem(this);     // routes for walkers, rebuilt where the land changes
             Creatures = new CreatureSystem(this);
             Settlements = new SettlementSystem(this);
@@ -140,6 +142,7 @@ namespace ThienDao.Sim
             Creatures.Tick(tick); Mark(0, ref t);
             if (Clock.IsMonthStart)
             {
+                Paths.MonthlyStep(tick); Mark(0, ref t); // villagers tread their roads; new trails reach the map and the routes
                 Qi.MonthlyStep(RegenMultiplier(Clock.Season), QiScale); Mark(1, ref t);
                 Forage.MonthlyStep(Clock.Season); Mark(2, ref t);
                 Disasters.MonthlyStep(tick); Mark(3, ref t); // floods recede, droughts wither the grass, epidemics run their course
@@ -165,6 +168,7 @@ namespace ThienDao.Sim
                 Combat.YearlyStep(tick); Mark(7, ref t);
                 Disasters.YearlyStep(tick);
                 Scars.YearlyStep(tick); Mark(3, ref t); // the land heals its scars
+                Paths.YearlyStep(); Mark(0, ref t); // grass takes back the trails no one walks
                 Beasts.YearlyStep(tick); Mark(8, ref t);
                 Relics.YearlyStep(tick); Mark(10, ref t);
                 Eras.YearlyStep(tick); Mark(13, ref t);
@@ -251,6 +255,7 @@ namespace ThienDao.Sim
             Relics.HashInto(ref h);
             Trade.HashInto(ref h);
             Eras.HashInto(ref h);
+            Paths.HashInto(ref h);
             Techniques.HashInto(ref h);
             Faith.HashInto(ref h);
             Destiny.HashInto(ref h);
