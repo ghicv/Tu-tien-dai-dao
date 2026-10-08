@@ -33,6 +33,17 @@ namespace ThienDao.World
         public int CapitalX, CapitalY;
         public bool Fallen;          // no town of it is left: the kingdom is gone, only its name on old maps
         public int LandCells;
+
+        // Chính trị (Sim/PoliticsSystem.cs, devlog 30): who rules, of which house, how well, and how firmly.
+        public string Dynasty;           // the ruling house (a surname)
+        public string Ruler;
+        public long RulerBorn;
+        public float Benevolence = 0.5f; // nhân từ 0..1; low is bạo ngược
+        public bool HasHeir = true;
+        public long DynastySince;
+        public float Stability = 70f;    // 100 minus the unrest of its people, weighted by town size
+        public int Parent = -1;          // the kingdom it broke away from
+        public int RoyalClan = -1;       // a tu tiên gia tộc on the throne (ClanSystem)
         public string CapitalName => Name.EndsWith(" Bộ") ? Name.Substring(0, Name.Length - 3) + " Vương Đình" : Name.Replace(" Quốc", " Kinh");
     }
 

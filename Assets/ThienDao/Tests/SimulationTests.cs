@@ -475,6 +475,65 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void KingdomsHaveKingsAndARisingEndsInOneOfThreeWays()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            foreach (var kg in sim.World.Kingdoms)
+            {
+                Assert.IsNotNull(kg.Ruler, "every kingdom has a king");
+                Assert.IsNotNull(kg.Dynasty);
+            }
+            Run(sim, SimClock.DaysPerYear * 40); // towns grow big enough to rise
+            // A cruel king, a land at the end of its patience.
+            Kingdom k = null;
+            foreach (var kg in sim.World.Kingdoms)
+                if (!kg.Fallen && sim.Settlements.All.Exists(s => s.Alive && !s.Sect && s.Kingdom == kg.Id && !s.Capital && s.Population >= 120)) { k = kg; break; }
+            Assert.IsNotNull(k, "a kingdom with a town big enough to rise");
+            k.Benevolence = 0f;
+            for (int y = 0; y < 80 && sim.Politics.RebellionOf(k.Id) == null; y++)
+            {
+                foreach (var s in sim.Settlements.All)
+                    if (s.Alive && s.Kingdom == k.Id) s.Unrest = 100f;
+                Run(sim, SimClock.DaysPerYear);
+            }
+            var r = sim.Politics.RebellionOf(k.Id);
+            Assert.IsNotNull(r, "the people rise");
+            long start = sim.Clock.Tick;
+            for (int y = 0; y < 8 && sim.Politics.RebellionOf(k.Id) == r; y++) Run(sim, SimClock.DaysPerYear);
+            Assert.AreNotEqual(r, sim.Politics.RebellionOf(k.Id), "the civil war ends");
+            bool ended = sim.History.All.Exists(e => e.Tick >= start && (e.Text.Contains("dẹp yên") || e.Text.Contains("lập triều") || e.Text.Contains("cát cứ")));
+            Assert.IsTrue(ended, "crushed, a new dynasty, or a new kingdom");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
+        public void ClansRiseOnAncestralLandAndAvengeTheirOwn()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear);
+            var founder = sim.Cultivation.All.Find(c => c.Alive && c.Realm >= Realm.KetDan && c.Clan < 0);
+            var village = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population > 40 && sim.Clans.SeatedAt(s.Id) == null);
+            var clan = sim.Clans.Found(founder, village, sim.Clock.Tick);
+            Assert.AreEqual(clan.Index, founder.Clan);
+            Assert.AreEqual(clan, sim.Clans.SeatedAt(village.Id));
+            // Children who wake to a spirit root on its land are taken in, and carry its name.
+            Cultivator kin = null;
+            for (int k = 0; k < 12 && kin == null; k++)
+            {
+                var child = sim.Cultivation.AwakenMortal(village, sim.Clock.Tick + k);
+                if (child != null && child.Clan == clan.Index) kin = child;
+            }
+            Assert.IsNotNull(kin, "one of the house");
+            StringAssert.StartsWith(clan.Name + " ", kin.Name);
+            // Kill one of them and the house swears vengeance.
+            var killer = sim.Cultivation.All.Find(c => c.Alive && c.Clan < 0 && c != founder && c != kin);
+            founder.Nemesis = -1;
+            sim.Combat.Kill(killer, kin, sim.Clock.Tick, "thử nghiệm", 1);
+            Assert.AreEqual(killer.Index, founder.Nemesis, "the head of the house will hunt the killer");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));

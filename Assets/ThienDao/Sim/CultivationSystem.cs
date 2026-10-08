@@ -68,6 +68,8 @@ namespace ThienDao.Sim
         public int Treasures;        // pháp bảo
         public float Hp = -1f;       // sinh lực; -1 = whole (CombatSystem.HpOf)
         public int Technique;        // công pháp (index into Techniques.All); 0 = the common Dẫn Khí Quyết (TechniqueSystem)
+        public int Clan = -1;        // tu tiên gia tộc (index into Clans.All), -1 = none (ClanSystem)
+        public int Origin = -1;      // the village they were born in (settlement id), -1 if unknown
         public string TreasureName;
         public Goal Goal;
         public string GoalText;
@@ -629,6 +631,8 @@ namespace ThienDao.Sim
                     // The sect whose land the village lies in takes its gifted children first.
                     var sect = _sim.Factions?.ProtectorOf(s.X, s.Y) ?? NearestSect(s.X, s.Y);
                     var c = Create(ref rng, Realm.LuyenKhi, 0, 10f, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick);
+                    c.Origin = s.Id;
+                    _sim.Clans?.OnAwakened(c, s); // born on a gia tộc's ancestral land: one of theirs
                     c.Progress = 0f;
                     if (sect != null) Recruit(c, sect, ref rng);
                     bool gifted = SpiritRoots.Count(c.Roots) == 1;
@@ -1016,6 +1020,8 @@ namespace ThienDao.Sim
             var rng = RngFor(tick, 715000 + s.Id);
             var sect = demonic ? null : _sim.Factions?.ProtectorOf(s.X, s.Y) ?? NearestSect(s.X, s.Y);
             var c = Create(ref rng, Realm.LuyenKhi, 0, age, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick);
+            c.Origin = s.Id;
+            _sim.Clans?.OnAwakened(c, s); // born on a gia tộc's ancestral land: one of theirs
             c.Progress = 0f;
             if (demonic) c.Demonic = true;
             else c.Luck = Mathf.Max(c.Luck, 0.7f);
@@ -1032,6 +1038,8 @@ namespace ThienDao.Sim
             int roots = rng.NextFloat() < 0.5f ? 1 << (5 + rng.Range(0, 3)) : 1 << rng.Range(0, 5);
             var sect = _sim.Factions?.ProtectorOf(s.X, s.Y) ?? NearestSect(s.X, s.Y);
             var c = Create(ref rng, Realm.LuyenKhi, 0, age, sect?.Id ?? -1, s.X + 0.5f, s.Y + 0.5f, tick, roots);
+            c.Origin = s.Id;
+            _sim.Clans?.OnAwakened(c, s); // born on a gia tộc's ancestral land: one of theirs
             c.Progress = 0f;
             c.Comprehension = Mathf.Max(c.Comprehension, 0.85f);
             c.Blessed = true;

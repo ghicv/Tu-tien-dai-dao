@@ -1,6 +1,6 @@
 # Hệ quy luật thế giới Thiên Đạo (đối chiếu `Docs/WorldRules.md`)
 
-**Cập nhật:** 2026-10-08, sau devlog 29 (công pháp và truyền thừa, tri thức và tin đồn đã có).
+**Cập nhật:** 2026-10-08, sau devlog 30 (công pháp, tin đồn, chính trị nước phàm nhân và gia tộc đã có).
 
 **Tài liệu này dùng để:**
 - Đối chiếu từng yêu cầu trong `WorldRules.md` với mô phỏng hiện có.
@@ -15,7 +15,7 @@
 - Còn thiếu năm mảng lớn:
   1. ~~Công pháp và truyền thừa~~ (đã cài ở devlog 28).
   2. ~~Tri thức và tin đồn~~ (đã cài ở devlog 29).
-  3. **Gia tộc, huyết thống và nội chiến của nước phàm nhân** (Family, Rebellion, Civil war).
+  3. ~~Gia tộc, huyết thống và nội chiến của nước phàm nhân~~ (đã cài ở devlog 30).
   4. **Ngày/đêm.**
   5. **Tài nguyên khoáng (gỗ, đá, kim loại) và phi thăng.**
 
@@ -64,7 +64,8 @@ flowchart LR
     SECT --> MKT
     QI --> HERB[Linh thảo] --> MKT
     FAITH[Tín ngưỡng / cầu nguyện] --> TOWN
-    FAM[Gia tộc / huyết thống]:::todo -.-> TOWN
+    FAM[Gia tộc / huyết thống] --> TOWN
+    CUL --> FAM
     KNOW[Tri thức / tin đồn] --> SECT
     MKT --> KNOW
   end
@@ -77,7 +78,9 @@ flowchart LR
     RAID --> POP
     WAR --> BF[Chiến trường cổ]
     BF --> BE
-    REB[Khởi nghĩa / nội chiến]:::todo -.-> TOWN
+    REB[Khởi nghĩa / nội chiến] --> TOWN
+    TOWN --> REB
+    FAM --> REB
   end
   subgraph EVT[Cơ duyên]
     LIFE2 --> RELIC[Bí cảnh / động phủ]
@@ -274,8 +277,8 @@ Công thức hiện tại là **Talent × Environment × Resources × Technique 
 | Yêu cầu | Trạng thái | Ở đâu / ghi chú |
 |---|---|---|
 | Individual → Village → City | **Có** | Thôn, trấn, thành theo dân số; nhà cửa và công trình theo quy mô |
-| Family / Clan | **Chưa** | Đề xuất N4 |
-| Nation | **Một phần** | Nước phàm nhân theo đại vực, kinh thành, thất thủ và dời đô. Chưa có chính trị: vua, khởi nghĩa (N5) |
+| Family / Clan | **Có** | Devlog 30: tu tiên gia tộc, đất tổ, con cháu mang họ, báo thù, thế thù, hoàng tộc (`ClanSystem`) |
+| Nation | **Có** | Devlog 30: vua, triều đại, độ ổn định, bất mãn từng thành, khởi nghĩa, tranh ngôi, đổi triều, cát cứ, thống nhất (`PoliticsSystem`) |
 | Sect → Faction | **Có** | Tông môn là thế lực; ngoại môn, nội môn, trưởng lão; tông chủ và kế vị |
 | Friendship / Loyalty | **Chưa** | Gắn vào N4 / N8 |
 | Reputation | **Một phần** | Danh tiếng (Fame), danh hiệu, truyền kỳ; tín ngưỡng của làng với Thiên Đạo |
@@ -350,10 +353,10 @@ Không có chiến tranh nào được tung ngẫu nhiên: Need → Competition 
 | Yêu cầu | Trạng thái | Ghi chú |
 |---|---|---|
 | Personal conflict | **Có** | Đấu pháp khi gặp nhau, báo thù sư phụ hoặc đồ đệ, giết người đoạt bảo |
-| Clan conflict | **Chưa** | Cần gia tộc (N4) |
+| Clan conflict | **Có** | Thế thù gia tộc (devlog 30) |
 | Sect conflict / Territory war / Resource war | **Có** | Luật R7 |
 | Beast invasion | **Có** | Tập kích, thú triều của yêu tộc, hung thú tàn sát (sự kiện thế giới) |
-| Rebellion / Civil war | **Chưa** | Đề xuất N5 |
+| Rebellion / Civil war | **Có** | Khởi nghĩa, tranh ngôi (devlog 30) |
 | Major catastrophe | **Có** | Đại kiếp |
 | Ảnh hưởng đến Population, Resources, Territory, Power, History | **Có** | |
 | Ảnh hưởng đến Economy | **Một phần** | Linh thạch tông môn; chưa có phong tỏa đường buôn |
@@ -476,7 +479,7 @@ Thứ tự xếp theo số chuỗi phản ứng mới tạo ra trên mỗi đơn
 | Chuỗi phản ứng | Tin bảo vật lan → ba tông kéo tới → đánh nhau → tông thứ tư nghe tin hai tông kiệt sức → đánh úp |
 | Hiệu năng | Lưu tin theo vùng thô, lan mỗi tháng; không lưu theo từng người |
 
-### N5 + N4: Nước phàm nhân có chính trị, gia tộc (ưu tiên 3)
+### N5 + N4: Nước phàm nhân có chính trị, gia tộc (ĐÃ CÀI, devlog 30)
 | Trường | Nội dung |
 |---|---|
 | Input | Đói, thuế, thiên tai, kinh thành xa, tông môn bảo hộ hay bóc lột; gia tộc lớn (dòng họ của tu sĩ có tiếng) |

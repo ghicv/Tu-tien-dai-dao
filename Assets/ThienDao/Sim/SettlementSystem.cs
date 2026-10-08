@@ -39,7 +39,8 @@ namespace ThienDao.Sim
         public float FertilitySum;
 
         public float LastHarvest, LastHunt;
-        public int BirthsLastYear, DeathsLastYear, StarvedThisYear;
+        public int BirthsLastYear, DeathsLastYear, StarvedThisYear, StarvedLastYear;
+        public float Unrest = 20f;                         // bất mãn 0..100 of its people toward the crown (PoliticsSystem)
 
         public int Population
         {
@@ -294,6 +295,7 @@ namespace ThienDao.Sim
             k.CapitalX = s.X;
             k.CapitalY = s.Y;
             _sim.Events.Add(tick, EventKind.Founding, 2, $"Di dân dựng {s.Name} trên đất cũ của {k.Name}: {k.Name} phục quốc.", s.X + 0.5f, s.Y + 0.5f);
+            _sim.Politics?.OnRestored(k, tick); // a new house to rule it
         }
 
         public Settlement FoundVillage(int x, int y, byte roof, int people, long tick)
@@ -477,6 +479,7 @@ namespace ThienDao.Sim
 
                 int pop = s.Population;
                 s.DeathsLastYear = deaths + s.StarvedThisYear;
+                s.StarvedLastYear = s.StarvedThisYear; // for PoliticsSystem: hunger breeds unrest
                 s.StarvedThisYear = 0;
                 if (pop == 0)
                 {

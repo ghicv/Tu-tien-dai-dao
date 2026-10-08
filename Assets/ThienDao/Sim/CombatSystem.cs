@@ -102,6 +102,7 @@ namespace ThienDao.Sim
             }
             _sim.Cultivation.Slay(victim, killer, tick, text, importance);
             _sim.Techniques?.Plunder(killer, victim, tick); // their ngọc giản too
+            _sim.Clans?.OnKilled(killer, victim, tick); // their kin will remember
 
             foreach (var c in _sim.Cultivation.All)
             {
@@ -187,6 +188,13 @@ namespace ThienDao.Sim
                 var avenger = a.Nemesis == b.Index ? a : b;
                 var other = avenger == a ? b : a;
                 Duel(avenger, other, tick, 0.75f, "oan gia ngõ hẹp", ref rng);
+                return;
+            }
+            // Two gia tộc at blood feud: their people fight on sight, sect or no sect.
+            if (_sim.Clans != null && a.Clan >= 0 && b.Clan >= 0 && a.Clan != b.Clan && _sim.Clans.Feuding(a.Clan, b.Clan))
+            {
+                if (rng.NextFloat() < 0.6f * CreatureSystem.RoadPace)
+                    Duel(a, b, tick, 0.5f, $"{_sim.Clans.All[a.Clan].Title} và {_sim.Clans.All[b.Clan].Title} thế thù", ref rng);
                 return;
             }
             bool sameSect = a.SectId >= 0 && a.SectId == b.SectId;

@@ -50,6 +50,8 @@ namespace ThienDao.Sim
         public readonly FaithSystem Faith;
         public readonly DestinySystem Destiny;
         public readonly KnowledgeSystem Knowledge;
+        public readonly ClanSystem Clans;
+        public readonly PoliticsSystem Politics;
         public readonly WorldRules Rules = new WorldRules();
         public readonly EventLog Events = new EventLog();
 
@@ -96,6 +98,8 @@ namespace ThienDao.Sim
             Faith = new FaithSystem(this);
             Destiny = new DestinySystem(this);
             Knowledge = new KnowledgeSystem(this);
+            Clans = new ClanSystem(this);
+            Politics = new PoliticsSystem(this); // a king of a ruling house for every kingdom
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -116,7 +120,7 @@ namespace ThienDao.Sim
         public static readonly string[] SystemNames =
         {
             "Di chuyển", "Linh khí", "Cỏ", "Thiên tai", "Thú hoang", "Làng", "Tu sĩ", "Đấu pháp", "Yêu thú", "Nhân vật chính",
-            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ", "Tín ngưỡng", "Tin đồn"
+            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ", "Tín ngưỡng", "Tin đồn", "Chính trị"
         };
         [System.NonSerialized] public readonly double[] SystemMs = new double[SystemNames.Length];
         static readonly double MsPerTick = 1000.0 / Stopwatch.Frequency;
@@ -166,6 +170,8 @@ namespace ThienDao.Sim
                 Eras.YearlyStep(tick); Mark(13, ref t);
                 Stories.YearlyStep(tick); Mark(14, ref t);
                 Faith.YearlyStep(tick); Mark(15, ref t);
+                Clans.YearlyStep(tick);
+                Politics.YearlyStep(tick); Mark(17, ref t);
             }
         }
 
@@ -249,6 +255,8 @@ namespace ThienDao.Sim
             Faith.HashInto(ref h);
             Destiny.HashInto(ref h);
             Knowledge.HashInto(ref h);
+            Clans.HashInto(ref h);
+            Politics.HashInto(ref h);
             return h;
         }
     }

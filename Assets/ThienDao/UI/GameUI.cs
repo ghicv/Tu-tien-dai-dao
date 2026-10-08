@@ -1462,6 +1462,7 @@ namespace ThienDao.UI
                     Chip(Icons.ForRealm(c.Realm, c.Demonic), Realms.Names[(int)c.Realm], $"{c.RealmText}{(c.Demonic ? " · ma tu" : "")}", c.Demonic ? new Color(1f, 0.5f, 0.5f) : Ui.Gold);
                     HpChip(CombatSystem.HpOf(c), CombatSystem.MaxHp(c), CombatSystem.Wounded(c) ? "trọng thương, ở nhà dưỡng thương; sức chiến đấu giảm" : "");
                     MethodChip(c);
+                    ClanChip(c);
                     Chip(Icons.Seed, $"{RootShort(c.Roots)} · {SpiritRoots.Elements(c.Roots)}",
                         $"{SpiritRoots.Kind(c.Roots)} ({SpiritRoots.Elements(c.Roots)}) · tốc độ tu luyện ×{SpiritRoots.SpeedMultiplier(c.Roots):0.0}");
                     float qi = sim.Qi.SampleQi((int)c.HomeX, (int)c.HomeY), need = Realms.RequiredQi[(int)c.Realm];
@@ -1534,6 +1535,14 @@ namespace ThienDao.UI
                 if (sim.Disasters.IsInfected(s.Id)) Chip(Icons.Skull, "Ôn dịch", "Ôn dịch đang hoành hành", new Color(0.6f, 0.9f, 0.5f));
                 int drought = sim.Disasters.DroughtMonthsLeft(s.X, s.Y, sim.Clock.Tick);
                 if (drought >= 0) Chip(Icons.Sun, $"{drought} th", "Đại hạn, còn khoảng chừng ấy tháng", new Color(1f, 0.75f, 0.4f));
+                // Bất mãn with the crown, and the rising they have joined.
+                var rising = sim.Politics.RebellionAt(s.Id);
+                Chip(Icons.Torch, $"{s.Unrest:0}",
+                    "Bất mãn với triều đình (0–100). Đói kém, chết chóc, hạn hán, ôn dịch, vua bạo ngược, xa kinh đô làm tăng; " +
+                    "tông môn bảo hộ, miếu thờ, gia tộc tu tiên trên ngai vàng, kinh thành làm giảm. Từ 75 có thể khởi nghĩa",
+                    s.Unrest >= 75f ? warn : s.Unrest >= 55f ? new Color(1f, 0.75f, 0.4f) : (Color?)null);
+                if (rising != null)
+                    Chip(Icons.Torch, rising.Usurper ? "Tranh ngôi" : "Khởi nghĩa", $"Theo {rising.Leader} chống triều đình, đã {(sim.Clock.Tick - rising.Start) / SimClock.DaysPerYear} năm", warn);
                 // Tín ngưỡng, and the prayer they are waiting on.
                 var prayer = sim.Faith.PrayerOf(s.Id);
                 if (prayer != null)
@@ -1601,6 +1610,25 @@ namespace ThienDao.UI
             var kingdom = s.Kingdom >= 0 && s.Kingdom < wd.Kingdoms.Count ? wd.Kingdoms[s.Kingdom] : null;
             string regionName = wd.Lore.RegionNames[wd.Region[wd.Idx(s.X, s.Y)]];
             body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#e8d8a8>{(s.Capital ? "Kinh thành của " : "")}{(kingdom != null ? kingdom.Name + " · " : "")}{regionName}</color>");
+            // The crown over it (PoliticsSystem), and the gia tộc whose ancestral land it is (ClanSystem).
+            if (kingdom != null && !kingdom.Fallen && kingdom.Ruler != null)
+            {
+                long now = sim.Clock.Tick;
+                var royal = kingdom.RoyalClan >= 0 && kingdom.RoyalClan < sim.Clans.All.Count ? sim.Clans.All[kingdom.RoyalClan] : null;
+                body.Append($"\n<color=#e8d8a8>{kingdom.Name}: vua {kingdom.Ruler}</color> ({PoliticsSystem.RulerAge(kingdom, now)} tuổi, {PoliticsSystem.Temper(kingdom)})" +
+                            $" · triều {kingdom.Dynasty} {Mathf.Max(0, PoliticsSystem.DynastyYears(kingdom, now))} năm{(royal != null ? $" ({royal.Title})" : "")} · ổn định {kingdom.Stability:0}");
+                var war = sim.Politics.RebellionOf(kingdom.Id);
+                if (war != null)
+                    body.Append($"\n<color=#ff8a80>Nội chiến: {war.Leader} {(war.Usurper ? "tranh ngôi" : "khởi nghĩa")} ở {sim.Settlements.All[war.Seat].Name}, {war.Towns.Count} thành theo, đã {(now - war.Start) / SimClock.DaysPerYear} năm</color>");
+            }
+            var clanSeat = sim.Clans.SeatedAt(s.Id);
+            if (clanSeat != null)
+            {
+                var feuds = new List<string>();
+                foreach (int fe in clanSeat.Feuds) if (feuds.Count < 2) feuds.Add(sim.Clans.All[fe].Title);
+                body.Append($"\n<color=#e8d8a8>Đất tổ của {clanSeat.Title}</color> · {clanSeat.Members} tu sĩ mang họ {clanSeat.Name}" +
+                            (feuds.Count > 0 ? $" · <color=#ff8a80>thế thù với {string.Join(", ", feuds)}</color>" : ""));
+            }
             body.Append(BuildingsLine(s));
             body.Append($"\n<color=#ff8a80>Phàm nhân: {SpeciesInfo.Hp[(int)Species.Migrants]:0} máu mỗi người</color><color=#8890a8> · trước yêu thú và tu sĩ thì chỉ là con kiến</color>");
             body.Append("\n").Append($"<color=#8890a8>Lập năm {s.FoundedTick / SimClock.DaysPerYear + 1}" +
@@ -1637,6 +1665,22 @@ namespace ThienDao.UI
         }
 
         // Sinh lực (máu): current / whole, red when low; the tooltip says what the wounds mean.
+        // Gia tộc: the house they belong to, its seat, its standing and its blood feuds.
+        void ClanChip(Cultivator c)
+        {
+            var sim = _game.Sim;
+            var clan = sim.Clans.Of(c);
+            if (clan == null) return;
+            string seat = clan.Seat >= 0 && clan.Seat < sim.Settlements.All.Count ? sim.Settlements.All[clan.Seat].Name : "?";
+            var feuds = new List<string>();
+            foreach (int f in clan.Feuds) if (feuds.Count < 3) feuds.Add(sim.Clans.All[f].Title);
+            Chip(Icons.Person, clan.Title,
+                $"Người của {clan.Title} · đất tổ {seat} · {clan.Members} tu sĩ cùng họ · uy danh {clan.Prestige:0}" +
+                (clan.Royal >= 0 && clan.Royal < sim.World.Kingdoms.Count ? $" · hoàng tộc của {sim.World.Kingdoms[clan.Royal].Name}" : "") +
+                (feuds.Count > 0 ? $" · thế thù với {string.Join(", ", feuds)}: gặp nhau là đánh" : ""),
+                clan.Royal >= 0 ? Ui.Gold : clan.Feuds.Count > 0 ? new Color(1f, 0.6f, 0.55f) : (Color?)null);
+        }
+
         // Công pháp: its name, and a warning when it is the ceiling holding them back.
         void MethodChip(Cultivator c)
         {
@@ -1921,6 +1965,14 @@ namespace ThienDao.UI
                     // Sects in a light tint of their colour; mortal villages in plain ink.
                     var color = f != null ? Color.Lerp(f.Color, Color.white, 0.45f) : Ui.Ink;
                     PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 5f, 0f), $"{s.Name} ({s.Population})", color, 20);
+                }
+                // Risings against the crown, over the town they began in.
+                foreach (var war in sim.Politics.Rebellions)
+                {
+                    var seat = sim.Settlements.All[war.Seat];
+                    if (seat.Alive)
+                        PlaceLabel(ref used, cam, new Vector3(seat.X + 0.5f, seat.Y + 10f, 0f),
+                            war.Usurper ? $"{war.Leader} tranh ngôi" : $"Khởi nghĩa · {war.Leader}", new Color(1f, 0.5f, 0.4f), 19);
                 }
                 // Villages praying to Thiên Đạo, and how long they will wait.
                 foreach (var p in sim.Faith.Open)

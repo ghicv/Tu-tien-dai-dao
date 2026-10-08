@@ -680,6 +680,23 @@ namespace ThienDao.UI
             "............",
         }, P);
 
+        // Bất mãn, khởi nghĩa: a burning torch raised high.
+        public static Sprite Torch => Glyph("torch", new[]
+        {
+            ".....r......",
+            "....ryr.....",
+            "...ryyor....",
+            "...royyr....",
+            "....rwor....",
+            ".....kk.....",
+            ".....nk.....",
+            ".....nk.....",
+            ".....nk.....",
+            ".....nk.....",
+            ".....nk.....",
+            "......k.....",
+        }, P);
+
         // Ngọc giản (công pháp): jade slips bound with a red cord, a glyph glowing on the top one.
         public static Sprite JadeSlip => Glyph("jadeslip", new[]
         {
