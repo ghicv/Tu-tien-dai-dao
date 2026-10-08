@@ -35,7 +35,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 28 | [28-cong-phap-truyen-thua.md](28-cong-phap-truyen-thua.md) | Công pháp 5 phẩm (trần cảnh giới, hợp linh căn, ma công), truyền thừa qua tông môn, bí cảnh, giết người đoạt bảo, tông chủ sáng tạo; thất truyền khi diệt môn và khôi phục sơn môn dưới tên cũ; Ban công pháp | `4b8c316` |
 | 29 | [29-tri-thuc-tin-don.md](29-tri-thuc-tin-don.md) | Tri thức và tin đồn: tin loang theo tháng, nhảy theo thương đội và di dân, bị thổi phồng; chỉ tông đã nghe mới tranh đoạt, thám hiểm, trảm yêu; tông nghe muộn đến muộn; nghe tin tông suy yếu thì dòm ngó; vòng tin đồn trên map | `4cc7987` |
 | 30 | [30-chinh-tri-gia-toc.md](30-chinh-tri-gia-toc.md) | Chính trị nước phàm nhân (vua, triều đại, bất mãn, khởi nghĩa, tranh ngôi, dẹp yên, đổi triều, cát cứ lập nước mới, thống nhất) và tu tiên gia tộc (đất tổ, con cháu mang họ, báo thù, thế thù, hoàng tộc) | `4d210b8` |
-| 31 | [31-toi-uu-di-chuyen-duong-mon.md](31-toi-uu-di-chuyen-duong-mon.md) | Tối ưu di chuyển (bỏ qua tu sĩ bế quan, bộ đệm đường đi: 45–50 → 24 ms/năm); đường mòn và đường đất do người đi bộ và dân làng giẫm mà thành, người đi bộ bám theo đường, vẽ pixel nối liền, bỏ không thì cỏ mọc lại | `—` |
+| 31 | [31-toi-uu-di-chuyen-duong-mon.md](31-toi-uu-di-chuyen-duong-mon.md) | Tối ưu di chuyển (bỏ qua tu sĩ bế quan, bộ đệm đường đi: 45–50 → 24 ms/năm); đường mòn và đường đất do người đi bộ và dân làng giẫm mà thành, người đi bộ bám theo đường, vẽ pixel nối liền, bỏ không thì cỏ mọc lại | `5fee811` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).
