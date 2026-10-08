@@ -1393,10 +1393,30 @@ namespace ThienDao.UI
             }
         }
 
+        // Tin đồn (devlog 29): how far the word of a relic has gone, and how it has grown in the telling.
+        string RelicWord(Relic r)
+        {
+            var word = _game.Sim.Knowledge.Of(RumorKind.Relic, r.Index);
+            if (word == null) return "\n<color=#8890a8>Đã có người biết, nhưng tin chưa lan ra ngoài; ai chưa nghe thì sẽ không tới.</color>";
+            return $"\n<color=#e8d8a8>Tin đồn đã lan tới {word.Heard.Count} tông môn{HeardNames(word)}</color>" +
+                   (word.Exaggeration >= 1.3f ? $"<color=#ff8a80> · đồn thổi gấp {word.Exaggeration:0.0} lần</color>" : "") +
+                   "\n<color=#8890a8>Tin loang dần mỗi tháng và theo thương đội, di dân; tông nào nghe muộn thì đến muộn.</color>";
+        }
+
+        string HeardNames(Rumor word)
+        {
+            if (word == null || word.Heard.Count == 0) return "";
+            var names = new List<string>();
+            for (int k = 0; k < word.Heard.Count && names.Count < 3; k++)
+                if (_game.Sim.Factions.Get(word.Heard[k]) is Faction f && f.Alive) names.Add(_game.Sim.Factions.NameOf(f.Id));
+            return names.Count == 0 ? "" : ": " + string.Join(", ", names) + (word.Heard.Count > names.Count ? "…" : "");
+        }
+
         void UpdateCard()
         {
             var sim = _game.Sim;
             var sel = _game.Selection;
+            _game.Fx.ShownRumor = null; // set again below if the card shows something talked about
             var c = _game.Selected;
             var s = _game.SelectedSettlement;
             bool show = sel.Kind != InspectKind.None;
@@ -1554,6 +1574,17 @@ namespace ThienDao.UI
                     Chip(Icons.Sword, $"{f.Power:N0}", $"Thực lực · thắng {f.BattlesWon}, thua {f.BattlesLost}, tử trận {f.Fallen}");
                     string ties = TiesText(f.Id, 3);
                     if (ties.Length > 0) body.Append(ties);
+                    // What word has reached this mountain gate: what they can act on.
+                    var news = new List<string>();
+                    foreach (var word in sim.Knowledge.All)
+                    {
+                        if (news.Count >= 3 || !word.Heard.Contains(s.Id)) continue;
+                        if (word.Kind == RumorKind.Relic && word.Subject < sim.Relics.All.Count)
+                            news.Add(sim.Relics.All[word.Subject].Name + (word.Exaggeration >= 1.3f ? " (đồn thổi)" : ""));
+                        else if (word.Kind == RumorKind.HungThu && word.Subject < sim.Beasts.All.Count) news.Add(sim.Beasts.All[word.Subject].Title + " đang tàn sát");
+                        else if (word.Kind == RumorKind.WeakSect && word.Subject != s.Id) news.Add($"{sim.Factions.NameOf(word.Subject)} đang suy yếu");
+                    }
+                    if (news.Count > 0) body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#e8d8a8>Nghe đồn:</color> {string.Join(" · ", news)}");
                 }
                 // Sử sách of the sect: its greatest moments.
                 sim.History.OfFaction(s.Id, _bio, 30);
@@ -1641,6 +1672,9 @@ namespace ThienDao.UI
             {
                 int hunters = sim.Beasts.HuntersOf(b);
                 Chip(Icons.Sword, hunters > 0 ? $"{hunters}" : "—", hunters > 0 ? $"Liên minh trảm yêu: {hunters} cao thủ đang truy sát" : "Chưa có liên minh nào dám ra tay", red);
+                var word = sim.Knowledge.Of(RumorKind.HungThu, b.Index);
+                Chip(Icons.Scroll, $"{sim.Knowledge.HeardCount(word)} tông", $"Tin dữ về nó đã lan tới {sim.Knowledge.HeardCount(word)} tông môn{HeardNames(word)}. Chỉ tông đã nghe tin mới có thể vào liên minh trảm yêu; vòng loang của tin đồn hiện trên bản đồ");
+                _game.Fx.ShownRumor = word;
             }
             Chip(Icons.Hourglass, $"{b.AgeYears(sim.Clock.Tick):0}/{b.LifespanYears}", "Tuổi / thọ nguyên");
             Chip(Icons.Skull, $"{b.Kills}", "Số người đã giết", b.Kills > 0 ? red : (Color?)null);
@@ -1782,7 +1816,8 @@ namespace ThienDao.UI
             inside.Add(r.Kind == RelicKind.Treasure ? "thọ nguyên" : "truyền thừa");
             sb.Append($"\nBên trong: {string.Join(", ", inside)} · còn {r.Layers} tầng");
             sb.Append(sim.Relics.Contested(r) ? "\n<color=#ff8070>Các thế lực đang tranh đoạt cơ duyên nơi đây.</color>"
-                : r.Discovered ? "\nThiên hạ đã biết đến nơi này." : "\n<color=#8890a8>Chưa ai phát hiện, chờ người có cơ duyên.</color>");
+                : r.Discovered ? RelicWord(r) : "\n<color=#8890a8>Chưa ai phát hiện, chờ người có cơ duyên.</color>");
+            _game.Fx.ShownRumor = sim.Knowledge.Of(RumorKind.Relic, r.Index); // the reach of the word, drawn on the map
         }
 
         void AppendCell(StringBuilder sb, int x, int y)

@@ -937,6 +937,11 @@ namespace ThienDao.Sim
             r.Battles++;
             winner.BattlesWon++;
             loser.BattlesLost++;
+            if (dead >= 2) // a bloody defeat: word gets around that the loser is weak
+            {
+                var lseat = _sim.Settlements.All[loser.Id];
+                _sim.Knowledge?.Spread(RumorKind.WeakSect, loser.Id, lseat.X + 0.5f, lseat.Y + 0.5f, 20f, tick, 10);
+            }
             r.Opinion = Mathf.Max(-100f, r.Opinion - 8f * dead);
             // The field remembers: churned earth, blood and broken blades; a great fight scorches it with spells.
             int fieldR = 3 + Mathf.Min(7, dead + fa.Count / 3);

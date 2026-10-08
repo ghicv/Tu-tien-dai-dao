@@ -20,8 +20,8 @@ namespace ThienDao.Editor
         static System.Collections.IEnumerator Probe()
         {
             var sb = new StringBuilder();
-            sb.AppendLine("| Năm | ms/năm (mô phỏng) | Bộ nhớ managed (MB) | Tu sĩ sống / tổng từng có | Dòng sử sách | Entity (slot) | Phàm nhân | Tệp lưu (KB) | Yêu thú sống | Chiến trường cổ | Bí cảnh mở | Lời cầu (đã cầu / quá hạn) | Làng tín ngưỡng ≥ 60 / ≤ 8 | Ma tu sống | Trúc Cơ / Kết Đan / Nguyên Anh / Hóa Thần | Công pháp (có / thất truyền) |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| Năm | ms/năm (mô phỏng) | Bộ nhớ managed (MB) | Tu sĩ sống / tổng từng có | Dòng sử sách | Entity (slot) | Phàm nhân | Tệp lưu (KB) | Yêu thú sống | Chiến trường cổ | Bí cảnh mở | Lời cầu (đã cầu / quá hạn) | Làng tín ngưỡng ≥ 60 / ≤ 8 | Ma tu sống | Trúc Cơ / Kết Đan / Nguyên Anh / Hóa Thần | Công pháp (có / thất truyền) | Tin đồn (đang lan / tới muộn / dòm ngó) |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
             long baseMem = GC.GetTotalMemory(true);
             var genSw = Stopwatch.StartNew();
             var sim = new Simulation(MapGenerator.Generate("ThienDao"));
@@ -130,10 +130,16 @@ namespace ThienDao.Editor
             foreach (var l in sim.Disasters.Landmarks) if (l.Alive && l.Kind == Landmark.Battlefield) fields++;
             foreach (var r in sim.Relics.All) if (r.Open) open++;
             var cr = sim.Cultivation.CountByRealm;
+            int late = 0, covet = 0;
+            foreach (var e in sim.History.All)
+            {
+                if (e.Text.Contains("tranh đoạt muộn")) late++;
+                else if (e.Text.Contains("bắt đầu dòm ngó")) covet++;
+            }
             int faithless = 0, demonic = 0;
             foreach (var s in sim.Settlements.All) if (s.Alive && !s.Sect && s.Faith <= 8f) faithless++;
             foreach (var c in sim.Cultivation.All) if (c.Alive && c.Demonic) demonic++;
-            sb.AppendLine($"| {year} | {msPerYear:0.0} | {mem / 1048576.0:0.0} | {alive} / {total} | {sim.History.All.Count:N0} | {sim.Entities.Count:N0} | {sim.Settlements.TotalPopulation:N0} | {save:N0} | {sim.Beasts.AliveCount} | {fields} | {open} | {sim.Faith.Raised} / {sim.Faith.Ignored} | {sim.Faith.FaithfulCount(FaithSystem.ShrineFaith)} / {faithless} | {demonic} | {cr[2]} / {cr[3]} / {cr[4]} / {cr[5]} | {sim.Techniques.All.Count} / {sim.Techniques.LostCount()} |");
+            sb.AppendLine($"| {year} | {msPerYear:0.0} | {mem / 1048576.0:0.0} | {alive} / {total} | {sim.History.All.Count:N0} | {sim.Entities.Count:N0} | {sim.Settlements.TotalPopulation:N0} | {save:N0} | {sim.Beasts.AliveCount} | {fields} | {open} | {sim.Faith.Raised} / {sim.Faith.Ignored} | {sim.Faith.FaithfulCount(FaithSystem.ShrineFaith)} / {faithless} | {demonic} | {cr[2]} / {cr[3]} / {cr[4]} / {cr[5]} | {sim.Techniques.All.Count} / {sim.Techniques.LostCount()} | {sim.Knowledge.All.Count} / {late} / {covet} |");
         }
     }
 }

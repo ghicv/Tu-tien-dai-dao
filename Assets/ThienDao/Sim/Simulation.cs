@@ -49,6 +49,7 @@ namespace ThienDao.Sim
         public readonly HarmSystem Harm;
         public readonly FaithSystem Faith;
         public readonly DestinySystem Destiny;
+        public readonly KnowledgeSystem Knowledge;
         public readonly WorldRules Rules = new WorldRules();
         public readonly EventLog Events = new EventLog();
 
@@ -94,6 +95,7 @@ namespace ThienDao.Sim
             Harm = new HarmSystem(this);
             Faith = new FaithSystem(this);
             Destiny = new DestinySystem(this);
+            Knowledge = new KnowledgeSystem(this);
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -114,7 +116,7 @@ namespace ThienDao.Sim
         public static readonly string[] SystemNames =
         {
             "Di chuyển", "Linh khí", "Cỏ", "Thiên tai", "Thú hoang", "Làng", "Tu sĩ", "Đấu pháp", "Yêu thú", "Nhân vật chính",
-            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ", "Tín ngưỡng"
+            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ", "Tín ngưỡng", "Tin đồn"
         };
         [System.NonSerialized] public readonly double[] SystemMs = new double[SystemNames.Length];
         static readonly double MsPerTick = 1000.0 / Stopwatch.Frequency;
@@ -148,6 +150,7 @@ namespace ThienDao.Sim
                 Factions.MonthlyStep(tick); Mark(12, ref t);
                 Faith.MonthlyStep(tick);
                 Destiny.MonthlyStep(tick); Mark(15, ref t);
+                Knowledge.MonthlyStep(tick); Mark(16, ref t);
             }
             if (Clock.IsYearStart)
             {
@@ -245,6 +248,7 @@ namespace ThienDao.Sim
             Techniques.HashInto(ref h);
             Faith.HashInto(ref h);
             Destiny.HashInto(ref h);
+            Knowledge.HashInto(ref h);
             return h;
         }
     }

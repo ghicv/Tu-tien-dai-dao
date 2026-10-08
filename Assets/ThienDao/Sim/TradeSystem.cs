@@ -218,6 +218,8 @@ namespace ThienDao.Sim
             _caravans.RemoveAt(k);
             var to = _sim.Settlements.All[c.To];
             if (!arrived || !to.Alive) return; // the goods are lost on the road
+            var origin = _sim.Settlements.All[c.From];
+            _sim.Knowledge?.Carry(origin.X + 0.5f, origin.Y + 0.5f, to.X + 0.5f, to.Y + 0.5f); // and the news from where it came
             var m = MarketOf(to);
             switch (c.Good)
             {

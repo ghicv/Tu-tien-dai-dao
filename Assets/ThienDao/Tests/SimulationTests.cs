@@ -438,6 +438,43 @@ namespace ThienDao.Tests
         }
 
         [Test]
+        public void WordSpreadsOutwardAndAlongTheRoadsGrowingInTheTelling()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 2);
+            var k = sim.Knowledge;
+
+            // A linh vật set down: known around its light, not across the world.
+            var town = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population > 30);
+            int before = sim.Relics.All.Count;
+            sim.Enqueue(new PlaceRelicCommand(town.X + 8, town.Y, false));
+            sim.ApplyPending();
+            Assert.Greater(sim.Relics.All.Count, before);
+            var relic = sim.Relics.All[before];
+            var word = k.Of(RumorKind.Relic, relic.Index);
+            Assert.IsNotNull(word, "word of it starts at once");
+            Assert.IsTrue(KnowledgeSystem.Knows(word, relic.X, relic.Y));
+            var far = sim.Settlements.All.Find(s => s.Alive && (s.X - relic.X) * (s.X - relic.X) + (s.Y - relic.Y) * (s.Y - relic.Y) > 500 * 500);
+            Assert.IsNotNull(far);
+            Assert.IsFalse(KnowledgeSystem.Knows(word, far.X, far.Y), "the far side of the world has not heard yet");
+
+            // Word of a weakened sect spreads outward month by month ...
+            var f = sim.Factions.All.Find(o => o.Alive);
+            var seat = sim.Settlements.All[f.Id];
+            var weak = k.Spread(RumorKind.WeakSect, f.Id, seat.X, seat.Y, 5f, sim.Clock.Tick);
+            float r0 = weak.Discs[0].R;
+            Run(sim, SimClock.DaysPerMonth * 2 + 1);
+            Assert.Greater(weak.Discs[0].R, r0, "it spreads");
+            // ... and leaps along the roads, a little bigger each time it is told.
+            var far2 = sim.Settlements.All.Find(s => s.Alive && !KnowledgeSystem.Knows(weak, s.X, s.Y));
+            Assert.IsNotNull(far2);
+            k.Carry(seat.X, seat.Y, far2.X, far2.Y);
+            Assert.IsTrue(KnowledgeSystem.Knows(weak, far2.X, far2.Y), "a caravan carried it there");
+            Assert.Greater(weak.Exaggeration, 1f, "and it grew in the telling");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
+        [Test]
         public void LifeContinuesForThirtyYears()
         {
             var sim = new Simulation(MapGenerator.Generate("life"));

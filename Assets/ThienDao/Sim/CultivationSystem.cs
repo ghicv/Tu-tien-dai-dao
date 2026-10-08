@@ -164,7 +164,13 @@ namespace ThienDao.Sim
                 var old = MasterOf(kv.Key);
                 if (old == kv.Value) continue;
                 _masters[kv.Key] = kv.Value;
-                if (old != null) _successionTick[kv.Key] = tick;
+                if (old != null)
+                {
+                    _successionTick[kv.Key] = tick;
+                    // The old master is gone: word gets around that the sect is weak while the new one finds their feet.
+                    var seat = _sim.Settlements.All[kv.Key];
+                    if (!old.Alive) _sim.Knowledge?.Spread(RumorKind.WeakSect, kv.Key, seat.X + 0.5f, seat.Y + 0.5f, 20f, tick, 10);
+                }
                 if (old != null || tick > 0)
                     _sim.Events.Add(tick, EventKind.Succession, kv.Value.Realm >= Realm.KetDan ? 2 : 1,
                         $"{kv.Value.Title} trở thành tông chủ {SectName(kv.Value)}.", -1f, -1f, Fx.None, kv.Value.Index, old?.Index ?? -1, kv.Key);

@@ -51,6 +51,7 @@ namespace ThienDao
         WorldRenderer _renderer;
         UnitRenderer _units;
         FxRenderer _fx;
+        public FxRenderer Fx => _fx;
         CameraController _cam;
         SpriteRenderer _cursor;
         GameUI _ui;

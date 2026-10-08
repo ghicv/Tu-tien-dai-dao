@@ -1277,6 +1277,8 @@ namespace ThienDao.Sim
             if (gi < 0) return;
             var group = _groups[gi];
             _groups.RemoveAt(gi);
+            if (group.From >= 0 && group.From < All.Count) // migrants bring the news of the land they left
+                _sim.Knowledge?.Carry(All[group.From].X + 0.5f, All[group.From].Y + 0.5f, cx + 0.5f, cy + 0.5f);
 
             var rng = RngFor(tick, entity + 200000);
             for (int r = 0; r <= 8; r += 2)

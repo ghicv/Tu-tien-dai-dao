@@ -1,6 +1,6 @@
 # Hệ quy luật thế giới Thiên Đạo (đối chiếu `Docs/WorldRules.md`)
 
-**Cập nhật:** 2026-10-08, sau devlog 28 (công pháp và truyền thừa đã có).
+**Cập nhật:** 2026-10-08, sau devlog 29 (công pháp và truyền thừa, tri thức và tin đồn đã có).
 
 **Tài liệu này dùng để:**
 - Đối chiếu từng yêu cầu trong `WorldRules.md` với mô phỏng hiện có.
@@ -14,7 +14,7 @@
 - Khung chuỗi nhân quả của thế giới đã chạy: Environment → Life → Resource → Cultivation → Society → Economy → Faction → Conflict → History.
 - Còn thiếu năm mảng lớn:
   1. ~~Công pháp và truyền thừa~~ (đã cài ở devlog 28).
-  2. **Tri thức và tin đồn** (Knowledge).
+  2. ~~Tri thức và tin đồn~~ (đã cài ở devlog 29).
   3. **Gia tộc, huyết thống và nội chiến của nước phàm nhân** (Family, Rebellion, Civil war).
   4. **Ngày/đêm.**
   5. **Tài nguyên khoáng (gỗ, đá, kim loại) và phi thăng.**
@@ -65,7 +65,8 @@ flowchart LR
     QI --> HERB[Linh thảo] --> MKT
     FAITH[Tín ngưỡng / cầu nguyện] --> TOWN
     FAM[Gia tộc / huyết thống]:::todo -.-> TOWN
-    KNOW[Tri thức / tin đồn]:::todo -.-> SECT
+    KNOW[Tri thức / tin đồn] --> SECT
+    MKT --> KNOW
   end
   subgraph CONF[Xung đột]
     SECT --> REL[Quan hệ tông môn]
@@ -260,7 +261,7 @@ Công thức hiện tại là **Talent × Environment × Resources × Technique 
 |---|---|---|
 | Needs / Goals | **Một phần** | Nhân vật chính (được theo dõi) dùng AI theo mục tiêu (`ProtagonistAI`). Tu sĩ khác theo luật: du ngoạn, dời động phủ, báo thù, tranh đoạt, trảm yêu, dưỡng thương |
 | Personality | **Có** | Ngộ tính, khí vận, đạo tâm, dã tâm, chính hay tà |
-| Knowledge | **Chưa** | Ai cũng "biết" mọi bí cảnh đã lộ. Đề xuất N7 |
+| Knowledge | **Có** | Devlog 29: tin đồn theo vùng, loang và nhảy theo đường buôn; tông chỉ hành động theo tin đã nghe (`KnowledgeSystem`) |
 | Memory | **Có** | Sư phụ, kẻ thù (nemesis), sử sách cá nhân, danh tiếng |
 | Relationships | **Một phần** | Sư đồ, huyết thù. Chưa có bạn bè, đạo lữ |
 | Power / Resources / Faction | **Có** | Sức mạnh, máu, linh thạch, đan, pháp bảo, tông môn |
@@ -462,7 +463,7 @@ Thứ tự xếp theo số chuỗi phản ứng mới tạo ra trên mỗi đơn
 | Lâu dài | Công pháp thất truyền rồi được tìm lại sau nghìn năm |
 | Chuỗi phản ứng | Tông bị diệt → công pháp vào bí cảnh → tán tu nhặt được → lập tông mới mang tên cũ → báo thù |
 
-### N7: Tri thức và tin đồn (ưu tiên 2)
+### N7: Tri thức và tin đồn (ĐÃ CÀI, devlog 29)
 | Trường | Nội dung |
 |---|---|
 | Input | Sự kiện có vị trí (bí cảnh mở, bảo vật xuất thế, hung thú tới, tông suy yếu) |

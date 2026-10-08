@@ -117,6 +117,30 @@ namespace ThienDao.Render
             }
         }
 
+        // Tin đồn: while a talked-about relic or hung thú is on the card, the edge of each place its word has
+        // reached is drawn as a ring of pixel dots that marches slowly outward-round, so the player sees who knows.
+        public Rumor ShownRumor;
+
+        void DrawRumor(Rect view, float now)
+        {
+            var word = ShownRumor;
+            if (word == null) return;
+            var tint = new Color32(255, 214, 110, 200);
+            foreach (var d in word.Discs)
+            {
+                if (d.X + d.R < view.xMin || d.X - d.R > view.xMax || d.Y + d.R < view.yMin || d.Y - d.R > view.yMax) continue;
+                int n = Mathf.Clamp(Mathf.RoundToInt(2f * Mathf.PI * d.R / 2.5f), 12, 220);
+                float phase = now * 0.15f;
+                for (int k = 0; k < n; k++)
+                {
+                    if (((k + (int)(now * 3f)) & 3) == 0) continue; // dashes, marching round
+                    float a = (k + phase) / n * Mathf.PI * 2f;
+                    float x = d.X + Mathf.Cos(a) * d.R, y = d.Y + Mathf.Sin(a) * d.R;
+                    if (view.Contains(new Vector2(x, y))) Quad(Sprite.Spark, x, y, 2f, 2f, tint);
+                }
+            }
+        }
+
         // A village praying to Thiên Đạo: incense smoke rising in a thin column from its heart, a golden fleck now and then.
         void DrawPrayers(Rect view, float dt)
         {
@@ -410,6 +434,7 @@ namespace ThienDao.Render
             DrawFights(now);
             DrawRelicBeacons(view, now);
             DrawPrayers(view, Time.unscaledDeltaTime);
+            DrawRumor(view, now);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
             FightScenes.Hurt.RemoveAll(z => now - z.Start > FightScenes.HurtTime);

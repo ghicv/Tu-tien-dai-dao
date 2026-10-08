@@ -187,6 +187,7 @@ namespace ThienDao.Sim
             _sim.Events.Add(tick, EventKind.Beast, 3,
                 $"Hung thú xuất thế! {origin}: {b.Name} ({b.GradeText}), yêu khí phủ kín trời, thiên hạ đại loạn.",
                 _e.X[b.Entity], _e.Y[b.Entity], Fx.DemonBlast);
+            _sim.Knowledge?.Spread(RumorKind.HungThu, b.Index, _e.X[b.Entity], _e.Y[b.Entity], 50f, tick, 50); // terror travels fast
         }
 
         // ---------------------------------------------------------------- tàn sát
@@ -255,6 +256,7 @@ namespace ThienDao.Sim
             }
             b.Kills += dead;
             b.Ravaged++;
+            _sim.Knowledge?.Spread(RumorKind.HungThu, b.Index, s.X + 0.5f, s.Y + 0.5f, 40f, tick, 50); // the survivors flee, telling it
             b.PreyBefore = b.LastPrey;
             b.LastPrey = s.Id;
             b.Prey = -1;
@@ -312,6 +314,7 @@ namespace ThienDao.Sim
             {
                 if (!f.Alive || f.Demonic && rng.NextFloat() < 0.6f) continue; // ma môn mostly watch others bleed
                 var seat = _sim.Settlements.All[f.Id];
+                if (!(_sim.Knowledge?.Knows(RumorKind.HungThu, b.Index, seat.X + 0.5f, seat.Y + 0.5f) ?? true)) continue; // only those who have heard what it did
                 float dx = seat.X - bx, dy = seat.Y - by;
                 if (dx * dx + dy * dy > reach * reach) continue;
                 var picked = new List<Cultivator>();
