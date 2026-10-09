@@ -1256,6 +1256,33 @@ namespace ThienDao.Tests
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
+        // Devlog 33: cultivators go out on errands the map can show, and keep a diary of them.
+        [Test]
+        public void CultivatorsGoOutOnErrandsAndKeepADiary()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            int most = 0;
+            sim.ApplyPending();
+            for (int d = 0; d < SimClock.DaysPerYear; d++)
+            {
+                sim.Step();
+                int out_ = 0;
+                foreach (var c in sim.Cultivation.All)
+                    if (c.Alive && c.Errand != Errand.None) out_++;
+                most = System.Math.Max(most, out_);
+            }
+            Assert.GreaterOrEqual(most, 10, "at any time a good few are out on an errand");
+            var diary = new System.Collections.Generic.List<(long tick, string text)>();
+            int written = 0;
+            foreach (var c in sim.Cultivation.All)
+            {
+                sim.Cultivation.DiaryOf(c, diary);
+                if (diary.Count >= 2) written++;
+            }
+            Assert.Greater(written, 10, "and what they did is in their nhật ký");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
         // Devlog 32: a beast that sees a passer-by gives chase, and the weaker one runs; the far stronger one hunts it.
         [Test]
         public void BeastsChaseThoseWhoPassAndTheWeakRun()

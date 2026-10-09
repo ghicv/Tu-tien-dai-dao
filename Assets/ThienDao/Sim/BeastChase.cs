@@ -103,6 +103,16 @@ namespace ThienDao.Sim
             else _sim.Cultivation.Engage(c, bx, by, tick + ChaseDays + 5);
         }
 
+        // A cultivator who came looking for it (an errand to hunt, Errands): they close in, or it runs if they far outmatch it.
+        public void Challenge(Beast b, Cultivator c, long tick)
+        {
+            if (!b.Alive || b.ChaseEntity >= 0 || c == null || !c.Alive) return;
+            float ratio = CombatSystem.Strength(c) / Mathf.Max(0.01f, Strength(b));
+            Begin(b, c.Entity, ratio >= 1.5f ? ChaseHunted : ChaseClash, tick);
+            _chased?.Add(c.Entity);
+            _sim.Cultivation.Engage(c, _e.X[b.Entity], _e.Y[b.Entity], tick + ChaseDays + 5);
+        }
+
         void Begin(Beast b, int entity, byte mode, long tick)
         {
             b.ChaseEntity = entity;

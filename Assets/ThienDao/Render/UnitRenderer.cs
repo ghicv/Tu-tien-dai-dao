@@ -258,6 +258,7 @@ namespace ThienDao.Render
                     var tint = c.Demonic ? new Color32(255, 70, 70, 255) : AuraTint[(int)c.Realm];
                     AddQuadCentered(Unit.Aura, ((int)(time * 2f) + id) & 1, x, y + lift + 0.7f, tint);
                 }
+                if (c.Errand == Errand.Herbs && c.Away && !c.Travelling) frame = ((int)(time * 3f) + id) & 1; // bent over the herbs, picking
                 if (flying) AddQuadCentered(Unit.FlyingSword, ((int)(time * 8f) + id) & 1, x, y + lift - 0.1f, White, left);
                 DrawFighter(CultivatorLook(c), flying ? 0 : frame, x, y + lift, left, 255, FightScenes.HurtFlash(x, y, Time.unscaledTime, id, out _));
                 AddHit(CultivatorLook(c), x, y + lift, new Hit { Cultivator = c, Entity = -1, Region = -1, Kind = -1 });

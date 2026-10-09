@@ -140,6 +140,7 @@ namespace ThienDao.Sim
             long tick = Clock.Tick;
             long t = Stopwatch.GetTimestamp();
             Creatures.Tick(tick); Mark(0, ref t);
+            Cultivation.ErrandStep(tick); Mark(6, ref t); // errands: herbs, hunts, markets, patrols, day by day (Errands)
             Beasts.DailyStep(tick); Mark(8, ref t); // beasts and passers-by: chases, fights, flights (BeastChase)
             if (Clock.IsMonthStart)
             {

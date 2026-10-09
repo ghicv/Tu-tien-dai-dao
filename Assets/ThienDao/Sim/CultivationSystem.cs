@@ -6,10 +6,10 @@ using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao.Sim
 {
-    public enum Trip : byte { None, Relocate, Excursion, Return, Battle, Hunt, Flee, Explore }
+    public enum Trip : byte { None, Relocate, Excursion, Return, Battle, Hunt, Flee, Explore, Errand }
 
     // What a cultivator holds up for the world to see after a cơ duyên (drawn over their head while it shines).
-    public enum Loot : byte { None, Treasure, Natural, Technique, Pill, Stones, BeastCore }
+    public enum Loot : byte { None, Treasure, Natural, Technique, Pill, Stones, BeastCore, Herb }
 
     // What a nhân vật chính is doing with their life right now.
     public enum Goal : byte { None, Seclusion, SeekCave, Training, SeekFortune, Market, JoinSect, Flee }
@@ -76,6 +76,17 @@ namespace ThienDao.Sim
         public Loot Loot;            // a cơ duyên just won, shown over their head until LootUntil
         public long LootUntil;
         public int ExploreRelic = -1; // the bí cảnh they are flying to explore (Trip.Explore)
+        // Việc ngoài kia (Errands, devlog 33): what they went out to do, which step of it, and what the card says of it.
+        public Errand Errand;
+        public byte ErrandLeg;
+        public int ErrandTarget = -1; // the beast hunted, the village patrolled to, the town traded at
+        public int ErrandStop = -1;   // patrol: the second village
+        public long ErrandUntil;      // at work on the spot until then
+        public string ErrandText;
+        // Nhật ký: the last few small doings (the great deeds are in History), oldest overwritten first.
+        public string[] Diary;
+        public long[] DiaryTick;
+        public int DiaryNext;
         public string TreasureName;
         public Goal Goal;
         public string GoalText;
@@ -87,7 +98,10 @@ namespace ThienDao.Sim
         public string Activity =>
             AtWar ? "đang xuất chiến" :
             Watched && GoalText != null && Goal != Goal.None ? GoalText :
-            Trip == Trip.Hunt || HuntTarget >= 0 ? "đang truy sát kẻ thù" :
+            HuntTarget >= 0 ? "đang truy sát kẻ thù" :
+            Trip == Trip.Flee ? "đang chạy trốn yêu thú" :
+            Trip == Trip.Hunt ? "đang giao chiến với yêu thú" :
+            Errand != Errand.None && ErrandText != null ? ErrandText :
             Trip == Trip.Relocate ? "đang đi tìm động phủ mới" :
             Trip == Trip.Return ? "đang trở về" :
             Trip == Trip.Excursion || Away ? OutingNames[(int)Outing] : "đang bế quan";
@@ -110,7 +124,7 @@ namespace ThienDao.Sim
 
     // Tu sĩ: awakened from village children, cultivate by drawing qi from where they sit, break through,
     // deviate, face tribulation, die of old age, and move toward richer qi.
-    public sealed class CultivationSystem
+    public sealed partial class CultivationSystem
     {
         const float AwakenChance = 0.01f;     // share of 10-year-olds with a spirit root, before local qi bonus
         const int SectRecruitRange = 260;
@@ -205,7 +219,6 @@ namespace ThienDao.Sim
             return best;
         }
 
-        const float OutingChancePerMonth = 1f / 60f;
 
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0xC017u, (int)tick, salt));
 
@@ -317,6 +330,7 @@ namespace ThienDao.Sim
 
                 if (!c.Travelling && !c.Away && !_w.IsWalkable(c.HomeX, c.HomeY))
                     MoveHomeAshore(c);
+                if (c.Errand != Errand.None) continue; // out on an errand: ErrandStep runs it day by day
 
                 if (c.Travelling)
                 {
@@ -328,10 +342,9 @@ namespace ThienDao.Sim
                     SendTo(c, c.HomeX, c.HomeY, Trip.Return);
                     continue;
                 }
-                else if (!c.Away && !c.Watched && CanRoam(c) && !CombatSystem.Wounded(c) && rng.NextFloat() < OutingChancePerMonth) // the wounded stay in to heal
+                else if (!c.Away && !c.Watched && !CombatSystem.Wounded(c) && rng.NextFloat() < ErrandChancePerMonth(c)) // the wounded stay in to heal
                 {
-                    StartOuting(c, ref rng);
-                    continue;
+                    if (StartErrand(c, tick, ref rng)) continue;
                 }
 
                 Cultivate(c);
@@ -981,6 +994,7 @@ namespace ThienDao.Sim
         // Stays where they stand (on the map) until `until`, then goes home: a champion at the gate of the bí cảnh.
         public void Linger(Cultivator c, long until)
         {
+            EndErrand(c);
             c.AtWar = false;
             c.Travelling = false;
             c.Trip = Trip.None;
@@ -1220,6 +1234,7 @@ namespace ThienDao.Sim
                 StateHash.Add(ref h, c.Alive ? c.Index : -c.Index - 1);
                 StateHash.Add(ref h, (int)c.Realm | (c.Stage << 8) | (c.Demonic ? 1 << 16 : 0) | (c.Travelling ? 1 << 17 : 0) |
                                      (c.Away ? 1 << 18 : 0) | ((int)c.Trip << 20) | ((long)c.StayUntil << 24));
+                StateHash.Add(ref h, (int)c.Errand | (c.ErrandLeg << 8) | ((long)c.ErrandTarget << 16) | (c.ErrandUntil << 40));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.Progress));
                 StateHash.Add(ref h, System.BitConverter.SingleToInt32Bits(c.DaoHeart));
                 StateHash.Add(ref h, c.SectId | (c.AtWar ? 1L << 32 : 0) | (c.Watched ? 1L << 33 : 0) | ((long)c.Pills << 40) | ((long)c.Goal << 50));

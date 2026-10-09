@@ -17,7 +17,8 @@ namespace ThienDao.Render
         {
             BoltA, BoltB, Flash, Ring, Spark, Smoke, Fire0, Fire1, Fire2, Cloud, Beam, Drop, QiShot, Rift, RiftThin,
             Orb, Rock, Shard, Crescent, Blade, Leaf, Exclaim,                     // spells by element (devlog 32)
-            LootSword, LootSlip, LootPill, LootGem, LootStones, LootCore, Count   // a cơ duyên held up overhead
+            LootSword, LootSlip, LootPill, LootGem, LootStones, LootCore, LootHerb, // a cơ duyên held up overhead
+            IconHerb, IconHunt, IconCoin, IconFlag, IconLotus, IconHome, Count     // what they are out doing (devlog 33)
         }
 
         struct Particle
@@ -937,6 +938,7 @@ namespace ThienDao.Render
                 case Loot.Pill: return Sprite.LootPill;
                 case Loot.Stones: return Sprite.LootStones;
                 case Loot.BeastCore: return Sprite.LootCore;
+                case Loot.Herb: return Sprite.LootHerb;
                 default: return Sprite.LootGem;
             }
         }
@@ -950,6 +952,7 @@ namespace ThienDao.Render
                 case Loot.Pill: return new Color32(255, 200, 120, 255);
                 case Loot.Stones: return new Color32(140, 255, 170, 255);
                 case Loot.BeastCore: return new Color32(255, 110, 90, 255);
+                case Loot.Herb: return new Color32(140, 240, 120, 255);
                 default: return new Color32(150, 220, 255, 255);
             }
         }
@@ -963,8 +966,14 @@ namespace ThienDao.Render
             long tick = _sim.Clock.Tick;
             foreach (var c in _sim.Cultivation.All)
             {
-                if (c.LootUntil <= tick || c.Loot == Loot.None || !Shown(c)) continue;
+                bool loot = c.LootUntil > tick && c.Loot != Loot.None;
+                if ((!loot && c.Errand == Errand.None) || !Shown(c)) continue;
                 if (!Position(c.Entity, out float x, out float y, out bool flying) || !view.Contains(new Vector2(x, y))) continue;
+                if (!loot)
+                {
+                    DrawErrand(c, x, y + (flying ? 0.7f : 0f), now, dt);
+                    continue;
+                }
                 if (!_lootSeen.TryGetValue(c.Index, out long until) || until != c.LootUntil)
                 {
                     _lootSeen[c.Index] = c.LootUntil;
@@ -980,6 +989,52 @@ namespace ThienDao.Render
                 if (_rand.NextDouble() < dt * 8f)
                     _particles.Add(new Particle { Sprite = Sprite.Spark, X = hx + Rand(-0.6f, 0.6f), Y = hy + Rand(-0.3f, 0.3f), VY = Rand(0.6f, 1.4f),
                         Life = Rand(0.5f, 0.9f), Size = 1f, Color = glow });
+            }
+        }
+
+        // What they are out doing, as a small sign over their head; and at the spot, the work itself: kneeling among the
+        // herbs (green motes rising off the ground), sitting with the Dao (motes of their realm's colour drawn up round
+        // them), haggling in the market (a glint of linh thạch).
+        void DrawErrand(Cultivator c, float x, float y, float now, float dt)
+        {
+            Sprite icon;
+            switch (c.Errand)
+            {
+                case Errand.Herbs: icon = Sprite.IconHerb; break;
+                case Errand.Hunt: icon = Sprite.IconHunt; break;
+                case Errand.Market: icon = Sprite.IconCoin; break;
+                case Errand.Patrol: icon = Sprite.IconFlag; break;
+                case Errand.Ponder: icon = Sprite.IconLotus; break;
+                default: icon = Sprite.IconHome; break;
+            }
+            Quad(icon, x, y + 2.1f, 1f, 1f, new Color32(255, 255, 255, 255));
+            bool atWork = c.Away && !c.Travelling;
+            if (!atWork) return;
+            switch (c.Errand)
+            {
+                case Errand.Herbs:
+                    if (_rand.NextDouble() < dt * 6f)
+                        _particles.Add(new Particle { Sprite = _rand.NextDouble() < 0.3 ? Sprite.Leaf : Sprite.Spark, X = x + Rand(-0.8f, 0.8f), Y = y + Rand(-0.2f, 0.2f),
+                            VY = Rand(0.4f, 0.9f), Life = Rand(0.5f, 0.9f), Size = 1f, Color = new Color32(150, 240, 120, 255) });
+                    break;
+                case Errand.Ponder:
+                {
+                    var tint = KiemKhi[Mathf.Clamp((int)c.Realm, 0, KiemKhi.Length - 1)];
+                    if (_rand.NextDouble() < dt * 8f)
+                    {
+                        float a = Rand(0f, Mathf.PI * 2f);
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = x + Mathf.Cos(a) * 1.4f, Y = y + 0.6f + Mathf.Sin(a) * 0.7f,
+                            VX = -Mathf.Cos(a) * 1.2f, VY = 0.8f, Life = 0.9f, Size = 1f, Color = tint });
+                    }
+                    float k = (now * 0.5f + c.Index * 0.37f) % 1f;
+                    Quad(Sprite.Ring, x, y + 0.3f, 1f + k * 2f, 1f + k, new Color32(tint.r, tint.g, tint.b, (byte)(160 * (1f - k))));
+                    break;
+                }
+                case Errand.Market:
+                    if (_rand.NextDouble() < dt * 2f)
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = x + Rand(-0.4f, 0.4f), Y = y + 1f, VY = Rand(0.6f, 1.2f), Gravity = 3f,
+                            Life = 0.6f, Size = 1f, Color = new Color32(140, 255, 200, 255) });
+                    break;
             }
         }
 
@@ -1317,6 +1372,13 @@ namespace ThienDao.Render
             Art(Sprite.LootGem, "....w....", "...wcw...", "..wccbw..", ".wccbbbw.", "wccbbbbbw", ".wcbbbbw.", "..wbbbw..", "...wbw...", "....w....");
             Art(Sprite.LootStones, "...c.....", "..cgc..c.", "..gGg.cgc", ".cgGgcgGg", ".gGGggGGg", "kkkkkkkkk");
             Art(Sprite.LootCore, "..kkkk...", ".korrok..", "kowyrrrk.", "kryrrrrk.", "krrrrrrk.", ".krrrrk..", "..kkkk...");
+            Art(Sprite.LootHerb, "...r...", "..rrr..", "...g...", ".g.g.g.", "ggGgGgg", ".gGgGg.", "..gGg..", "...G...", "..nnn..");
+            Art(Sprite.IconHerb, "..g..", ".ggg.", "g.G.g", "..G..", ".nnn.");
+            Art(Sprite.IconHunt, "....w", "...w.", "y.w..", ".y...", "y.y..");
+            Art(Sprite.IconCoin, ".ccc.", "cwccb", "ccccb", ".cbb.", "..b..");
+            Art(Sprite.IconFlag, "krrr.", "krrrr", "krrr.", "k....", "k....");
+            Art(Sprite.IconLotus, "..p..", ".ppp.", "pp.pp", ".ppp.", "..g..");
+            Art(Sprite.IconHome, "..r..", ".rrr.", "rrrrr", ".nwn.", ".nkn.");
 
             atlas = new Texture2D(tw, th, TextureFormat.RGBA32, false) { name = "FxAtlas", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             atlas.SetPixelData(px, 0);

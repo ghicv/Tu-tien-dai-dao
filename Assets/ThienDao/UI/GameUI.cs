@@ -1117,6 +1117,8 @@ namespace ThienDao.UI
         readonly List<Faction> _powerRank = new List<Faction>();
         readonly List<BattleInfo> _battleInfo = new List<BattleInfo>();
         readonly List<HistoryRecord> _bio = new List<HistoryRecord>();
+        readonly List<(long tick, string text)> _diary = new List<(long, string)>();
+        readonly List<(long tick, string text, bool deed)> _story = new List<(long, string, bool)>();
         readonly List<Relation> _rels = new List<Relation>();
 
         static string Hex(Color32 c) => $"#{c.r:X2}{c.g:X2}{c.b:X2}";
@@ -1487,9 +1489,19 @@ namespace ThienDao.UI
                 if (master != null) sb.Append($"Sư phụ {master.Name}{(master.Alive ? "" : " (đã mất)")}");
                 if (c.Nemesis >= 0)
                     sb.Append(sb.Length > 0 ? " · " : "").Append($"<color=#ff8a6a>Huyết thù: {sim.Cultivation.All[c.Nemesis].Name}</color>");
+                // Their story so far: the small doings of the nhật ký and the great deeds of the chronicle, in order.
                 sim.History.OfCultivator(c.Index, _bio, 4);
-                for (int k = _bio.Count - 1; k >= 0; k--)
-                    sb.Append(sb.Length > 0 ? "\n" : "").Append($"<color=#8890a8>{_bio[k].Year}</color> {_bio[k].Text}");
+                sim.Cultivation.DiaryOf(c, _diary);
+                _story.Clear();
+                foreach (var d in _diary) _story.Add((d.tick, d.text, false));
+                foreach (var r in _bio) _story.Add((r.Tick, r.Text, true));
+                _story.Sort((p, q) => p.tick.CompareTo(q.tick));
+                for (int k = Mathf.Max(0, _story.Count - 6); k < _story.Count; k++)
+                {
+                    var (t, text, deed) = _story[k];
+                    string when = $"N{t / SimClock.DaysPerYear + 1}·T{t % SimClock.DaysPerYear / SimClock.DaysPerMonth + 1}";
+                    sb.Append(sb.Length > 0 ? "\n" : "").Append($"<color=#8890a8>{when}</color> ").Append(deed ? $"<color=#ffe08a>{text}</color>" : text);
+                }
                 int more = sim.History.CountOfCultivator(c.Index) - _bio.Count;
                 if (more > 0) sb.Append($"\n<color=#8890a8>+{more} sự tích (H)</color>");
                 _cardBody.text = sb.ToString();
