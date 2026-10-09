@@ -74,7 +74,7 @@ namespace ThienDao.UI
             { BrushTool.Shallow, "Nước nông — ai đứng đó sẽ chết đuối" }, { BrushTool.DeepWater, "Biển sâu — nhấn chìm mọi thứ" },
             { BrushTool.Hills, "Đồi" }, { BrushTool.Mountain, "Núi — làng bị đè sẽ phải dời đi" }, { BrushTool.Snow, "Tuyết" },
             { BrushTool.Trees, "Trồng cây theo khí hậu" },
-            { BrushTool.FoundVillage, "Lập làng — 24 phàm nhân khai hoang" }, { BrushTool.Erase, "Xóa cây, nhà, công trình" },
+            { BrushTool.FoundVillage, "Tạo hóa nhân tộc: nặn đất thành người, một bộ lạc 24 phàm nhân xuất hiện nơi bấm" }, { BrushTool.Erase, "Xóa cây, nhà, công trình" },
             { BrushTool.SpawnDeer, "Thả hươu vào vùng" }, { BrushTool.SpawnRabbit, "Thả thỏ vào vùng" }, { BrushTool.SpawnWolf, "Thả sói vào vùng" },
             { BrushTool.LeyAdd, "Vẽ linh mạch — trần linh khí quanh đó tăng dần" }, { BrushTool.LeyErase, "Phá linh mạch" },
             { BrushTool.QiInfuse, "Rót linh khí — linh khí tràn ra rồi tản dần" }, { BrushTool.QiDrain, "Hút linh khí — vùng đó cạn kiệt" },
@@ -273,7 +273,9 @@ namespace ThienDao.UI
             var sim = _game.Sim;
             var clock = sim.Clock;
             var era = sim.Eras.Current;
-            _date.text = $"Năm {clock.Year} · tháng {clock.Month}" + (era != null ? $"  <size=17><color=#c8b8ff>{era.Name}</color></size>" : "");
+            string epoch = sim.Eras.EpochName;
+            bool same = era != null && string.Equals(era.Name, epoch, System.StringComparison.OrdinalIgnoreCase);
+            _date.text = $"<color=#ffd873>{epoch}</color> · năm {clock.Year} · tháng {clock.Month}" + (era != null && !same ? $"  <size=17><color=#c8b8ff>{era.Name}</color></size>" : "");
             _seasonIcon.sprite = Icons.Season(clock.Season);
             _seasonTip.Text = $"Mùa {SeasonNames[(int)clock.Season]} · {clock.DateText}";
 

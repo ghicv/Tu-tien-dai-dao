@@ -132,7 +132,7 @@ namespace ThienDao.Render
         }
 
         public const int UnitFrames = 2;
-        public const int BeastKinds = 14, BeastSizes = 2;
+        public const int BeastKinds = 16, BeastSizes = 2;
 
         // A yêu thú's look: its kind at full size (a beast is always bigger than a cultivator). Each grade stands
         // taller than the one below (BeastScale): nhất giai as drawn, cửu giai three times over, a hung thú a little

@@ -1105,6 +1105,81 @@ namespace ThienDao.Tests
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
+        // ---------------------------------------------------------------- devlog 35: khai thiên lập địa, hồng hoang
+
+        [Test]
+        public void PrimordialWorldOpensWithBeastsAndTheFiveChanLinh()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao", true));
+            Assert.AreEqual(0, sim.Settlements.AliveCount, "no man walks the land yet");
+            Assert.AreEqual(0, sim.Cultivation.AliveCount);
+            Assert.AreEqual(0, sim.Factions.AliveCount);
+            Assert.AreEqual(0, sim.Relics.All.Count, "no one came before whose ruins could lie about");
+            Assert.AreEqual(0, sim.World.Kingdoms.Count);
+            var chanLinh = sim.Beasts.All.FindAll(b => b.ChanLinh);
+            Assert.AreEqual(5, chanLinh.Count, "the five chân linh");
+            var kinds = new HashSet<BeastKind>();
+            foreach (var b in chanLinh)
+            {
+                Assert.AreEqual(9, b.Grade);
+                Assert.IsTrue(b.IsKing, "each heads its yêu tộc");
+                kinds.Add(b.Kind);
+            }
+            Assert.AreEqual(5, kinds.Count, "one of each kind");
+            Assert.Greater(sim.Beasts.AliveCount, 100, "the beasts have the world");
+            Run(sim, SimClock.DaysPerYear * 2);
+            Assert.AreEqual("Hồng hoang", sim.Eras.EpochName);
+            Assert.AreEqual("Hồng Hoang", sim.Eras.Current.Name);
+            foreach (var b in chanLinh)
+                if (b.Alive) Assert.Greater(sim.Beasts.ClanSize(b), 0, "beasts near its lair kneel to it");
+
+            // Saved and loaded, it is still a world without men (the map is built again the same way).
+            var loaded = SaveGame.LoadFromBytes(SaveGame.SaveToBytes(sim, "ThienDao"), out var header);
+            Assert.IsTrue(header.Primordial);
+            Assert.AreEqual(sim.ComputeStateHash(), loaded.ComputeStateHash());
+        }
+
+        [Test]
+        public void MenComeOfThemselvesOrAtHeavensHand()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao", true));
+            Run(sim, SimClock.DaysPerYear * 101);
+            Assert.Greater(sim.Settlements.AliveCount, 0, "within a century a tribe of men comes of itself");
+            Assert.GreaterOrEqual(sim.Settlements.FirstTribeTick, 0);
+            Assert.IsTrue(sim.History.All.Exists(r => r.Kind == EventKind.Era && r.Text.StartsWith("Nhân tộc xuất hiện")));
+            Assert.AreNotEqual("Hồng hoang", sim.Eras.EpochName, "the age of beasts alone is over");
+
+            // Thiên Đạo may make them sooner, wherever it likes.
+            var other = new Simulation(MapGenerator.Generate("ThienDao", true));
+            var (x, y) = FindOpenLand(other, 512, 512);
+            other.Enqueue(new FoundVillageCommand(x, y, 24, 0));
+            other.ApplyPending();
+            Assert.AreEqual(1, other.Settlements.AliveCount);
+            Assert.AreEqual(0, other.Settlements.FirstTribeTick);
+            Assert.IsTrue(other.History.All.Exists(r => r.Kind == EventKind.Era && r.Text.Contains("Thiên Đạo nặn đất thành người")));
+
+            // The first of them to draw in qi is the thủy tổ of all who cultivate.
+            var village = other.Settlements.All[0];
+            var founder = other.Cultivation.RiseFromVillage(village, other.Clock.Tick, false, out _);
+            Assert.IsNotNull(founder);
+            Run(other, SimClock.DaysPerYear);
+            Assert.IsTrue(other.History.All.Exists(r => r.Kind == EventKind.Era && r.Text.StartsWith("Thủy tổ tu tiên")));
+            Assert.AreEqual("Thủy tổ tu tiên", other.Eras.EpochName);
+        }
+
+        [Test]
+        public void AFallenChanLinhLeavesItsLairToTheAgesAfter()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao", true));
+            var dragon = sim.Beasts.All.Find(b => b.ChanLinh && b.Kind == BeastKind.Dragon);
+            sim.Beasts.Perish(dragon, sim.Clock.Tick, "test", 3);
+            var lair = sim.Relics.All.Find(r => r.Name == "Long Huyệt");
+            Assert.IsNotNull(lair, "where the chân long fell lies a thượng cổ bí cảnh");
+            Assert.AreEqual(RelicKind.Ancient, lair.Kind);
+            Assert.AreEqual(3, lair.Layers);
+            Assert.IsFalse(lair.Discovered, "hidden until someone finds it");
+        }
+
         // Devlog 33: cultivators go out on errands the map can show, and keep a diary of them.
         [Test]
         public void CultivatorsGoOutOnErrandsAndKeepADiary()

@@ -23,7 +23,7 @@ namespace ThienDao.Sim
     public static class SaveGame
     {
         const string Magic = "TDSAVE";
-        const int Version = 1;
+        const int Version = 2;
 
         public sealed class Header
         {
@@ -32,6 +32,7 @@ namespace ThienDao.Sim
             public ulong StateHash;
             public long SavedAtUtcTicks;
             public string Label;
+            public bool Primordial; // the map is built again from the seed: built the way it was first
             public int Year => (int)(Tick / Core.SimClock.DaysPerYear) + 1;
         }
 
@@ -45,7 +46,7 @@ namespace ThienDao.Sim
             w.Write(Version);
             WriteHeader(w, new Header
             {
-                Seed = seed, Tick = sim.Clock.Tick, StateHash = sim.ComputeStateHash(), SavedAtUtcTicks = DateTime.UtcNow.Ticks, Label = label ?? ""
+                Seed = seed, Tick = sim.Clock.Tick, StateHash = sim.ComputeStateHash(), SavedAtUtcTicks = DateTime.UtcNow.Ticks, Label = label ?? "", Primordial = sim.World.Primordial
             });
             var g = new GraphWriter(w);
             g.WriteObjectGraph(sim);
@@ -64,7 +65,7 @@ namespace ThienDao.Sim
             using var gz = new GZipStream(input, CompressionMode.Decompress, true);
             using var r = new BinaryReader(gz, Encoding.UTF8, true);
             header = ReadHeaderOnly(r);
-            var sim = new Simulation(MapGenerator.Generate(header.Seed));
+            var sim = new Simulation(MapGenerator.Generate(header.Seed, header.Primordial));
             new GraphReader(r).ReadObjectGraph(sim);
             return sim;
         }
@@ -89,6 +90,7 @@ namespace ThienDao.Sim
             w.Write(h.StateHash);
             w.Write(h.SavedAtUtcTicks);
             w.Write(h.Label);
+            w.Write(h.Primordial);
         }
 
         static Header ReadHeaderOnly(BinaryReader r)
@@ -96,7 +98,7 @@ namespace ThienDao.Sim
             if (r.ReadString() != Magic) throw new InvalidDataException("Không phải tệp lưu Thiên Đạo.");
             int version = r.ReadInt32();
             if (version != Version) throw new InvalidDataException($"Tệp lưu phiên bản {version}, game cần {Version}.");
-            return new Header { Seed = r.ReadString(), Tick = r.ReadInt64(), StateHash = r.ReadUInt64(), SavedAtUtcTicks = r.ReadInt64(), Label = r.ReadString() };
+            return new Header { Seed = r.ReadString(), Tick = r.ReadInt64(), StateHash = r.ReadUInt64(), SavedAtUtcTicks = r.ReadInt64(), Label = r.ReadString(), Primordial = r.ReadBoolean() };
         }
 
         // ---------------------------------------------------------------- type model

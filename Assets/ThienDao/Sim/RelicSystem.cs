@@ -49,7 +49,7 @@ namespace ThienDao.Sim
             _sim = sim;
             _w = sim.World;
             _w.Objects.Removed += OnObjectRemoved;
-            SeedAncient();
+            if (!_w.Primordial) SeedAncient(); // at khai thiên lập địa there is no one before whose ruins could lie about
         }
 
         // ---------------------------------------------------------------- on the map
@@ -208,6 +208,21 @@ namespace ThienDao.Sim
             if (c.Technique > 0) r.Technique = c.Technique; // their method, written down for whoever comes after
         }
 
+        // A chân linh fell: where its blood soaked the ground lies a thượng cổ bí cảnh of three layers, its bloodline
+        // and its hoard for whoever comes after. Hidden until found, like any other.
+        public void OnChanLinhFell(Beast b, float x, float y, long tick)
+        {
+            string lair = b.Kind == BeastKind.Dragon ? "Long Huyệt" : b.Kind == BeastKind.Phoenix ? "Phượng Sào" : b.Kind == BeastKind.Qilin ? "Kỳ Lân Động"
+                : b.Kind == BeastKind.KunPeng ? "Côn Bằng Mộ" : "Huyền Vũ Quy Khư";
+            var r = Add(RelicKind.Ancient, lair, x, y, 5, tick, true);
+            if (r == null) return;
+            r.Origin = $"nơi {b.Name} vẫn lạc năm {Year(tick)}";
+            r.Treasure = $"Huyết mạch {b.Name}";
+            r.Stones = 3000f;
+            r.Pills = 3;
+            r.Layers = 3;
+        }
+
         // A sect was wiped out: its scripture hall lies in ruins on the old mountain gate.
         public void OnSectDestroyed(Settlement s, string name, long tick)
         {
@@ -324,7 +339,8 @@ namespace ThienDao.Sim
             r.Origin = $"xuất thế năm {Year(tick)}";
             r.Stones = rng.Range(80f, 240f) * tier;
             r.Discovered = true;
-            _sim.Events.Add(tick, EventKind.Relic, 3, $"Bảo quang xung thiên: {what} xuất thế giữa chốn linh khí nồng đậm, cả thiên hạ chấn động!",
+            // Before there are cultivators to want it, only the beasts take note.
+            _sim.Events.Add(tick, EventKind.Relic, _sim.Cultivation.AliveCount > 0 ? 3 : 1, $"Bảo quang xung thiên: {what} xuất thế giữa chốn linh khí nồng đậm, cả thiên hạ chấn động!",
                 r.X + 0.5f, r.Y + 0.5f, Fx.LightPillar);
             StartContest(r, tick);
         }

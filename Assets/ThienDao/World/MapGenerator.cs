@@ -11,10 +11,12 @@ namespace ThienDao.World
         const float LandRatio = 0.42f;
         const int MaxWaterDist = 48;
 
-        public static WorldData Generate(string seedText)
+        // primordial: khai thiên lập địa (devlog 35). The land, its qi and its ley lines, and nothing of men: no village,
+        // no sect, no kingdom. Without it the world opens in the age of men, as it did before (tests, old tools).
+        public static WorldData Generate(string seedText, bool primordial = false)
         {
             uint seed = Hash.FromString(seedText);
-            var w = new WorldData(seed, seedText);
+            var w = new WorldData(seed, seedText) { Primordial = primordial };
             w.Lore = WorldLore.Draw(seed);
             var layout = LayoutRegions(seed);
             AssignRegions(w, layout);
@@ -26,9 +28,12 @@ namespace ThienDao.World
             ClassifyTerrain(w, river, waterDist);
             FinishRegions(w);
             GenerateQi(w);
-            AssignKingdoms(w, waterDist);
             var noTree = new bool[w.W * w.H];
-            PlaceSettlements(w, waterDist, noTree);
+            if (!primordial)
+            {
+                AssignKingdoms(w, waterDist);
+                PlaceSettlements(w, waterDist, noTree);
+            }
             PlaceVegetation(w, noTree);
             return w;
         }

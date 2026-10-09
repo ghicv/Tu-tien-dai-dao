@@ -137,6 +137,8 @@ namespace ThienDao.Sim
                 Develop(s, true); // its công trình and house styles before the fields take the ground around
                 ClaimFarmland(s, (int)(s.Workers * CellsPerWorker));
             }
+            if (_w.Primordial) _nextTribe = (long)(rng.Range(50f, 100f) * SimClock.DaysPerYear); // men come when the beasts have had the land a while
+            else FirstTribeTick = 0;
         }
 
         public int TotalPopulation
@@ -307,6 +309,64 @@ namespace ThienDao.Sim
             return s;
         }
 
+        // ---------------------------------------------------------------- nhân tộc xuất hiện (devlog 35)
+
+        public long FirstTribeTick = -1; // when men first walked the land (0 in a world that opens in the age of men)
+        long _nextTribe = -1;            // a primordial world: when the next tribe comes of itself, -1 none due
+        int _naturalTribes;
+        const int NaturalTribes = 6;     // after these the people spread by themselves (migration)
+
+        // A bộ lạc of men: Thiên Đạo makes them where it will (divine), or the world brings them forth on fertile
+        // ground far from the chân linh. The first ever is the dawn of nhân tộc.
+        public Settlement FoundTribe(int x, int y, int people, long tick, bool divine)
+        {
+            var rng = RngFor(tick, 870000 + x * 4099 + y);
+            var s = FoundVillage(x, y, (byte)rng.Range(0, 4), people, tick);
+            if (s == null) return null;
+            bool first = FirstTribeTick < 0;
+            if (first) FirstTribeTick = tick;
+            string how = divine ? $"Thiên Đạo nặn đất thành người, {people} phàm nhân đầu tiên mở mắt ở {s.Name}" : $"Một bộ lạc {people} người từ đâu kéo tới, dựng lều ở {s.Name}";
+            _sim.Events.Add(tick, first ? EventKind.Era : divine ? EventKind.Divine : EventKind.Relocation, first ? 3 : 2,
+                first ? $"Nhân tộc xuất hiện! {how}. Giữa vạn thú hồng hoang, loài người yếu ớt bắt đầu sinh sôi." : $"{how}.",
+                s.X + 0.5f, s.Y + 0.5f, divine ? Fx.Blessing : Fx.None);
+            return s;
+        }
+
+        void TribesStep(long tick)
+        {
+            if (!_w.Primordial) return;
+            if (_nextTribe < 0 && FirstTribeTick >= 0 && AliveCount == 0) // every man was killed: in time, others come
+                _nextTribe = tick + (long)(RngFor(tick, 880000).Range(50f, 100f) * SimClock.DaysPerYear);
+            if (_nextTribe < 0 || tick < _nextTribe) return;
+            var rng = RngFor(tick, 890000);
+            if (TribeSite(ref rng, out int x, out int y) && FoundTribe(x, y, rng.Range(24, 40), tick, false) != null) _naturalTribes++;
+            _nextTribe = _naturalTribes < NaturalTribes ? tick + (long)(rng.Range(20f, 60f) * SimClock.DaysPerYear) : -1;
+        }
+
+        // Fertile open ground by water, clear of other men and far from the lairs of the chân linh.
+        bool TribeSite(ref DetRandom rng, out int bx, out int by)
+        {
+            bx = by = -1;
+            float best = 0f;
+            for (int attempt = 0; attempt < 600; attempt++)
+            {
+                int x = rng.Range(16, _w.W - 16), y = rng.Range(16, _w.H - 16);
+                int i = _w.Idx(x, y);
+                if (_w.Terrain[i] != Terrain.Grass || _w.Owner[i] != 0 || !CanSettleAt(x, y) || TooCloseToOthers(x, y, null, 60)) continue;
+                bool lair = false;
+                foreach (var b in _sim.Beasts.All)
+                {
+                    if (!b.Alive || !b.ChanLinh) continue;
+                    float dx = b.HomeX - x, dy = b.HomeY - y;
+                    if (dx * dx + dy * dy < 120f * 120f) { lair = true; break; }
+                }
+                if (lair) continue;
+                float score = _w.Fertility(i) * (_w.WaterDist[i] <= 12 ? 1.5f : 1f) * (0.5f + rng.NextFloat() * 0.5f);
+                if (score > best) { best = score; bx = x; by = y; }
+            }
+            return bx >= 0;
+        }
+
         // ---------------------------------------------------------------- sects (thế lực)
 
         // Room for a sect: buildable, unclaimed ground for the 5×5 hall, clear of other settlements.
@@ -452,6 +512,7 @@ namespace ThienDao.Sim
 
         public void YearlyStep(long tick)
         {
+            TribesStep(tick);
             int count = All.Count;
             for (int k = 0; k < count; k++)
             {

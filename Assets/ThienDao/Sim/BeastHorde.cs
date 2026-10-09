@@ -8,7 +8,7 @@ namespace ThienDao.Sim
 {
     // What a yêu thú is: its kind follows the land it was born on (BeastSystem.KindFor) and sets its look, its
     // name and whether it flies.
-    public enum BeastKind : byte { Wolf, Tiger, Bear, Serpent, Scorpion, Eagle, Fox, Ox, Ape, Dragon, Qilin, Bat, Turtle, Chaos, Count }
+    public enum BeastKind : byte { Wolf, Tiger, Bear, Serpent, Scorpion, Eagle, Fox, Ox, Ape, Dragon, Qilin, Bat, Turtle, Chaos, Phoenix, KunPeng, Count }
 
     // Hung thú (sự kiện thế giới): now and then a great beast of lục giai or more rises and goes from town to town
     // killing, and the sects around must band together (liên minh trảm yêu) to bring it down.
@@ -17,10 +17,10 @@ namespace ThienDao.Sim
         public static readonly string[] KindNames =
         {
             "Yêu lang", "Yêu hổ", "Yêu hùng", "Cự mãng", "Độc hạt", "Yêu điêu", "Yêu hồ", "Ma ngưu", "Hung viên", "Phi long", "Hỏa kỳ lân", "Huyết bức",
-            "Huyền quy", "Hỗn độn"
+            "Huyền quy", "Hỗn độn", "Thiên phượng", "Côn bằng"
         };
 
-        public static bool Flies(BeastKind k) => k == BeastKind.Eagle || k == BeastKind.Dragon || k == BeastKind.Bat || k == BeastKind.Chaos;
+        public static bool Flies(BeastKind k) => k == BeastKind.Eagle || k == BeastKind.Dragon || k == BeastKind.Bat || k == BeastKind.Chaos || k == BeastKind.Phoenix || k == BeastKind.KunPeng;
 
         // ---------------------------------------------------------------- kinds
 
@@ -100,6 +100,7 @@ namespace ThienDao.Sim
         // wilds, a hung thú rises. A beast that has grown to thất giai by itself may also turn to slaughter.
         void Emerge(long tick)
         {
+            if (_sim.Settlements.AliveCount == 0) return; // a hung thú goes from town to town; with no towns, none rises
             var rng = RngFor(tick, 3);
             int rampaging = RampagingCount();
             // Grown monsters that lose themselves.

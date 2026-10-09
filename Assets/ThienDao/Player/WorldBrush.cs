@@ -61,7 +61,7 @@ namespace ThienDao.Player
         {
             "Xem", "Cỏ", "Cát", "Sa mạc", "Nước nông", "Biển sâu", "Đồi", "Núi", "Tuyết",
             "Trồng cây", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
-            "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
+            "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Tạo hóa nhân tộc",
             "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
             "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn", "Thả yêu thú",
             "Thả tu sĩ", "Đánh thức hung thú", "Ban pháp bảo", "Giáng tâm ma", "Phế tu vi", "Thiên tài địa bảo", "Mở bí cảnh", "Ban công pháp", "Thiên cơ hiển lộ"

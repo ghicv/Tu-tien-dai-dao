@@ -43,6 +43,7 @@ namespace ThienDao.World
         public WorldLore Lore;                // the names this world drew from Resources/Lore (set by the generator)
         public float SeaLabelX = -1, SeaLabelY = -1; // where the map writes the sea's name
         public readonly List<Kingdom> Kingdoms = new List<Kingdom>();
+        public bool Primordial;    // opened at khai thiên lập địa: beasts only, men come later (devlog 35)
 
         public RegionKind RegionAt(int i) => (RegionKind)Region[i];
 

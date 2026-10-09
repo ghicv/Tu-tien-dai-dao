@@ -419,6 +419,77 @@ namespace ThienDao.Render
                     ".....BB.BB.BB.BB.BB...",
                 } }
             },
+            // Thiên Phượng (chân linh): crimson wings, a golden head and crest, long trailing plumes of flame
+            new Look
+            {
+                Palette = P(('A', C(212, 48, 40)), ('B', C(255, 196, 64)), ('C', C(255, 120, 40)), ('D', C(255, 226, 130))),
+                Frames = new[]
+                {
+                    new[]
+                    {
+                        "..A.................A.....",
+                        "..AA......YY.......AA.....",
+                        "..AAA....YBY......AAA.....",
+                        "...AAA...BBBE....AAA......",
+                        "...AAAA..BBBBC..AAAA......",
+                        "....AAAAABBBAAAAAAA.......",
+                        ".....AAAAAAAAAAAAA........",
+                        "DD....AAAAAAAAAAA.........",
+                        ".DDD...AAAAAAAAA..........",
+                        "..DDDDCCAAAAAAA...........",
+                        "....DDDDCC..Y.Y...........",
+                        "......DDD...Y.Y...........",
+                    },
+                    new[]
+                    {
+                        "..........YY..............",
+                        ".........YBY..............",
+                        ".........BBBE.............",
+                        ".........BBBBC............",
+                        "....AAAAABBBAAAAA.........",
+                        "..AAAAAAAAAAAAAAAAAA......",
+                        ".AAAAA..AAAAAAAA..AAAAA...",
+                        "DDAA....AAAAAAAA.....AAA..",
+                        ".DDD.....AAAAAA.........A.",
+                        "..DDDDCCAAAAAA............",
+                        "....DDDDCC..Y.Y...........",
+                        "......DDD...Y.Y...........",
+                    }
+                }
+            },
+            // Côn Bằng (chân linh): a great fish of the north sea turned bird, deep blue, a fish's tail and vast wings
+            new Look
+            {
+                Palette = P(('A', C(40, 72, 140)), ('B', C(96, 156, 214)), ('C', C(22, 40, 92)), ('F', C(156, 212, 242))),
+                Frames = new[]
+                {
+                    new[]
+                    {
+                        "F....................F....",
+                        "FF..................FF....",
+                        ".FFA...............AFF....",
+                        "..FAA.............AAF.....",
+                        "...AAAA.........AAAA......",
+                        "C...AAAAAAAAAAAAAAAAAA....",
+                        "CC..AAAAAAAAAAAAAAAAAAAE..",
+                        "CCCAAAABBBBBBBBBBBBBAAAAA.",
+                        "CC..AAAAABBBBBBBBBBAAAA...",
+                        "C.....AAAAAAAAAAAAAA......",
+                    },
+                    new[]
+                    {
+                        "C...AAAAAAAAAAAAAAAAAA....",
+                        "CC..AAAAAAAAAAAAAAAAAAAE..",
+                        "CCCAAAABBBBBBBBBBBBBAAAAA.",
+                        "CC..AAAAABBBBBBBBBBAAAA...",
+                        "C...AAAAAAAAAAAAAAAA......",
+                        "....AAAA..........AAAA....",
+                        "...FAA..............AAF...",
+                        "..FFA................AFF..",
+                        ".FF....................FF.",
+                    }
+                }
+            },
         };
     }
 }

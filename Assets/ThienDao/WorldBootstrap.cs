@@ -120,7 +120,7 @@ namespace ThienDao
             if (string.IsNullOrWhiteSpace(seedText)) seedText = "0";
             SeedText = seedText.Trim();
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            var world = MapGenerator.Generate(SeedText);
+            var world = MapGenerator.Generate(SeedText, true); // every new world opens at khai thiên lập địa
             int speed = Sim?.SpeedIndex ?? 1;
             var sim = new Simulation(world) { SpeedIndex = speed };
             GenerationMs = (float)sw.Elapsed.TotalMilliseconds;
@@ -153,6 +153,9 @@ namespace ThienDao
             {
                 var focus = new Vector2(World.W * 0.5f, World.H * 0.5f);
                 if (Sim.Settlements.All.Count > 0) focus = new Vector2(Sim.Settlements.All[0].X, Sim.Settlements.All[0].Y);
+                else
+                    foreach (var b in Sim.Beasts.All) // hồng hoang: open on the lair of a chân linh
+                        if (b.Alive && b.ChanLinh) { focus = new Vector2(b.HomeX, b.HomeY); break; }
                 _cam.Focus(focus, Screen.height / (2f * StartPixelsPerCell));
             }
             _ui?.OnWorldChanged();

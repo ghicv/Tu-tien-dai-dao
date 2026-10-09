@@ -234,7 +234,8 @@ namespace ThienDao.Render
             if (b == null || b.Grade < 3) return Spell.Claw; // the lesser ones only tear
             switch (b.Kind)
             {
-                case BeastKind.Dragon: case BeastKind.Qilin: case BeastKind.Fox: return Spell.Flame;
+                case BeastKind.Dragon: case BeastKind.Qilin: case BeastKind.Fox: case BeastKind.Phoenix: return Spell.Flame;
+                case BeastKind.KunPeng: return Spell.Gale;
                 case BeastKind.Serpent: case BeastKind.Scorpion: return Spell.Venom;
                 case BeastKind.Turtle: return Spell.Tide;
                 case BeastKind.Eagle: return Spell.Gale;

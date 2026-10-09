@@ -209,7 +209,7 @@ namespace ThienDao.Sim
             Roof = roof;
         }
 
-        public void Apply(Simulation sim) => sim.Settlements.FoundVillage(X, Y, Roof, People, sim.Clock.Tick);
+        public void Apply(Simulation sim) => sim.Settlements.FoundTribe(X, Y, People, sim.Clock.Tick, true); // tạo hóa nhân tộc
     }
 
     // Add a cultivator to (or drop them from) the player's watch list. Watched cultivators live by ProtagonistAI,

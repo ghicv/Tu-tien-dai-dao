@@ -27,6 +27,10 @@ namespace ThienDao.Sim
         int _lastBattles, _lastDestructions, _lastPop;
         bool _lastGreat;
 
+        // Mốc của nhân tộc (devlog 35), in a world that opened at khai thiên lập địa: when the first of each came.
+        public long CultivatorsSince = -1, SectsSince = -1;
+        public int GreatCalamitiesPassed; // thượng cổ ends with the first đại kiếp, trung cổ with the second
+
         public EraSystem(Simulation sim)
         {
             _sim = sim;
@@ -56,9 +60,51 @@ namespace ThienDao.Sim
         public void YearlyStep(long tick)
         {
             bool great = _sim.Disasters.GreatCalamityActive;
+            if (_lastGreat && !great && (!_sim.World.Primordial || SectsSince >= 0)) GreatCalamitiesPassed++; // the đại kiếp of the beasts' age ends no age of men
+            bool milestone = Milestones(tick);
             int year = (int)(tick / SimClock.DaysPerYear) + 1;
-            if (All.Count == 0 || great != _lastGreat || year % EvaluateEveryYears == 1) Evaluate(tick, great);
+            if (All.Count == 0 || milestone || great != _lastGreat || year % EvaluateEveryYears == 1) Evaluate(tick, great);
             _lastGreat = great;
+        }
+
+        // The great firsts of nhân tộc, told once: the first to cultivate (who, untaught, finds the way to draw qi in
+        // and leaves it as Dẫn Khí Quyết, the first method), the first sect. True when one came this year.
+        bool Milestones(long tick)
+        {
+            if (!_sim.World.Primordial) return false;
+            bool any = false;
+            if (CultivatorsSince < 0 && _sim.Cultivation.All.Count > 0)
+            {
+                CultivatorsSince = tick;
+                any = true;
+                var c = _sim.Cultivation.All[0];
+                _sim.Events.Add(tick, EventKind.Era, 3,
+                    $"Thủy tổ tu tiên! {c.Name} là người đầu tiên của nhân tộc cảm ứng được linh khí thiên địa, tự ngộ ra Dẫn Khí Quyết, bộ công pháp đầu tiên của nhân gian.",
+                    c.HomeX, c.HomeY, Fx.LightPillar, c.Index);
+            }
+            if (SectsSince < 0 && _sim.Factions.All.Count > 0)
+            {
+                SectsSince = tick;
+                any = true;
+                var f = _sim.Factions.All[0];
+                var seat = _sim.Settlements.All[f.Id];
+                _sim.Events.Add(tick, EventKind.Era, 3,
+                    $"{_sim.Factions.NameOf(f.Id)} khai tông lập phái, tông môn đầu tiên của nhân tộc. Thượng cổ tu tiên bắt đầu.",
+                    seat.X + 0.5f, seat.Y + 0.5f, Fx.LightPillar, -1, -1, f.Id);
+            }
+            return any;
+        }
+
+        // The great age of the world's history: hồng hoang, the dawn of men, the founders, then thượng cổ, trung cổ,
+        // cận cổ, each ended by a đại kiếp.
+        public string EpochName
+        {
+            get
+            {
+                if (_sim.World.Primordial && SectsSince < 0)
+                    return _sim.Settlements.FirstTribeTick < 0 ? "Hồng hoang" : CultivatorsSince < 0 ? "Nhân tộc mông muội" : "Thủy tổ tu tiên";
+                return GreatCalamitiesPassed == 0 ? "Thượng cổ" : GreatCalamitiesPassed == 1 ? "Trung cổ" : GreatCalamitiesPassed == 2 ? "Cận cổ" : "Kim cổ";
+            }
         }
 
         void Evaluate(long tick, bool great)
@@ -80,7 +126,13 @@ namespace ThienDao.Sim
                 if (top == null || f.Power > top.Power) top = f;
             }
 
-            if (great) { name = "Đại Kiếp"; reason = "thiên địa đại kiếp giáng lâm, linh khí khô kiệt, tai ương liên miên"; }
+            if (_sim.World.Primordial && SectsSince < 0)
+            {
+                if (_sim.Settlements.FirstTribeTick < 0) { name = "Hồng Hoang"; reason = "thiên địa sơ khai, vạn thú tranh bá, chân linh làm chủ, chưa có dấu chân người"; }
+                else if (CultivatorsSince < 0) { name = "Nhân Tộc Mông Muội"; reason = "nhân tộc yếu ớt sống trong kẽ hở giữa lãnh địa vạn thú, chưa ai biết đến tu luyện"; }
+                else { name = "Thủy Tổ Tu Tiên"; reason = "nhân tộc bắt đầu dẫn khí nhập thể, nhưng chưa có tông môn nào"; }
+            }
+            else if (great) { name = "Đại Kiếp"; reason = "thiên địa đại kiếp giáng lâm, linh khí khô kiệt, tai ương liên miên"; }
             else if (prev != null && prev.Name == "Đại Kiếp") { name = "Tân Thời Đại"; reason = "đại kiếp qua đi, vạn vật hồi sinh"; }
             else if (qi < 0.82f) { name = "Mạt Pháp"; reason = $"linh khí thiên địa chỉ còn {qi * 100f:0}%, tu sĩ khó lòng tiến cảnh"; }
             // Skirmishes are counted as battles too: only a real age of war passes 200 in fifty years.
@@ -108,7 +160,8 @@ namespace ThienDao.Sim
 
         public void HashInto(ref ulong h)
         {
-            StateHash.Add(ref h, All.Count | ((long)_lastPop << 16));
+            StateHash.Add(ref h, All.Count | ((long)_lastPop << 16) | ((long)GreatCalamitiesPassed << 48));
+            StateHash.Add(ref h, CultivatorsSince ^ (SectsSince << 24));
             foreach (var e in All) StateHash.Add(ref h, e.Start ^ ((long)Hash.FromString(e.Name) << 20));
         }
     }

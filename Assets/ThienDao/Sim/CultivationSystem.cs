@@ -286,8 +286,8 @@ namespace ThienDao.Sim
             if (richest != null && rng.NextFloat() < 0.5f)
                 Create(ref rng, Realm.NguyenAnh, rng.Range(0, 2), rng.Range(450f, 750f), richest.Id, richest.X + 0.5f, richest.Y + 1.5f, 0);
 
-            // Tán tu scattered where qi is decent.
-            for (int attempt = 0, made = 0; attempt < 4000 && made < 20; attempt++)
+            // Tán tu scattered where qi is decent (none at khai thiên lập địa: men have not come yet).
+            for (int attempt = 0, made = 0; !_w.Primordial && attempt < 4000 && made < 20; attempt++)
             {
                 int x = rng.Range(8, _w.W - 8), y = rng.Range(8, _w.H - 8);
                 int i = _w.Idx(x, y);

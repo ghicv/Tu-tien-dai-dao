@@ -25,6 +25,7 @@ namespace ThienDao.Sim
         public int KilledBy = -1;    // a cultivator's index
         public bool Humanoid;        // hóa hình
         public BeastKind Kind;       // what it looks and fights like (BeastSystem.Kinds)
+        public bool ChanLinh;        // one of the five chân linh of the hồng hoang (devlog 35): one of each, lords of the beasts
         public bool Rampage;         // hung thú: roams from town to town, killing (BeastHorde.cs)
         public int Prey = -1;        // the settlement it is heading for
         public long RestUntil;       // gorged after a massacre
@@ -41,8 +42,8 @@ namespace ThienDao.Sim
 
         public bool IsKing => Clan == Index;
         public float AgeYears(long tick) => (tick - BirthTick) / (float)SimClock.DaysPerYear;
-        public int LifespanYears => BeastSystem.Lifespan[Grade];
-        public string Title => Rampage ? $"Hung thú {Name}" : IsKing ? $"Yêu Vương {Name}" : Humanoid ? $"{Name} (hóa hình)" : Name;
+        public int LifespanYears => ChanLinh ? 30000 : BeastSystem.Lifespan[Grade];
+        public string Title => ChanLinh ? Name : Rampage ? $"Hung thú {Name}" : IsKing ? $"Yêu Vương {Name}" : Humanoid ? $"{Name} (hóa hình)" : Name;
         public string GradeText => GradeNames[Grade];
     }
 
@@ -78,6 +79,7 @@ namespace ThienDao.Sim
         // The world starts with a few beasts already grown in the wild places where qi runs deep.
         void SeedInitial()
         {
+            if (_w.Primordial) { SeedPrimordial(); return; }
             var rng = new DetRandom(_w.Seed ^ 0xBEA51u);
             for (int attempt = 0, made = 0; attempt < 3000 && made < 14; attempt++)
             {
@@ -88,6 +90,77 @@ namespace ThienDao.Sim
                 Spawn(from, rng.Range(1, 5), x + 0.5f, y + 0.5f, 0, ref rng);
                 made++;
             }
+        }
+
+        // ---------------------------------------------------------------- hồng hoang (devlog 35)
+
+        // The five chân linh, each the only one of its kind, and the yêu tộc that gathers under it. Where each makes
+        // its lair: the sea's for the long, the côn bằng and the huyền vũ; heights and fire for the phượng; deep
+        // forest and hills for the kỳ lân.
+        static readonly (BeastKind kind, string name, string clan, bool water)[] ChanLinhs =
+        {
+            (BeastKind.Dragon, "Thái Cổ Chân Long", "Long tộc", true),
+            (BeastKind.Phoenix, "Cửu Thiên Thiên Phượng", "Phượng tộc", false),
+            (BeastKind.Qilin, "Hỗn Nguyên Kỳ Lân", "Kỳ Lân tộc", false),
+            (BeastKind.KunPeng, "Bắc Minh Côn Bằng", "Côn Bằng tộc", true),
+            (BeastKind.Turtle, "Huyền Vũ Thánh Quy", "Huyền Vũ tộc", true),
+        };
+        const int PrimordialBeasts = 150;
+        const float ChanLinhApart = 180f, ClanReach = 200f;
+
+        // Khai thiên lập địa: no man walks the land yet. Beasts fill it wherever qi runs, the stronger where it runs
+        // deeper, and the five chân linh take the richest ley lines, far from one another.
+        void SeedPrimordial()
+        {
+            var rng = new DetRandom(_w.Seed ^ 0x40A6u);
+            var lairs = new List<(int x, int y)>();
+            foreach (var (kind, name, clan, water) in ChanLinhs)
+            {
+                int bx = -1, by = -1;
+                float best = -1f;
+                for (int attempt = 0; attempt < 8000; attempt++)
+                {
+                    if (attempt == 4000 && bx >= 0) break;
+                    int x = rng.Range(24, _w.W - 24), y = rng.Range(24, _w.H - 24);
+                    int i = _w.Idx(x, y);
+                    // A ley line if one is free that far from the others; failing that, the richest ground.
+                    if (!TerrainInfo.IsWalkable(_w.Terrain[i]) || (attempt < 4000 && !_w.LeyLine[i])) continue;
+                    bool far = true;
+                    foreach (var (lx, ly) in lairs)
+                        if ((lx - x) * (lx - x) + (ly - y) * (ly - y) < ChanLinhApart * ChanLinhApart) far = false;
+                    if (!far) continue;
+                    float score = _w.QiCap[i] * (water == (_w.WaterDist[i] <= 6) ? 1.4f : 1f);
+                    if (score > best) { best = score; bx = x; by = y; }
+                }
+                if (bx < 0) continue;
+                lairs.Add((bx, by));
+                var b = Spawn(Species.Wolf, 9, bx + 0.5f, by + 0.5f, 0, ref rng, kind);
+                b.Name = name;
+                b.ChanLinh = true;
+                b.BirthTick = -(long)(rng.Range(3000f, 9000f) * SimClock.DaysPerYear); // older than the land remembers
+                b.Clan = b.Index;
+                b.ClanName = clan;
+            }
+            for (int attempt = 0, made = 0; attempt < 20000 && made < PrimordialBeasts; attempt++)
+            {
+                int x = rng.Range(8, _w.W - 8), y = rng.Range(8, _w.H - 8);
+                int i = _w.Idx(x, y);
+                float qi = _w.QiCap[i];
+                if (!TerrainInfo.IsWalkable(_w.Terrain[i]) || qi < 1500f) continue;
+                int grade = Mathf.Clamp(1 + (int)(qi / 1600f) + rng.Range(-1, 2), 1, 6); // the thất giai and above are the chân linh's alone, at first
+                var from = rng.NextFloat() < 0.5f ? Species.Wolf : rng.NextFloat() < 0.6f ? Species.Deer : Species.Rabbit;
+                var b = Spawn(from, grade, x + 0.5f, y + 0.5f, 0, ref rng);
+                made++;
+                Recruit(b);
+            }
+        }
+
+        // An unsworn beast near a chân linh's lair kneels to it.
+        void Recruit(Beast b)
+        {
+            if (b.Clan >= 0 || b.ChanLinh) return;
+            foreach (var o in All)
+                if (o.Alive && o.ChanLinh && Near(b, o, ClanReach)) { b.Clan = o.Index; return; }
         }
 
         DetRandom RngFor(long tick, int salt) => new DetRandom(Hash.U32(_w.Seed ^ 0xBEA57u, (int)tick, salt));
@@ -165,6 +238,7 @@ namespace ThienDao.Sim
                     if (o.Clan == b.Index) o.Clan = -1;
             b.Clan = -1;
             _sim.Events.Add(tick, EventKind.Beast, importance, text, x, y, killer != null ? Fx.BeastSlain : fx, killer?.Index ?? -1, -1, killer?.SectId ?? -1);
+            if (b.ChanLinh) _sim.Relics?.OnChanLinhFell(b, x, y, tick); // its blood and bones become a bí cảnh for the ages after
         }
 
         // Each year, in regions where animals have lived long under rich qi, one may open its spirit.
@@ -381,6 +455,8 @@ namespace ThienDao.Sim
                 _sim.Events.Add(tick, EventKind.Beast, 3, $"{b.Name} ({b.GradeText}) tự xưng Yêu Vương, thu phục {followers} yêu thú, lập nên {b.ClanName}.",
                     b.HomeX, b.HomeY, Fx.Stampede);
             }
+            foreach (var b in All) // beasts born near a chân linh's lair swear to it
+                if (b.Alive && b.Clan < 0) Recruit(b);
             foreach (var king in All)
             {
                 if (!king.Alive || !king.IsKing) continue;
