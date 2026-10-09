@@ -592,6 +592,28 @@ namespace ThienDao.Sim
             return total;
         }
 
+        // A beast caught these migrants on the road (BeastChase): `share` of them die; if none are left the band is gone.
+        public int MaulMigrants(int entity, float share, long tick)
+        {
+            int gi = _groups.FindIndex(g => g.Entity == entity);
+            if (gi < 0) return 0;
+            var group = _groups[gi];
+            int dead = 0, left = 0;
+            for (int b = 0; b < Settlement.AgeGroups; b++)
+            {
+                int lost = Mathf.Min(group.Cohorts[b], Mathf.CeilToInt(group.Cohorts[b] * share - 0.001f));
+                group.Cohorts[b] -= lost;
+                dead += lost;
+                left += group.Cohorts[b];
+            }
+            if (left == 0)
+            {
+                _groups.RemoveAt(gi);
+                _sim.Entities.Kill(entity, DeathCause.Natural);
+            }
+            return dead;
+        }
+
         // A calamity takes up to n people (the frail first); returns how many died.
         public int Kill(Settlement s, int n)
         {

@@ -234,6 +234,16 @@ namespace ThienDao.Sim
             }
         }
 
+        // A beast caught this caravan on the road (BeastChase): the people scatter, the goods are lost.
+        public bool Maul(int entity)
+        {
+            int k = _caravans.FindIndex(c => c.Entity == entity);
+            if (k < 0) return false;
+            _caravans.RemoveAt(k);
+            _sim.Entities.Kill(entity, DeathCause.Natural);
+            return true;
+        }
+
         // A blow from heaven or earth (HarmSystem): a caravan that would lose half its people or more scatters, goods lost.
         public int Harm(HarmSystem harm, float damage)
         {

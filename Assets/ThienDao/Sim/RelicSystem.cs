@@ -267,7 +267,7 @@ namespace ThienDao.Sim
                 _sim.Events.Add(tick, EventKind.Relic, 2, $"{c.Title} ({_sim.Cultivation.SectName(c)}) tình cờ phát hiện {r.Name} ({r.Origin}).",
                     r.X + 0.5f, r.Y + 0.5f, Fx.Blessing, c.Index, r.Owner, c.SectId, r.Sect);
                 // They try it at once if they dare; otherwise word spreads and stronger people will come.
-                if (DeathChance(r, c) < 0.35f) Explore(c, r, tick);
+                if (DeathChance(r, c) < 0.35f) _sim.Cultivation.SendToExplore(c, r); // in they go: flies to the gate and explores on arrival
             }
         }
 
@@ -295,7 +295,7 @@ namespace ThienDao.Sim
                 if (best == null) continue;
                 _sim.Events.Add(tick, EventKind.Relic, 1, $"{best.Title} nghe tin {r.Name} xuất thế, lên đường thám hiểm.",
                     r.X + 0.5f, r.Y + 0.5f, Fx.None, best.Index, r.Owner, best.SectId, r.Sect);
-                Explore(best, r, tick);
+                _sim.Cultivation.SendToExplore(best, r); // flies there; explores at the gate
             }
         }
 
@@ -411,6 +411,34 @@ namespace ThienDao.Sim
         // and the boldest ma tu come alone. They fly to the site for real and the fight happens there.
         // ---------------------------------------------------------------- tin đồn (KnowledgeSystem, devlog 29)
 
+        // Thiên cơ hiển lộ (Thiên Đạo, devlog 32): heaven lays this cơ duyên bare to the whole world. Word reaches every
+        // corner at once, swollen to twice its worth; every sect, tán tu and ma tu who can fly there comes, and the
+        // fight for it is the greatest the land has seen (more sides, more fighters from each, three months to gather).
+        public bool Lure(Relic r, long tick)
+        {
+            if (r == null || !r.Open) return false;
+            r.Discovered = true;
+            var word = _sim.Knowledge?.Spread(RumorKind.Relic, r.Index, r.X + 0.5f, r.Y + 0.5f, 2000f, tick, 100);
+            if (word != null) word.Exaggeration = Mathf.Max(word.Exaggeration, 2f);
+            _sim.Events.Add(tick, EventKind.Relic, 3,
+                $"Thiên Đạo phô bày {r.Name}: bảo quang xung thiên chiếu sáng cả thiên hạ, tu sĩ bốn phương đổ về tranh đoạt!", r.X + 0.5f, r.Y + 0.5f, Fx.LightPillar);
+            var contest = ContestOver(r);
+            if (contest == null) return StartContest(r, tick, 5000f, 5, 12, 90);
+            contest.Resolve = System.Math.Max(contest.Resolve, tick + 90); // those still on their way have time to arrive
+            foreach (var f in _sim.Factions.All)
+                if (f.Alive) OnHeard(r, f, 2f, tick, 12, 5000f);
+            return true;
+        }
+
+        // Who stands where in a fight over r (the renderer plays the spells flying between the sides).
+        public void ContestantsOf(Relic r, List<(int who, int side)> into)
+        {
+            into.Clear();
+            var contest = ContestOver(r);
+            if (contest == null) return;
+            for (int k = 0; k < contest.Who.Count; k++) into.Add((contest.Who[k], contest.Side[k]));
+        }
+
         // Has word of r reached where c lives?
         bool Heard(Relic r, Cultivator c) => _sim.Knowledge == null || _sim.Knowledge.Knows(RumorKind.Relic, r.Index, c.HomeX, c.HomeY);
 
@@ -425,7 +453,7 @@ namespace ThienDao.Sim
 
         // Word of r has reached sect f. If it is being fought over, they come late; if not, and it sounds worth a
         // fight (word grows as it travels), the fight starts now that enough have heard.
-        public void OnHeard(Relic r, Faction f, float exaggeration, long tick)
+        public void OnHeard(Relic r, Faction f, float exaggeration, long tick, int maxSides = MaxContenders, float reach = ContestReach * 1.5f)
         {
             if (!r.Open) return;
             var contest = ContestOver(r);
@@ -438,13 +466,13 @@ namespace ThienDao.Sim
             int sides = 0;
             for (int j = 0; j < contest.Side.Count; j++)
                 if (j == 0 || contest.Side[j] != contest.Side[j - 1]) sides++;
-            if (sides >= MaxContenders) return;
+            if (sides >= maxSides) return;
             var picked = new List<Cultivator>();
             foreach (var c in _sim.Cultivation.All)
             {
                 if (!c.Alive || c.SectId != f.Id || c.Watched || c.AtWar || c.HuntTarget >= 0 || !_sim.Cultivation.IsAtHome(c) || c.Realm < Realm.TrucCo || CombatSystem.Wounded(c, 0.6f)) continue;
                 float dx = c.HomeX - r.X, dy = c.HomeY - r.Y;
-                if (dx * dx + dy * dy > ContestReach * ContestReach * 2.25f) continue; // the word drew them from farther than usual
+                if (dx * dx + dy * dy > reach * reach) continue; // the word drew them from farther than usual
                 picked.Add(c);
             }
             if (picked.Count == 0) return;
@@ -462,7 +490,7 @@ namespace ThienDao.Sim
                 $"; {n} người kéo tới tranh đoạt muộn.", r.X + 0.5f, r.Y + 0.5f, Fx.None, picked[0].Index, -1, f.Id);
         }
 
-        bool StartContest(Relic r, long tick)
+        bool StartContest(Relic r, long tick, float reach = ContestReach, int perSect = PerSect, int maxSides = MaxContenders, int days = 60)
         {
             if (ContestOver(r) != null) return true;
             var sects = new List<List<Cultivator>>();
@@ -471,7 +499,7 @@ namespace ThienDao.Sim
             {
                 if (!c.Alive || c.Watched || c.AtWar || c.HuntTarget >= 0 || !_sim.Cultivation.IsAtHome(c) || c.Realm < Realm.TrucCo || CombatSystem.Wounded(c, 0.6f)) continue;
                 float dx = c.HomeX - r.X, dy = c.HomeY - r.Y;
-                if (dx * dx + dy * dy > ContestReach * ContestReach) continue;
+                if (dx * dx + dy * dy > reach * reach) continue;
                 if (!Heard(r, c)) continue; // only those the word has reached
                 if (c.SectId < 0)
                 {
@@ -486,15 +514,15 @@ namespace ThienDao.Sim
             foreach (var side in sects)
             {
                 side.Sort((a, b) => b.Rank.CompareTo(a.Rank));
-                if (side.Count > PerSect) side.RemoveRange(PerSect, side.Count - PerSect);
+                if (side.Count > perSect) side.RemoveRange(perSect, side.Count - perSect);
             }
             if (rogue != null) sects.Add(new List<Cultivator> { rogue });
             if (devil != null) sects.Add(new List<Cultivator> { devil });
             if (sects.Count < 2) return false;
             sects.Sort((a, b) => b[0].Rank.CompareTo(a[0].Rank));
-            if (sects.Count > MaxContenders) sects.RemoveRange(MaxContenders, sects.Count - MaxContenders);
+            if (sects.Count > maxSides) sects.RemoveRange(maxSides, sects.Count - maxSides);
 
-            var contest = new Contest { Relic = r.Index, Resolve = tick + 60 }; // two months: those who hear late can still come
+            var contest = new Contest { Relic = r.Index, Resolve = tick + days }; // two months by default: those who hear late can still come
             var rng = RngFor(tick, 700000 + r.Index);
             var names = new List<string>();
             foreach (var side in sects)
@@ -572,8 +600,9 @@ namespace ThienDao.Sim
                         $"{(champion.SectId >= 0 ? _sim.Cultivation.SectName(champion) : champion.Title)} trụ lại sau cùng, {champion.Title} tiến vào bí cảnh.",
                         r.X + 0.5f, r.Y + 0.5f, Fx.Blessing, champion.Index, -1, champion.SectId);
                 Explore(champion, r, tick);
+                if (champion.Alive) _sim.Cultivation.Linger(champion, tick + 30); // stays at the gate a while, the prize held high
                 foreach (var c in victors)
-                    if (c.Alive) _sim.Cultivation.ReturnHome(c);
+                    if (c.Alive && c != champion) _sim.Cultivation.ReturnHome(c);
             }
         }
 
@@ -690,6 +719,12 @@ namespace ThienDao.Sim
                     gains.Add("chép truyền thừa vào Tàng Kinh Các, ngộ tính đệ tử cả tông đều tăng");
                 }
             }
+            // What they come out holding up: the grandest of what they found.
+            var shown = gains.Exists(g => g.StartsWith("ngọc giản")) ? Loot.Technique :
+                        gains.Exists(g => g.StartsWith("pháp bảo")) ? Loot.Treasure :
+                        r.Kind == RelicKind.Treasure ? Loot.Natural :
+                        gains.Exists(g => g.EndsWith("viên đan")) ? Loot.Pill : Loot.Stones;
+            _sim.Cultivation.ShowLoot(c, shown, tick);
             var owner = r.Owner >= 0 ? _sim.Cultivation.All[r.Owner] : null;
             bool heir = owner != null && IsHeir(c, owner);
             _sim.Events.Add(tick, EventKind.Relic, r.Tier >= 3 || r.Treasure != null ? 3 : 2,

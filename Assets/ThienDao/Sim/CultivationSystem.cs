@@ -6,7 +6,10 @@ using Terrain = ThienDao.World.Terrain;
 
 namespace ThienDao.Sim
 {
-    public enum Trip : byte { None, Relocate, Excursion, Return, Battle, Hunt }
+    public enum Trip : byte { None, Relocate, Excursion, Return, Battle, Hunt, Flee, Explore }
+
+    // What a cultivator holds up for the world to see after a cơ duyên (drawn over their head while it shines).
+    public enum Loot : byte { None, Treasure, Natural, Technique, Pill, Stones, BeastCore }
 
     // What a nhân vật chính is doing with their life right now.
     public enum Goal : byte { None, Seclusion, SeekCave, Training, SeekFortune, Market, JoinSect, Flee }
@@ -70,6 +73,9 @@ namespace ThienDao.Sim
         public int Technique;        // công pháp (index into Techniques.All); 0 = the common Dẫn Khí Quyết (TechniqueSystem)
         public int Clan = -1;        // tu tiên gia tộc (index into Clans.All), -1 = none (ClanSystem)
         public int Origin = -1;      // the village they were born in (settlement id), -1 if unknown
+        public Loot Loot;            // a cơ duyên just won, shown over their head until LootUntil
+        public long LootUntil;
+        public int ExploreRelic = -1; // the bí cảnh they are flying to explore (Trip.Explore)
         public string TreasureName;
         public Goal Goal;
         public string GoalText;
@@ -784,6 +790,21 @@ namespace ThienDao.Sim
                 case Trip.Hunt:
                     c.Away = true; // CombatSystem settles it or sends them on after the target (StayUntil = deadline)
                     break;
+                case Trip.Flee:
+                    ReturnHome(c); // ran far enough: home, shaken
+                    break;
+                case Trip.Explore:
+                {
+                    // At the gate of the bí cảnh: in they go; out they come with what they found, and linger there a while.
+                    var relics = _sim.Relics;
+                    var r = c.ExploreRelic >= 0 && c.ExploreRelic < relics.All.Count ? relics.All[c.ExploreRelic] : null;
+                    c.ExploreRelic = -1;
+                    if (r != null && r.Open) relics.Explore(c, r, tick);
+                    if (!c.Alive) break;
+                    c.Away = true;
+                    c.StayUntil = tick + rng.Range(20, 45);
+                    break;
+                }
                 default:
                     c.Away = false;
                     // Walkers find their way round on foot (NavSystem); only one with no road home at all (cut off on
@@ -936,6 +957,47 @@ namespace ThienDao.Sim
         {
             _e.TX[c.Entity] = x;
             _e.TY[c.Entity] = y;
+        }
+
+        // ---------------------------------------------------------------- seen on the map (devlog 32)
+
+        // Running from a beast toward (x, y); home once it is shaken off (BeastChase).
+        public void Flee(Cultivator c, float x, float y) => SendTo(c, x, y, Trip.Flee);
+
+        // Closing in on a beast at (x, y), retargeted day by day while the chase lasts.
+        public void Engage(Cultivator c, float x, float y, long until)
+        {
+            c.StayUntil = until;
+            SendTo(c, x, y, Trip.Hunt);
+        }
+
+        // Flies to a bí cảnh and explores it on arrival (instead of being settled from afar).
+        public void SendToExplore(Cultivator c, Relic r)
+        {
+            c.ExploreRelic = r.Index;
+            SendTo(c, r.X + 0.5f, r.Y + 0.5f, Trip.Explore);
+        }
+
+        // Stays where they stand (on the map) until `until`, then goes home: a champion at the gate of the bí cảnh.
+        public void Linger(Cultivator c, long until)
+        {
+            c.AtWar = false;
+            c.Travelling = false;
+            c.Trip = Trip.None;
+            c.Away = true;
+            c.StayUntil = until;
+            _e.Flying[c.Entity] = false;
+            _e.TX[c.Entity] = _e.X[c.Entity];
+            _e.TY[c.Entity] = _e.Y[c.Entity];
+        }
+
+        // A cơ duyên won: held up over their head for a while, where everyone can see it.
+        public void ShowLoot(Cultivator c, Loot loot, long tick, int days = 45)
+        {
+            if (loot == Loot.None) return; // the latest prize is the one shown
+            c.Loot = loot;
+            c.LootUntil = tick + days;
+            if (!IsShownOnMap(c)) Linger(c, tick + days); // out of seclusion a while, so the world sees it
         }
 
         public void ReturnHome(Cultivator c)
@@ -1094,6 +1156,7 @@ namespace ThienDao.Sim
             c.Treasures++;
             c.TreasureName = _w.Lore.Treasures[rng.Range(0, _w.Lore.Treasures.Length)];
             c.Blessed = true;
+            ShowLoot(c, Loot.Treasure, tick, 60);
             _sim.Events.Add(tick, EventKind.Divine, 2, $"Thiên Đạo ban cho {c.Title} ({SectName(c)}) pháp bảo {c.TreasureName}.",
                 _e.X[c.Entity], _e.Y[c.Entity], Fx.Blessing, c.Index, -1, c.SectId);
         }

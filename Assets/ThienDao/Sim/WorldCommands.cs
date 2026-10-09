@@ -428,6 +428,20 @@ namespace ThienDao.Sim
         }
     }
 
+    // Thiên cơ hiển lộ: the bí cảnh or treasure nearest (X, Y) is laid bare to the whole world (RelicSystem.Lure).
+    public sealed class LureCommand : IWorldCommand
+    {
+        public readonly int X, Y;
+
+        public LureCommand(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+
+        public void Apply(Simulation sim) => sim.Relics.Lure(sim.Relics.At(X, Y, 8f), sim.Clock.Tick);
+    }
+
     // Thiên Đạo sets down a thiên tài địa bảo (SecretRealm false) or tears open a bí cảnh (true) at (X, Y).
     public sealed class PlaceRelicCommand : IWorldCommand
     {

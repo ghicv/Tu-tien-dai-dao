@@ -4,6 +4,10 @@ using Unit = ThienDao.Render.SpriteLibrary.Unit;
 
 namespace ThienDao.Render
 {
+    // How a fighter's spells look. The elements follow SpiritRoots.ElementNames (Kim, Mộc, Thủy, Hỏa, Thổ, Lôi,
+    // Phong, Băng) one up, so Spell.Kim + element is the spell of a method of that element; the rest are beasts'.
+    public enum Spell : byte { Qi, Kim, Moc, Thuy, Hoa, Tho, Loi, Phong, Bang, Ma, Claw, Flame, Venom, Tide, Gale, Sonic }
+
     // A fight the simulation settled in one tick, played back on screen over a couple of seconds: the two face
     // off, trade blows (kiếm khí, claws), every hit makes the one struck flash white and recoil, and the last blow
     // either fells the loser (who fades into the ground) or sends them fleeing. UnitRenderer draws the fighters,
@@ -11,7 +15,7 @@ namespace ThienDao.Render
     public sealed class FightScene
     {
         public const float Exchange = 0.3f;   // seconds between blows
-        public const float Flight = 0.16f;    // how long a blow takes to land
+        public const float Flight = 0.22f;    // how long a blow takes to land (long enough to see a fireball fly)
         public const float FlashTime = 0.14f; // how long the one struck stays white
         public const float Aftermath = 0.9f;  // the fall, or the flight
 
@@ -23,7 +27,8 @@ namespace ThienDao.Render
         public int WinnerIdx = -1, LoserIdx = -1; // cultivators hidden from normal drawing while this plays
         public bool LoserDies;
         public Color32 WinnerColor, LoserColor;   // their kiếm khí
-        public bool WinnerClaws, LoserClaws;      // a beast tears instead of casting
+        public Spell WinnerSpell, LoserSpell;     // the look of their spells: by method, by sect, by beast kind (Claw: it tears)
+        public int Seed;
         public readonly List<(float at, bool byWinner)> Blows = new List<(float, bool)>();
         public int Impacts;  // blows whose sparks FxRenderer already threw
         public bool Smoked;  // the death puff was thrown
@@ -37,9 +42,9 @@ namespace ThienDao.Render
         // A fair-looking fight: blows trade back and forth, the loser lands fewer, the winner lands the last ones.
         public static FightScene Make(float now, float x, float y, int seed, int exchanges)
         {
-            var s = new FightScene { Start = now, X = x, Y = y, WinnerRight = (seed & 1) == 0 };
+            var s = new FightScene { Start = now, X = x, Y = y, WinnerRight = (seed & 1) == 0, Seed = seed };
             var r = new System.Random(seed);
-            float t = now + 0.25f;
+            float t = now + 0.45f; // a moment to square up and gather qi
             for (int k = 0; k < exchanges; k++, t += Exchange)
             {
                 bool last = k >= exchanges - 2;
@@ -53,16 +58,42 @@ namespace ThienDao.Render
         {
             recoil = 0f;
             float best = 0f;
-            foreach (var (at, byWinner) in Blows)
+            for (int b = 0; b < Blows.Count; b++)
             {
-                if (byWinner == winner) continue; // they were the one struck by this blow
+                var (at, byWinner) = Blows[b];
+                if (byWinner == winner || Dodged(b)) continue; // only blows aimed at them, and that landed
                 float since = now - (at + Flight);
                 if (since < 0f || since > FlashTime * 2f) continue;
                 float k = 1f - since / (FlashTime * 2f);
-                if (k > best) { best = k; recoil = 0.25f * k; }
+                if (k > best) { best = k; recoil = 0.5f * k; } // a hit knocks them back hard
             }
             if (!winner && now >= FinalBlow && now < FinalBlow + 0.25f) best = 1f; // the last blow lands hard
             return best;
+        }
+
+        // A quarter of the early blows miss: the one aimed at steps aside and the spell flies past.
+        public bool Dodged(int blow)
+        {
+            if (blow >= Blows.Count - 2) return false;
+            uint h = (uint)Seed * 0x9E3779B1u ^ (uint)blow * 0x85EBCA6Bu;
+            h ^= h >> 13;
+            h *= 0xC2B2AE35u;
+            return (h >> 28) < 4;
+        }
+
+        // How far up or down a fighter is right now: a slow sway while they circle, and a quick step aside from
+        // each blow they dodge.
+        public float Shift(bool winner, float now)
+        {
+            float y = Mathf.Sin((now - Start) * 2.4f + (winner ? 0f : 2.1f)) * 0.18f;
+            for (int b = 0; b < Blows.Count; b++)
+            {
+                var (at, byWinner) = Blows[b];
+                if (byWinner == winner || !Dodged(b)) continue;
+                float k = (now - at + 0.08f) / (Flight + 0.2f);
+                if (k > 0f && k < 1f) y += Mathf.Sin(k * Mathf.PI) * ((b & 1) == 0 ? 0.8f : -0.8f);
+            }
+            return y;
         }
 
         public bool Involves(int cultivator) => cultivator >= 0 && (cultivator == WinnerIdx || cultivator == LoserIdx);
@@ -83,6 +114,8 @@ namespace ThienDao.Render
         public static readonly List<FightScene> Active = new List<FightScene>();
         public static readonly List<HurtZone> Hurt = new List<HurtZone>();
         public static readonly List<Vector2> Poofs = new List<Vector2>(); // deaths UnitRenderer saw; FxRenderer puffs white smoke there
+        public static readonly List<Vector2> Kills = new List<Vector2>(); // an animal caught by a hunter: torn, red drops
+        public static readonly List<Vector2> Dust = new List<Vector2>();  // a puff of dust kicked up by something running
 
         public static bool Hides(int cultivator)
         {
@@ -119,6 +152,8 @@ namespace ThienDao.Render
             Active.Clear();
             Hurt.Clear();
             Poofs.Clear();
+            Kills.Clear();
+            Dust.Clear();
         }
     }
 }

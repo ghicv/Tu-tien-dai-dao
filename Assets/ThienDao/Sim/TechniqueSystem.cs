@@ -195,6 +195,7 @@ namespace ThienDao.Sim
         {
             var t = Of(victim);
             if (t == Basic || !Learn(killer, t, tick, out bool fell)) return;
+            _sim.Cultivation.ShowLoot(killer, Loot.Technique, tick); // the ngọc giản held up over the body
             _sim.Events.Add(tick, EventKind.Fortune, t.Grade >= 4 ? 2 : 1,
                 $"{killer.Title} đoạt ngọc giản {t.Name} ({t.GradeText}) từ thi thể {victim.Name}" + (fell ? ", từ đó sa vào ma đạo." : "."),
                 -1f, -1f, Fx.None, killer.Index, victim.Index, killer.SectId);
@@ -265,6 +266,7 @@ namespace ThienDao.Sim
             var t = New(5, ElementOf(c.Roots), c.Demonic, -1, tick);
             c.Technique = t.Index;
             c.Blessed = true;
+            _sim.Cultivation.ShowLoot(c, Loot.Technique, tick, 60);
             bool sect = Offer(c, t, tick);
             _sim.Events.Add(tick, EventKind.Divine, 3,
                 $"Thiên Đạo truyền thụ {t.Name} ({t.GradeText}, {t.ElementText}) cho {c.Title}" + (sect ? $"; {_sim.Cultivation.SectName(c)} lập làm trấn phái công pháp." : "."),

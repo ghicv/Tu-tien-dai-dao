@@ -126,6 +126,7 @@ namespace ThienDao.Render
             Deer, Rabbit, Wolf, Villager0, Villager1, Villager2, Villager3, Migrants,
             CultivatorLK, CultivatorTC, CultivatorKD, CultivatorNA, CultivatorHT, CultivatorDemonic, FlyingSword, Aura,
             Beast, Caravan,
+            Cave, // a tán tu's động phủ: frame 0 empty, frame 1 someone inside (lamplight at the mouth)
             BeastFirst, // then each yêu thú kind in three sizes (BeastUnit)
             Count = BeastFirst + BeastKinds * BeastSizes
         }
@@ -206,6 +207,7 @@ namespace ThienDao.Render
                 list[(int)Unit.Aura * UnitFrames + f] = Aura(f);
                 list[(int)Unit.Beast * UnitFrames + f] = Beast(f);
                 list[(int)Unit.Caravan * UnitFrames + f] = Caravan(f);
+                list[(int)Unit.Cave * UnitFrames + f] = Cave(f);
                 for (int k = 0; k < BeastKinds; k++)
                 for (int z = 0; z < BeastSizes; z++)
                     list[((int)Unit.BeastFirst + k * BeastSizes + z) * UnitFrames + f] = BeastLook(k, z, f);
@@ -495,6 +497,44 @@ namespace ThienDao.Render
                 cv.Set(x, y, new Color32(255, 255, 255, (byte)(110f * Mathf.Pow(1f - d, 1.5f))));
             }
             return cv.ToSprite(0, 0, new Color32(255, 255, 255, 255));
+        }
+
+        // Động phủ: a mound of grey rock, lit from the top left, moss on its crown, an arched mouth at its foot.
+        // Empty it is a black hole; with someone in seclusion inside, lamplight glows in the mouth.
+        static PixelSprite Cave(int frame)
+        {
+            var cv = new Canvas(18, 13);
+            var hi = C(176, 172, 164);
+            var mid = C(132, 128, 122);
+            var dark = C(92, 88, 86);
+            var moss = C(92, 140, 74);
+            for (int y = 1; y < 13; y++)
+            for (int x = 0; x < 18; x++)
+            {
+                float dx = (x + 0.5f - 9f) / 8.6f, dy = (y - 1f) / 11.2f;
+                if (dx * dx + dy * dy > 1f) continue;
+                // Lumpy rock: a step in the outline every few pixels.
+                if (y >= 10 && ((x * 7 + y * 3) % 5) == 0) continue;
+                float lit = -dx * 0.6f + dy * 0.8f;
+                cv.Set(x, y, lit > 0.45f ? hi : lit > -0.15f ? mid : dark);
+            }
+            for (int x = 5; x <= 12; x++) // moss on the crown
+                if (((x * 5) % 3) != 0) cv.Set(x, 11 + (x % 2) - (x > 10 || x < 7 ? 1 : 0), moss);
+            // The mouth: an arch five wide and six tall, framed by darker stone.
+            var inside = frame == 0 ? C(16, 12, 14) : C(255, 196, 96);
+            var deep = frame == 0 ? C(16, 12, 14) : C(232, 132, 52);
+            for (int y = 1; y <= 7; y++)
+            for (int x = 6; x <= 12; x++)
+            {
+                float ax = (x + 0.5f - 9.5f) / 3.5f, ay = (y - 1f) / 7f;
+                if (ax * ax + ay * ay > 1f) continue;
+                bool rim = ax * ax + ay * ay > 0.55f;
+                cv.Set(x, y, rim ? dark : y <= 3 ? deep : inside);
+            }
+            if (frame == 1) cv.Set(9, 2, C(255, 250, 220)); // the lamp
+            cv.Rect(3, 0, 15, 0, C(110, 106, 100)); // stone footing
+            cv.Shadow(9f, 0.6f, 9f, 1.4f);
+            return cv.ToSprite(0, 0, mid);
         }
 
         static PixelSprite MigrantCart(int frame)

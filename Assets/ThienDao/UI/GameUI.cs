@@ -100,6 +100,7 @@ namespace ThienDao.UI
             { BrushTool.GrantTreasure, "Ban pháp bảo — bấm vào tu sĩ: thêm một pháp bảo (đánh mạnh hơn, dễ vượt thiên kiếp hơn), nhưng ma tu sẽ thèm khát" },
             { BrushTool.HeartDemon, "Giáng tâm ma — bấm vào tu sĩ: đạo tâm lung lay, tu vi trì trệ; đạo tâm càng yếu càng dễ tẩu hỏa nhập ma, tụt cảnh giới hoặc sa vào ma đạo" },
             { BrushTool.Cripple, "Phế tu vi — bấm vào tu sĩ: mất trọn một đại cảnh giới, sức, máu và thọ nguyên giảm theo" },
+            { BrushTool.Lure, "Thiên cơ hiển lộ — bấm vào một bí cảnh hay bảo vật: bảo quang chiếu khắp thiên hạ, mọi tông môn, tán tu, ma tu đổ về tranh đoạt, đấu pháp ngay tại chỗ" },
             { BrushTool.GrantTechnique, "Ban công pháp — bấm vào tu sĩ: truyền một bộ công pháp cực phẩm hợp linh căn (tu nhanh, tới tận Hóa Thần); tông môn của người đó lập làm trấn phái công pháp" },
             { BrushTool.PlaceTreasure, "Thiên tài địa bảo — đặt một linh vật ở chỗ bấm (linh khí càng đậm phẩm càng cao): bảo quang xung thiên, các tông môn kéo đến tranh đoạt" },
             { BrushTool.OpenRealm, "Mở bí cảnh — xé mở một thượng cổ di tích ba tầng ở chỗ bấm: có pháp bảo, linh thạch, đan dược và hiểm nguy; tu sĩ bốn phương tranh nhau vào" },
@@ -398,6 +399,7 @@ namespace ThienDao.UI
                     AddTool(BrushTool.QiDrain, Icons.QiDown);
                     AddTool(BrushTool.PlaceTreasure, Icons.Object(ObjectType.RelicTreasure));
                     AddTool(BrushTool.OpenRealm, Icons.Object(ObjectType.RelicAncient));
+                    AddTool(BrushTool.Lure, Icons.Star);
                     break;
                 case 3:
                     AddTool(BrushTool.GrantRoot, Icons.Seed);

@@ -53,6 +53,27 @@ namespace ThienDao.Sim
         }
 
         // Nearest living entity within radius whose species bit is in the mask, using this tick's buckets.
+        // The nearest entity of the given species within radius that also passes `ok` (e.g. a cultivator who is out on
+        // the map, not one meditating in a cave that happens to lie close by).
+        public int FindNearest(float x, float y, float radius, int speciesMask, Func<int, bool> ok)
+        {
+            if (_bucketsStale) RebuildBuckets(true);
+            int best = -1;
+            float bestD = radius * radius;
+            int r = Mathf.CeilToInt(radius / BucketSize);
+            int bx0 = Mathf.Clamp((int)x / BucketSize - r, 0, _bw - 1), bx1 = Mathf.Clamp((int)x / BucketSize + r, 0, _bw - 1);
+            int by0 = Mathf.Clamp((int)y / BucketSize - r, 0, _bh - 1), by1 = Mathf.Clamp((int)y / BucketSize + r, 0, _bh - 1);
+            for (int by = by0; by <= by1; by++)
+            for (int bx = bx0; bx <= bx1; bx++)
+            for (int id = _head[by * _bw + bx]; id >= 0; id = _next[id])
+            {
+                if (!_e.IsAlive(id) || (speciesMask & (1 << (int)_e.Species[id])) == 0) continue;
+                float dx = _e.X[id] - x, dy = _e.Y[id] - y, d = dx * dx + dy * dy;
+                if (d < bestD && ok(id)) { bestD = d; best = id; }
+            }
+            return best;
+        }
+
         public int FindNearest(float x, float y, float radius, int speciesMask)
         {
             if (_bucketsStale) RebuildBuckets(true);

@@ -140,6 +140,7 @@ namespace ThienDao.Sim
             long tick = Clock.Tick;
             long t = Stopwatch.GetTimestamp();
             Creatures.Tick(tick); Mark(0, ref t);
+            Beasts.DailyStep(tick); Mark(8, ref t); // beasts and passers-by: chases, fights, flights (BeastChase)
             if (Clock.IsMonthStart)
             {
                 Paths.MonthlyStep(tick); Mark(0, ref t); // villagers tread their roads; new trails reach the map and the routes

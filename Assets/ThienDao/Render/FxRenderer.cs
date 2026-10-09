@@ -13,7 +13,12 @@ namespace ThienDao.Render
         const int MaxEffects = 48;
         const float CellPx = WorldRenderer.CellPx;
 
-        enum Sprite { BoltA, BoltB, Flash, Ring, Spark, Smoke, Fire0, Fire1, Fire2, Cloud, Beam, Drop, QiShot, Rift, RiftThin, Count }
+        enum Sprite
+        {
+            BoltA, BoltB, Flash, Ring, Spark, Smoke, Fire0, Fire1, Fire2, Cloud, Beam, Drop, QiShot, Rift, RiftThin,
+            Orb, Rock, Shard, Crescent, Blade, Leaf, Exclaim,                     // spells by element (devlog 32)
+            LootSword, LootSlip, LootPill, LootGem, LootStones, LootCore, Count   // a cơ duyên held up overhead
+        }
 
         struct Particle
         {
@@ -211,6 +216,18 @@ namespace ThienDao.Render
             _particles.Add(new Particle { Sprite = Sprite.Flash, X = x, Y = y, Life = 0.15f, Size = 1f, Color = new Color32(255, 255, 255, 255) });
         }
 
+        // An animal caught by a hunter: a slash, a spray of red, a tuft of fur.
+        void Torn(float x, float y)
+        {
+            float cy = y + 0.4f;
+            for (int k = 0; k < 3; k++)
+                _particles.Add(new Particle { Sprite = Sprite.Spark, X = x - 0.3f + k * 0.3f, Y = cy + 0.4f, VY = -3f, Life = 0.2f, Size = 1.3f, Color = Claw });
+            for (int k = 0; k < 7; k++)
+                _particles.Add(new Particle { Sprite = Sprite.Drop, X = x, Y = cy, VX = Rand(-2f, 2f), VY = Rand(1f, 3.5f), Gravity = 12f, Life = Rand(0.4f, 0.7f), Size = 1f,
+                    Color = new Color32(200, 30, 30, 255) });
+            _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x, Y = cy, VY = 0.6f, Life = 0.45f, Size = 1f, Grow = 1f, Color = new Color32(196, 170, 140, 255) });
+        }
+
         // ---------------------------------------------------------------- fights played out
 
         static readonly Color32[] KiemKhi =
@@ -221,7 +238,54 @@ namespace ThienDao.Render
         static readonly Color32 DemonQi = new Color32(255, 70, 70, 255);
         static readonly Color32 Claw = new Color32(255, 110, 70, 255);
 
+        // The colour of each spell (Qi takes the caster's realm instead).
+        static readonly Color32[] SpellColor =
+        {
+            new Color32(200, 200, 200, 255), // Qi
+            new Color32(255, 236, 160, 255), // Kim: pale gold sword-light
+            new Color32(120, 220, 110, 255), // Mộc
+            new Color32(110, 180, 255, 255), // Thủy
+            new Color32(255, 140, 50, 255),  // Hỏa
+            new Color32(186, 146, 96, 255),  // Thổ
+            new Color32(196, 206, 255, 255), // Lôi
+            new Color32(210, 255, 226, 255), // Phong
+            new Color32(176, 240, 255, 255), // Băng
+            new Color32(214, 40, 70, 255),   // Ma công
+            new Color32(255, 110, 70, 255),  // Claw
+            new Color32(255, 120, 40, 255),  // Flame (dragon, qilin, fox fire)
+            new Color32(150, 230, 80, 255),  // Venom
+            new Color32(90, 170, 255, 255),  // Tide
+            new Color32(226, 250, 240, 255), // Gale
+            new Color32(204, 146, 255, 255), // Sonic
+        };
+
         Color32 QiOf(Cultivator c) => c.Demonic ? DemonQi : KiemKhi[Mathf.Clamp((int)c.Realm, 0, KiemKhi.Length - 1)];
+
+        // A cultivator fights with their method: its element, or ma công if they walk the demonic path, or plain
+        // kiếm khí for a vạn năng method. A sect's members share its trấn phái công pháp, so a sect has its look.
+        Spell SpellOf(Cultivator c)
+        {
+            if (c.Demonic) return Spell.Ma;
+            var t = _sim.Techniques?.Of(c);
+            return t == null || t.Element < 0 ? Spell.Qi : (Spell)((int)Spell.Kim + t.Element);
+        }
+
+        static Spell SpellOf(Beast b)
+        {
+            if (b == null || b.Grade < 3) return Spell.Claw; // the lesser ones only tear
+            switch (b.Kind)
+            {
+                case BeastKind.Dragon: case BeastKind.Qilin: case BeastKind.Fox: return Spell.Flame;
+                case BeastKind.Serpent: case BeastKind.Scorpion: return Spell.Venom;
+                case BeastKind.Turtle: return Spell.Tide;
+                case BeastKind.Eagle: return Spell.Gale;
+                case BeastKind.Bat: return Spell.Sonic;
+                case BeastKind.Chaos: return Spell.Ma;
+                default: return Spell.Claw;
+            }
+        }
+
+        Color32 ColorOf(Spell s, Cultivator c) => s == Spell.Qi && c != null ? QiOf(c) : SpellColor[(int)s];
 
         void StartFight(WorldEvent ev, int salt)
         {
@@ -230,11 +294,12 @@ namespace ThienDao.Render
             Cultivator a = ev.A >= 0 && ev.A < all.Count ? all[ev.A] : null, b = ev.B >= 0 && ev.B < all.Count ? all[ev.B] : null;
             if (a == null) return;
             bool beast = ev.Fx >= Fx.BeastSlain;
-            var f = FightScene.Make(Time.unscaledTime, ev.X, ev.Y, (int)(ev.Tick * 31 + salt), beast ? 5 : 7);
+            var f = FightScene.Make(Time.unscaledTime, ev.X, ev.Y, (int)(ev.Tick * 31 + salt), beast ? 7 : 9);
             // The beast in the fight, drawn as its own kind and size.
             var who = beast ? _sim.Beasts.LookNear(ev.X, ev.Y) : null;
             var beastLook = who != null ? SpriteLibrary.BeastUnit((int)who.Kind, who.Grade) : SpriteLibrary.Unit.Beast;
             float beastScale = who != null ? SpriteLibrary.BeastScale(who.Grade, who.Rampage) : 1f;
+            var beastSpell = SpellOf(who);
             switch (ev.Fx)
             {
                 case Fx.DuelKill: // A died at B's hand
@@ -247,21 +312,23 @@ namespace ThienDao.Render
                     break;
                 case Fx.BeastSlain: // A cut down a beast
                     f.WinnerLook = UnitRenderer.CultivatorLook(a);
-                    f.WinnerColor = QiOf(a);
+                    f.WinnerSpell = SpellOf(a);
+                    f.WinnerColor = ColorOf(f.WinnerSpell, a);
                     f.WinnerIdx = a.Index;
                     f.LoserLook = beastLook;
                     f.LoserScale = beastScale;
-                    f.LoserColor = Claw;
-                    f.LoserClaws = true;
+                    f.LoserSpell = beastSpell;
+                    f.LoserColor = ColorOf(beastSpell, null);
                     f.LoserDies = true;
                     break;
                 default: // a beast killed A, or A fled from it
                     f.WinnerLook = beastLook;
                     f.WinnerScale = beastScale;
-                    f.WinnerColor = Claw;
-                    f.WinnerClaws = true;
+                    f.WinnerSpell = beastSpell;
+                    f.WinnerColor = ColorOf(beastSpell, null);
                     f.LoserLook = UnitRenderer.CultivatorLook(a);
-                    f.LoserColor = QiOf(a);
+                    f.LoserSpell = SpellOf(a);
+                    f.LoserColor = ColorOf(f.LoserSpell, a);
                     f.LoserIdx = a.Index;
                     f.LoserDies = ev.Fx == Fx.BeastKill;
                     break;
@@ -273,46 +340,41 @@ namespace ThienDao.Render
         {
             f.WinnerLook = UnitRenderer.CultivatorLook(winner);
             f.LoserLook = UnitRenderer.CultivatorLook(loser);
-            f.WinnerColor = QiOf(winner);
-            f.LoserColor = QiOf(loser);
+            f.WinnerSpell = SpellOf(winner);
+            f.LoserSpell = SpellOf(loser);
+            f.WinnerColor = ColorOf(f.WinnerSpell, winner);
+            f.LoserColor = ColorOf(f.LoserSpell, loser);
             f.WinnerIdx = winner.Index;
             f.LoserIdx = loser.Index;
             f.LoserDies = dies;
         }
 
-        // Kiếm khí flying between the fighters, sparks where it lands, a burst on the final blow, dust when one falls.
+        // Each blow: the caster gathers qi (a glint at the hands), the spell flies in its element's shape, and where it
+        // lands it bursts in its own way. A dodged one sails past and scars the ground behind; the final one bursts big.
         void DrawFights(float now)
         {
             var list = FightScenes.Active;
+            float dt = Time.unscaledDeltaTime;
             for (int i = list.Count - 1; i >= 0; i--)
             {
                 var f = list[i];
                 if (now > f.End) { list.RemoveAt(i); continue; }
-                Vector2 w = f.WinnerPos + new Vector2(0f, 0.7f), l = f.LoserPos + new Vector2(0f, 0.7f);
+                Vector2 w = f.WinnerPos + new Vector2(0f, 0.7f + f.Shift(true, now)), l = f.LoserPos + new Vector2(0f, 0.7f + (now > f.FinalBlow ? 0f : f.Shift(false, now)));
                 for (int k = 0; k < f.Blows.Count; k++)
                 {
                     var (at, byWinner) = f.Blows[k];
                     Vector2 from = byWinner ? w : l, to = byWinner ? l : w;
+                    var spell = byWinner ? f.WinnerSpell : f.LoserSpell;
                     var color = byWinner ? f.WinnerColor : f.LoserColor;
-                    bool claws = byWinner ? f.WinnerClaws : f.LoserClaws;
+                    bool dodged = f.Dodged(k);
+                    if (dodged) to += (to - from) * 0.9f + new Vector2(0f, -0.6f); // past them, into the ground
                     float t = (now - at) / FightScene.Flight;
-                    if (t >= 0f && t < 1f && !claws)
-                    {
-                        // A bolt of kiếm khí with a short trail.
-                        var p = Vector2.Lerp(from, to, t);
-                        Quad(Sprite.QiShot, p.x, p.y, 1f, 1f, color, to.x < from.x);
-                        var trail = Vector2.Lerp(from, to, Mathf.Max(0f, t - 0.25f));
-                        Quad(Sprite.Spark, trail.x, trail.y, 1.2f, 1.2f, new Color32(color.r, color.g, color.b, 160));
-                    }
+                    if (spell != Spell.Claw && t >= -0.6f && t < 0f) Charge(from, to, color, -t);
+                    if (t >= 0f && t < 1f) DrawSpell(spell, from, to, t, color, now, dt);
                     if (k < f.Impacts || t < 1f) continue;
-                    // It lands: sparks (claw marks are a red slash), and the final blow bursts.
                     f.Impacts = k + 1;
                     bool final = k == f.Blows.Count - 1;
-                    Burst(to.x, to.y, claws ? Claw : color, final ? 14 : 6, final ? 6f : 3.5f, final);
-                    if (claws)
-                        for (int s = 0; s < 3; s++)
-                            _particles.Add(new Particle { Sprite = Sprite.Spark, X = to.x - 0.3f + s * 0.3f, Y = to.y + 0.4f, VY = -3f,
-                                Life = 0.2f, Size = 1.3f, Color = Claw });
+                    Impact(spell, to, from, color, final ? 2 : dodged ? 0 : 1);
                 }
                 float sinceFinal = now - f.FinalBlow;
                 if (sinceFinal >= 0f && sinceFinal < 0.3f)
@@ -323,6 +385,203 @@ namespace ThienDao.Render
                     Poof(l.x, l.y - 0.3f); // the fallen goes up in white smoke and is gone
                 }
             }
+        }
+
+        // Gathering qi before a cast: motes drawn in to the hands, then a glint.
+        void Charge(Vector2 from, Vector2 to, Color32 color, float left)
+        {
+            float side = to.x < from.x ? -0.4f : 0.4f;
+            var hand = from + new Vector2(side, -0.1f);
+            if (left < 0.25f) Quad(Sprite.Flash, hand.x, hand.y, 1f, 1f, new Color32(color.r, color.g, color.b, 220));
+            else if (_rand.NextDouble() < 0.5)
+            {
+                float a = Rand(0f, Mathf.PI * 2f);
+                var p = hand + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.9f;
+                _particles.Add(new Particle { Sprite = Sprite.Spark, X = p.x, Y = p.y, VX = (hand.x - p.x) * 4f, VY = (hand.y - p.y) * 4f,
+                    Life = 0.22f, Size = 1f, Color = color });
+            }
+        }
+
+        // A spell in flight, t from 0 (cast) to 1 (it lands).
+        void DrawSpell(Spell s, Vector2 from, Vector2 to, float t, Color32 c, float now, float dt)
+        {
+            bool left = to.x < from.x;
+            var p = Vector2.Lerp(from, to, t);
+            var faint = new Color32(c.r, c.g, c.b, 150);
+            switch (s)
+            {
+                case Spell.Claw:
+                    return; // the beast pounces instead (UnitRenderer)
+                case Spell.Kim: // a flying sword of light, its wake glittering
+                    Quad(Sprite.Blade, p.x, p.y, 1f, 1f, c, left);
+                    Trail(Sprite.Spark, p, from, to, t, faint, dt, 30f);
+                    break;
+                case Spell.Moc: // a whirl of leaves
+                    for (int j = 0; j < 4; j++)
+                    {
+                        float a = now * 16f + j * Mathf.PI * 0.5f;
+                        Quad(Sprite.Leaf, p.x + Mathf.Cos(a) * 0.4f, p.y + Mathf.Sin(a) * 0.4f, 1f, 1f, new Color32(255, 255, 255, 255), j % 2 == 0);
+                    }
+                    break;
+                case Spell.Thuy:
+                case Spell.Tide: // a ball of water, dripping as it flies
+                    Quad(Sprite.Orb, p.x, p.y, s == Spell.Tide ? 2f : 1f, s == Spell.Tide ? 2f : 1f, c);
+                    if (_rand.NextDouble() < dt * 25f)
+                        _particles.Add(new Particle { Sprite = Sprite.Drop, X = p.x, Y = p.y, VX = Rand(-0.5f, 0.5f), Gravity = 10f, Life = 0.35f, Size = 1f, Color = c });
+                    break;
+                case Spell.Hoa:
+                case Spell.Flame: // a fireball (a dragon breathes a stream of them), embers and smoke behind
+                    int frame = ((int)(now * 12f)) % 3;
+                    Quad((Sprite)((int)Sprite.Fire0 + frame), p.x, p.y, 1f, 1f, new Color32(255, 255, 255, 255), left);
+                    if (s == Spell.Flame)
+                        for (int j = 1; j <= 2; j++)
+                        {
+                            var q = Vector2.Lerp(from, to, Mathf.Max(0f, t - j * 0.18f));
+                            Quad((Sprite)((int)Sprite.Fire0 + (frame + j) % 3), q.x, q.y, 1f, 1f, new Color32(255, 255, 255, 255), left);
+                        }
+                    if (_rand.NextDouble() < dt * 40f)
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = p.x + Rand(-0.2f, 0.2f), Y = p.y, VX = Rand(-0.4f, 0.4f), VY = Rand(0.8f, 1.8f),
+                            Life = Rand(0.3f, 0.6f), Size = 1f, Color = new Color32(255, (byte)Rand(120, 230), 40, 255) });
+                    break;
+                case Spell.Tho: // a boulder hurled in an arc
+                    p.y += Mathf.Sin(t * Mathf.PI) * 1.3f;
+                    Quad(Sprite.Rock, p.x, p.y, 1f, 1f, new Color32(255, 255, 255, 255), ((int)(now * 10f) & 1) == 0);
+                    break;
+                case Spell.Loi: // a jagged arc of lightning from the hand, flickering every frame
+                {
+                    float len = (p - from).magnitude;
+                    int n = Mathf.Max(2, Mathf.RoundToInt(len * 5f));
+                    var dir = (p - from) / Mathf.Max(0.01f, len);
+                    var nrm = new Vector2(-dir.y, dir.x);
+                    for (int j = 0; j <= n; j++)
+                    {
+                        float u = (float)j / n;
+                        var q = Vector2.Lerp(from, p, u) + nrm * Rand(-0.25f, 0.25f) * Mathf.Sin(u * Mathf.PI);
+                        Quad(Sprite.Spark, q.x, q.y, 1f, 1f, j % 3 == 0 ? new Color32(255, 255, 255, 255) : c);
+                    }
+                    Quad(Sprite.Flash, p.x, p.y, 1f, 1f, new Color32(255, 255, 255, 255));
+                    break;
+                }
+                case Spell.Phong:
+                case Spell.Gale: // a crescent of wind, a fainter one chasing it
+                    Quad(Sprite.Crescent, p.x, p.y, 1f, 1f, c, !left);
+                    var back = Vector2.Lerp(from, to, Mathf.Max(0f, t - 0.22f));
+                    Quad(Sprite.Crescent, back.x, back.y, 1f, 1f, faint, !left);
+                    break;
+                case Spell.Bang: // an ice spear shedding frost
+                    Quad(Sprite.Shard, p.x, p.y, 1f, 1f, c, left);
+                    if (_rand.NextDouble() < dt * 25f)
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = p.x, Y = p.y, VY = -0.6f, Life = 0.5f, Size = 1f, Color = new Color32(235, 250, 255, 255) });
+                    break;
+                case Spell.Ma: // a ball of blood-dark qi, black smoke curling off it
+                    Quad(Sprite.Orb, p.x, p.y, 1f, 1f, c);
+                    if (_rand.NextDouble() < dt * 20f)
+                        _particles.Add(new Particle { Sprite = Sprite.Smoke, X = p.x, Y = p.y, VX = Rand(-0.3f, 0.3f), VY = Rand(0.2f, 0.6f),
+                            Life = Rand(0.3f, 0.5f), Size = 1f, Color = new Color32(54, 18, 40, 255) });
+                    break;
+                case Spell.Venom: // a glob of poison, dripping
+                    Quad(Sprite.Orb, p.x, p.y, 1f, 1f, c);
+                    if (_rand.NextDouble() < dt * 20f)
+                        _particles.Add(new Particle { Sprite = Sprite.Drop, X = p.x, Y = p.y, Gravity = 9f, Life = 0.4f, Size = 1f, Color = c });
+                    break;
+                case Spell.Sonic: // rings of sound rolling out
+                    Quad(Sprite.Ring, p.x, p.y, 1f, 1f, c);
+                    var ring = Vector2.Lerp(from, to, Mathf.Max(0f, t - 0.3f));
+                    Quad(Sprite.Ring, ring.x, ring.y, 1f, 1f, faint);
+                    break;
+                default: // Qi: a bolt of kiếm khí with a short trail
+                    Quad(Sprite.QiShot, p.x, p.y, 1f, 1f, c, left);
+                    var trail = Vector2.Lerp(from, to, Mathf.Max(0f, t - 0.25f));
+                    Quad(Sprite.Spark, trail.x, trail.y, 1.2f, 1.2f, faint);
+                    break;
+            }
+        }
+
+        void Trail(Sprite s, Vector2 p, Vector2 from, Vector2 to, float t, Color32 c, float dt, float rate)
+        {
+            if (_rand.NextDouble() >= dt * rate) return;
+            var q = Vector2.Lerp(from, to, Mathf.Max(0f, t - 0.1f));
+            _particles.Add(new Particle { Sprite = s, X = q.x + Rand(-0.1f, 0.1f), Y = q.y + Rand(-0.1f, 0.1f), Life = 0.25f, Size = 1f, Color = c });
+        }
+
+        // Where a spell lands. power: 0 it missed (it scars the ground), 1 a hit, 2 the final blow.
+        void Impact(Spell s, Vector2 at, Vector2 from, Color32 c, int power)
+        {
+            float x = at.x, y = at.y;
+            int n = power == 2 ? 14 : power == 1 ? 7 : 3;
+            float away = Mathf.Sign(at.x - from.x);
+            switch (s)
+            {
+                case Spell.Claw: // three red slashes raked down
+                    Burst(x, y, Claw, n, power == 2 ? 6f : 3.5f, power == 2);
+                    for (int k = 0; k < 3; k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = x - 0.3f + k * 0.3f, Y = y + 0.4f, VY = -3f, Life = 0.2f, Size = 1.3f, Color = Claw });
+                    for (int k = 0; k < power; k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Drop, X = x, Y = y, VX = Rand(-2f, 2f), VY = Rand(1f, 3f), Gravity = 12f, Life = 0.5f, Size = 1f,
+                            Color = new Color32(200, 30, 30, 255) });
+                    break;
+                case Spell.Moc: // leaves scattered
+                    for (int k = 0; k < n; k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Leaf, X = x, Y = y, VX = Rand(-2.5f, 2.5f), VY = Rand(0.5f, 3f), Gravity = 4f,
+                            Life = Rand(0.5f, 0.9f), Size = 1f, Color = new Color32(255, 255, 255, 255) });
+                    break;
+                case Spell.Thuy:
+                case Spell.Tide:
+                case Spell.Venom: // a splash
+                    for (int k = 0; k < n + 3; k++)
+                    {
+                        float a = Rand(0.3f, Mathf.PI - 0.3f);
+                        _particles.Add(new Particle { Sprite = Sprite.Drop, X = x + Rand(-0.3f, 0.3f), Y = y, VX = Mathf.Cos(a) * Rand(1f, 3f), VY = Mathf.Sin(a) * Rand(2f, 5f),
+                            Gravity = 14f, Life = Rand(0.4f, 0.7f), Size = 1f, Color = c });
+                    }
+                    break;
+                case Spell.Hoa:
+                case Spell.Flame: // it bursts into flame, smoke rolling up
+                    Burst(x, y, c, n, power == 2 ? 6f : 4f, true);
+                    for (int k = 0; k < (power == 2 ? 4 : 2); k++)
+                        _particles.Add(new Particle { Sprite = (Sprite)((int)Sprite.Fire0 + k % 3), X = x + Rand(-0.5f, 0.5f), Y = y - 0.4f, VY = Rand(0.3f, 0.8f),
+                            Life = Rand(0.35f, 0.6f), Size = 1f, Color = new Color32(255, 255, 255, 255) });
+                    break;
+                case Spell.Tho: // the boulder shatters: chips and dust
+                    for (int k = 0; k < n; k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y, VX = Rand(-3f, 3f), VY = Rand(1f, 4f), Gravity = 14f,
+                            Life = Rand(0.4f, 0.7f), Size = 1f, Color = new Color32(132, 96, 64, 255) });
+                    for (int k = 0; k < 3; k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-0.5f, 0.5f), Y = y - 0.3f, VX = Rand(-0.6f, 0.6f), VY = Rand(0.2f, 0.6f),
+                            Life = Rand(0.5f, 0.9f), Size = 1f, Grow = 0.5f, Color = new Color32(160, 130, 96, 255) });
+                    break;
+                case Spell.Loi: // a crack of white, sparks everywhere
+                    _particles.Add(new Particle { Sprite = Sprite.Flash, X = x, Y = y, Life = 0.12f, Size = 2f, Color = new Color32(255, 255, 255, 255) });
+                    Burst(x, y, c, n + 4, 7f, false);
+                    break;
+                case Spell.Bang: // it shatters into frost
+                    for (int k = 0; k < n; k++)
+                        _particles.Add(new Particle { Sprite = k % 3 == 0 ? Sprite.Shard : Sprite.Spark, X = x, Y = y, VX = Rand(-3f, 3f), VY = Rand(0.5f, 3f), Gravity = 8f,
+                            Life = Rand(0.35f, 0.6f), Size = 1f, Color = k % 2 == 0 ? c : new Color32(240, 252, 255, 255) });
+                    break;
+                case Spell.Phong:
+                case Spell.Gale:
+                case Spell.Sonic: // a shock ring, the air cut sideways
+                    _particles.Add(new Particle { Sprite = Sprite.Ring, X = x, Y = y, Life = 0.25f, Size = 1f, Grow = 6f, Color = c });
+                    for (int k = 0; k < n; k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y + Rand(-0.4f, 0.4f), VX = away * Rand(2f, 5f), VY = Rand(-0.5f, 0.5f),
+                            Life = Rand(0.2f, 0.4f), Size = 1f, Color = c });
+                    break;
+                case Spell.Ma: // a dark blast, black smoke
+                    Burst(x, y, c, n, 5f, false);
+                    for (int k = 0; k < (power == 2 ? 4 : 2); k++)
+                        _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-0.5f, 0.5f), Y = y, VX = Rand(-0.5f, 0.5f), VY = Rand(0.4f, 1f),
+                            Life = Rand(0.5f, 0.9f), Size = 1f, Grow = 0.6f, Color = new Color32(54, 18, 40, 255) });
+                    break;
+                default: // Kim, Qi: sparks
+                    Burst(x, y, c, n, power == 2 ? 6f : 3.5f, power == 2);
+                    if (s == Spell.Kim) _particles.Add(new Particle { Sprite = Sprite.Flash, X = x, Y = y, Life = 0.1f, Size = 1f, Color = c });
+                    break;
+            }
+            if (power == 0) // a miss leaves a scorch of dust where it hit the ground
+                _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x, Y = y, VY = 0.4f, Life = 0.5f, Size = 1f, Grow = 1f, Color = new Color32(150, 126, 96, 255) });
+            else
+                FightScenes.Hurt.Add(new HurtZone { X = x, Y = y - 0.7f, R = power == 2 ? 1.6f : 0.9f, Start = Time.unscaledTime, Kill = 0f });
         }
 
         public void Spawn(Fx kind, float x, float y)
@@ -433,10 +692,18 @@ namespace ThienDao.Render
             }
             DrawFights(now);
             DrawRelicBeacons(view, now);
+            DrawSkirmishes(view, now);
+            DrawShots(now, dt);
+            DrawChases(view, now, dt);
+            DrawLoot(view, now, dt);
             DrawPrayers(view, Time.unscaledDeltaTime);
             DrawRumor(view, now);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
+            foreach (var p in FightScenes.Kills) Torn(p.x, p.y);
+            FightScenes.Kills.Clear();
+            foreach (var p in FightScenes.Dust) Dust(p.x, p.y, 1f);
+            FightScenes.Dust.Clear();
             FightScenes.Hurt.RemoveAll(z => now - z.Start > FightScenes.HurtTime);
 
             for (int i = _particles.Count - 1; i >= 0; i--)
@@ -646,6 +913,188 @@ namespace ThienDao.Render
             }
         }
 
+
+        // ---------------------------------------------------------------- what the living are doing, on the map
+
+        bool Position(int entity, out float x, out float y, out bool flying)
+        {
+            var e = _sim.Entities;
+            float frac = _sim.TickFraction;
+            x = Mathf.Lerp(e.PrevX[entity], e.X[entity], frac);
+            y = Mathf.Lerp(e.PrevY[entity], e.Y[entity], frac);
+            flying = e.Flying[entity] && (e.X[entity] != e.PrevX[entity] || e.Y[entity] != e.PrevY[entity]);
+            return e.Species[entity] != Species.None;
+        }
+
+        bool Shown(Cultivator c) => c != null && c.Alive && c.Entity >= 0 && (_sim.Cultivation.IsShownOnMap(c) || c.Watched) && !FightScenes.Hides(c.Index);
+
+        static Sprite LootSprite(Loot l)
+        {
+            switch (l)
+            {
+                case Loot.Treasure: return Sprite.LootSword;
+                case Loot.Technique: return Sprite.LootSlip;
+                case Loot.Pill: return Sprite.LootPill;
+                case Loot.Stones: return Sprite.LootStones;
+                case Loot.BeastCore: return Sprite.LootCore;
+                default: return Sprite.LootGem;
+            }
+        }
+
+        static Color32 LootGlow(Loot l)
+        {
+            switch (l)
+            {
+                case Loot.Treasure: return new Color32(255, 230, 130, 255);
+                case Loot.Technique: return new Color32(150, 255, 190, 255);
+                case Loot.Pill: return new Color32(255, 200, 120, 255);
+                case Loot.Stones: return new Color32(140, 255, 170, 255);
+                case Loot.BeastCore: return new Color32(255, 110, 90, 255);
+                default: return new Color32(150, 220, 255, 255);
+            }
+        }
+
+        // Cơ duyên: whoever just won something walks off holding it up over their head, the prize bobbing a pixel,
+        // a glow beating round it and motes rising off it; the moment they get it, a pillar of light.
+        readonly Dictionary<int, long> _lootSeen = new Dictionary<int, long>();
+
+        void DrawLoot(Rect view, float now, float dt)
+        {
+            long tick = _sim.Clock.Tick;
+            foreach (var c in _sim.Cultivation.All)
+            {
+                if (c.LootUntil <= tick || c.Loot == Loot.None || !Shown(c)) continue;
+                if (!Position(c.Entity, out float x, out float y, out bool flying) || !view.Contains(new Vector2(x, y))) continue;
+                if (!_lootSeen.TryGetValue(c.Index, out long until) || until != c.LootUntil)
+                {
+                    _lootSeen[c.Index] = c.LootUntil;
+                    if (_effects.Count < MaxEffects) Spawn(Fx.LightPillar, x, y);
+                    Spawn(Fx.Blessing, x, y + 1f);
+                }
+                float hx = x, hy = y + (flying ? 0.7f : 0f) + 2.2f + ((((int)(now * 3f)) + c.Index) & 1) / CellPx;
+                var glow = LootGlow(c.Loot);
+                float pulse = 0.5f + 0.5f * Mathf.Sin(now * 4f + c.Index);
+                Quad(Sprite.Flash, hx, hy, 2f, 2f, new Color32(glow.r, glow.g, glow.b, (byte)(100 + 100 * pulse)));
+                if (pulse > 0.5f) Quad(Sprite.Ring, hx, hy, 1f, 1f, new Color32(glow.r, glow.g, glow.b, 200));
+                Quad(LootSprite(c.Loot), hx, hy, 1f, 1f, new Color32(255, 255, 255, 255));
+                if (_rand.NextDouble() < dt * 8f)
+                    _particles.Add(new Particle { Sprite = Sprite.Spark, X = hx + Rand(-0.6f, 0.6f), Y = hy + Rand(-0.3f, 0.3f), VY = Rand(0.6f, 1.4f),
+                        Life = Rand(0.5f, 0.9f), Size = 1f, Color = glow });
+            }
+        }
+
+        // A beast on the hunt wears a red "!" (the one who hunts does, if a cultivator hunts the beast); whoever runs
+        // kicks up dust. When the two close in and are a match, they trade spells on the run.
+        void DrawChases(Rect view, float now, float dt)
+        {
+            var e = _sim.Entities;
+            foreach (var b in _sim.Beasts.All)
+            {
+                if (!b.Alive || b.ChaseEntity < 0 || b.ChaseEntity >= e.Count) continue;
+                if (!Position(b.Entity, out float bx, out float by, out _) || !Position(b.ChaseEntity, out float qx, out float qy, out _)) continue;
+                bool seeB = view.Contains(new Vector2(bx, by)), seeQ = view.Contains(new Vector2(qx, qy));
+                if (!seeB && !seeQ) continue;
+                var c = e.Species[b.ChaseEntity] == Species.Cultivator ? _sim.Cultivation.ForEntity(b.ChaseEntity) : null;
+                if (c != null && !Shown(c)) seeQ = false;
+                float body = SpriteLibrary.BeastScale(b.Grade, b.Rampage);
+                bool blink = (((int)(now * 4f)) & 1) == 0;
+                var red = new Color32(255, 255, 255, 255);
+                if (b.ChaseMode == BeastSystem.ChaseHunted)
+                {
+                    if (seeQ && blink) Quad(Sprite.Exclaim, qx, qy + 2.1f, 1f, 1f, red);
+                    if (seeB) Dust(bx, by, dt);
+                }
+                else
+                {
+                    if (seeB && blink) Quad(Sprite.Exclaim, bx, by + 1.2f + 1.3f * body, 1f, 1f, red);
+                    if (b.ChaseMode == BeastSystem.ChaseClash && seeQ && !blink) Quad(Sprite.Exclaim, qx, qy + 2.1f, 1f, 1f, red);
+                    if (seeQ && b.ChaseMode == BeastSystem.ChaseHunts) Dust(qx, qy, dt);
+                }
+                if (c == null || b.ChaseMode == BeastSystem.ChaseHunts || !seeB || !seeQ) continue;
+                float dx = qx - bx, dy = qy - by;
+                if (dx * dx + dy * dy > 49f || _rand.NextDouble() >= dt * 1.5f) continue;
+                // Spells traded while they close: the cultivator's method against the beast's own.
+                var from = new Vector2(qx, qy + 0.7f);
+                var to = new Vector2(bx, by + 0.6f * body);
+                if (_rand.NextDouble() < 0.6) Shoot(SpellOf(c), from, to, ColorOf(SpellOf(c), c));
+                else
+                {
+                    var bs = SpellOf(b);
+                    if (bs != Spell.Claw) Shoot(bs, to, from, ColorOf(bs, null));
+                }
+            }
+        }
+
+        void Dust(float x, float y, float dt)
+        {
+            if (_rand.NextDouble() >= dt * 6f) return;
+            _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-0.3f, 0.3f), Y = y + 0.1f, VX = Rand(-0.3f, 0.3f), VY = Rand(0.2f, 0.5f),
+                Life = Rand(0.35f, 0.6f), Size = 1f, Color = new Color32(176, 150, 112, 255) });
+        }
+
+        // Loose spells: the skirmishes round a contested bí cảnh and the running fights of a chase. Unlike the fight
+        // scenes these settle nothing; the sim does that. They show the fighting while it goes on.
+        struct Shot
+        {
+            public Spell Spell;
+            public Vector2 From, To;
+            public float At;
+            public Color32 Color;
+        }
+
+        const int MaxShots = 48;
+        readonly List<Shot> _shots = new List<Shot>();
+
+        void Shoot(Spell s, Vector2 from, Vector2 to, Color32 color)
+        {
+            if (_shots.Count >= MaxShots) return;
+            if (_rand.NextDouble() < 0.3) to += (to - from).normalized * 1.5f + new Vector2(0f, -0.5f); // a miss
+            _shots.Add(new Shot { Spell = s, From = from, To = to, At = Time.unscaledTime + 0.35f, Color = color });
+        }
+
+        void DrawShots(float now, float dt)
+        {
+            for (int i = _shots.Count - 1; i >= 0; i--)
+            {
+                var s = _shots[i];
+                float t = (now - s.At) / FightScene.Flight;
+                if (t < 0f) { if (s.Spell != Spell.Claw) Charge(s.From, s.To, s.Color, -t * FightScene.Flight); continue; }
+                if (t < 1f) { DrawSpell(s.Spell, s.From, s.To, t, s.Color, now, dt); continue; }
+                Impact(s.Spell, s.To, s.From, s.Color, 1);
+                _shots.RemoveAt(i);
+            }
+        }
+
+        // A contest over a bí cảnh: the sides' people round it hurl spells at each other across the field.
+        readonly List<(int who, int side)> _contestants = new List<(int, int)>();
+        float _nextSkirmish;
+
+        void DrawSkirmishes(Rect view, float now)
+        {
+            if (now < _nextSkirmish) return;
+            _nextSkirmish = now + 0.25f;
+            var all = _sim.Cultivation.All;
+            foreach (var r in _sim.Relics.All)
+            {
+                if (!r.Open || !_sim.Relics.Contested(r) || !view.Contains(new Vector2(r.X, r.Y))) continue;
+                _sim.Relics.ContestantsOf(r, _contestants);
+                if (_contestants.Count < 2) continue;
+                for (int tries = 0; tries < 3; tries++)
+                {
+                    var (ai, aside) = _contestants[_rand.Next(_contestants.Count)];
+                    var (bi, bside) = _contestants[_rand.Next(_contestants.Count)];
+                    if (aside == bside || ai < 0 || bi < 0 || ai >= all.Count || bi >= all.Count) continue;
+                    Cultivator a = all[ai], b = all[bi];
+                    if (!Shown(a) || !Shown(b)) continue;
+                    if (!Position(a.Entity, out float ax, out float ay, out _) || !Position(b.Entity, out float bx, out float by, out _)) continue;
+                    float dx = bx - ax, dy = by - ay;
+                    if (dx * dx + dy * dy > 144f) continue; // within twelve cells of each other
+                    Shoot(SpellOf(a), new Vector2(ax, ay + 0.7f), new Vector2(bx, by + 0.7f), ColorOf(SpellOf(a), a));
+                    break;
+                }
+            }
+        }
+
         // Pixel art rules for every effect: sprites only grow by whole multiples (so a pixel stays a square block),
         // sit on the 8-px-per-cell grid like the map, and fade in a few hard steps instead of a smooth blur.
         static int Whole(float scale) => Mathf.Max(1, Mathf.RoundToInt(scale));
@@ -839,6 +1288,35 @@ namespace ThienDao.Render
             var riftThin = Tear(7, 20, 0.6f);
             Put(Sprite.Rift, 11, 26, (x, y) => rift[y * 11 + x]);
             Put(Sprite.RiftThin, 7, 20, (x, y) => riftThin[y * 7 + x]);
+
+            // Hand-drawn pieces, a character per pixel ('.' empty), top row first. White and grey ('w', 'l', 's') take
+            // the tint of the spell; the rest keep their colour.
+            var ink = new Dictionary<char, Color32>
+            {
+                ['w'] = white, ['l'] = light, ['s'] = shade, ['k'] = new Color32(24, 18, 22, 255),
+                ['r'] = new Color32(222, 44, 44, 255), ['o'] = new Color32(255, 150, 50, 255), ['y'] = new Color32(255, 224, 96, 255),
+                ['g'] = new Color32(96, 196, 104, 255), ['G'] = new Color32(52, 132, 72, 255), ['c'] = new Color32(150, 236, 255, 255),
+                ['b'] = new Color32(70, 130, 220, 255), ['n'] = new Color32(132, 96, 64, 255), ['N'] = new Color32(92, 66, 44, 255),
+                ['p'] = new Color32(186, 120, 250, 255), ['m'] = new Color32(196, 210, 226, 255),
+            };
+            void Art(Sprite s, params string[] rows)
+            {
+                int h = rows.Length, w = rows[0].Length;
+                Put(s, w, h, (x, y) => x < rows[h - 1 - y].Length && ink.TryGetValue(rows[h - 1 - y][x], out var c) ? c : default);
+            }
+            Art(Sprite.Orb, ".sls.", "slwls", "lwwwl", "slwls", ".sls.");
+            Art(Sprite.Rock, ".nN..", "nnnN.", "nNnnN", ".nnN.", "..N..");
+            Art(Sprite.Shard, "....ll..", "swwwwwwl", "....ll..");
+            Art(Sprite.Crescent, "..ll...", ".l.....", "l......", "l......", "l......", ".l.....", "..ll...");
+            Art(Sprite.Blade, "y.......", "ylwwwwwl", "y.......");
+            Art(Sprite.Leaf, ".g", "gG");
+            Art(Sprite.Exclaim, "krk", "krk", "krk", "krk", ".k.", "krk", "krk");
+            Art(Sprite.LootSword, ".......wk", "......wlk", ".....wlk.", "....wlk..", "y..wlk...", ".yylk....", "..yy.....", ".k.y.....", "k........");
+            Art(Sprite.LootSlip, ".kkkkkkk.", "kgggggcgk", "kgGgggggk", "kkkkkkkkk", "rrrrrrrrr", "kgggggcgk", "kgGgggggk", ".kkkkkkk.");
+            Art(Sprite.LootPill, "...kk....", "..knnk...", "..kNnk...", ".knnnnk..", "knnnnnnk.", "knnyynnk.", "knnyynnk.", ".knnnnk..", "..kkkk...");
+            Art(Sprite.LootGem, "....w....", "...wcw...", "..wccbw..", ".wccbbbw.", "wccbbbbbw", ".wcbbbbw.", "..wbbbw..", "...wbw...", "....w....");
+            Art(Sprite.LootStones, "...c.....", "..cgc..c.", "..gGg.cgc", ".cgGgcgGg", ".gGGggGGg", "kkkkkkkkk");
+            Art(Sprite.LootCore, "..kkkk...", ".korrok..", "kowyrrrk.", "kryrrrrk.", "krrrrrrk.", ".krrrrk..", "..kkkk...");
 
             atlas = new Texture2D(tw, th, TextureFormat.RGBA32, false) { name = "FxAtlas", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             atlas.SetPixelData(px, 0);

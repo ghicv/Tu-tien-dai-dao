@@ -32,6 +32,11 @@ namespace ThienDao.Sim
         public int LastPrey = -1, PreyBefore = -1; // the last two it ravaged: it moves on rather than circling back
         public long RampageSince, CalmUntil;        // when its rampage began; asleep again, it will not wake before CalmUntil
         public float Hp = -1f;                      // sinh lực; -1 = whole (BeastSystem.HpOf); a hung thú keeps its wounds
+        public int ChaseEntity = -1;  // đuổi bắt (BeastChase.cs): the entity it is after, or that is after it
+        public byte ChaseMode;        // BeastSystem.ChaseHunts / ChaseHunted / ChaseClash
+        public long ChaseSince;
+        public long HuntUntil;        // stalking a deer or a hare: a hunt the renderer plays out (the herds themselves are culled monthly)
+        public float HuntX, HuntY;
         public float DeathX = -1, DeathY = -1; // where it fell (fight scenes draw its kind)
 
         public bool IsKing => Clan == Index;
@@ -133,6 +138,7 @@ namespace ThienDao.Sim
             _e.Payload[b.Entity] = b.Index;
             _e.Flying[b.Entity] = Flies(kind); // điêu, giao long and huyết bức take to the air
             All.Add(b);
+            _living?.Add(b);
             AliveCount++;
             CountByGrade[b.Grade]++;
             return b;
@@ -264,7 +270,7 @@ namespace ThienDao.Sim
                 wild.Cull(Species.Rabbit, region, 1f - 0.004f * b.Grade);
 
                 // Prowls its territory.
-                if (rng.NextFloat() < 0.5f)
+                if (b.ChaseEntity < 0 && tick >= b.HuntUntil && rng.NextFloat() < 0.5f) // not while it is after something
                 {
                     float r = 4f + b.Grade;
                     float tx = b.HomeX + rng.Range(-r, r), ty = b.HomeY + rng.Range(-r, r);
@@ -276,7 +282,7 @@ namespace ThienDao.Sim
                 }
 
                 if (b.Grade >= 2 && rng.NextFloat() < 0.012f * b.Grade) Raid(b, tick, ref rng);
-                if (b.Alive) Encounter(b, tick, ref rng);
+                // Meetings with passers-by are played out day by day now (BeastChase.DailyStep), not settled here.
             }
             CoalitionStep(tick);
         }
@@ -317,16 +323,6 @@ namespace ThienDao.Sim
             return best;
         }
 
-        // Cultivators out on the road who pass a beast's lair: some hunt it for its yêu đan, the weak run or die.
-        void Encounter(Beast b, long tick, ref DetRandom rng)
-        {
-            int id = _sim.Creatures.FindNearest(_e.X[b.Entity], _e.Y[b.Entity], 12f, 1 << (int)Species.Cultivator);
-            var c = _sim.Cultivation.ForEntity(id);
-            if (c == null || !_sim.Cultivation.IsShownOnMap(c) || c.AtWar || c.HuntTarget >= 0 || tick - c.LastDuelTick < SimClock.DaysPerMonth * 6) return;
-            if (rng.NextFloat() >= 0.35f * CreatureSystem.RoadPace) return;
-            Fight(c, b, tick, CombatSystem.Strength(c) >= Strength(b) ? "săn yêu đan" : "lỡ bước vào lãnh địa yêu thú", ref rng);
-        }
-
         // Tu sĩ against yêu thú. The loser usually dies; the cultivator who wins takes its yêu đan.
         public void Fight(Cultivator c, Beast b, long tick, string context, ref DetRandom rng)
         {
@@ -344,6 +340,7 @@ namespace ThienDao.Sim
                 int imp = b.IsKing ? 3 : b.Grade >= KingGrade ? 2 : 1;
                 string king = b.IsKing ? $", {b.ClanName} tan rã" : "";
                 Die(b, tick, $"{who} {context}, trảm sát {b.Title} ({b.GradeText}), đoạt yêu đan{king}.", imp, c);
+                _sim.Cultivation.ShowLoot(c, Loot.BeastCore, tick); // the yêu đan held up for all to see
                 return;
             }
             b.Kills++;

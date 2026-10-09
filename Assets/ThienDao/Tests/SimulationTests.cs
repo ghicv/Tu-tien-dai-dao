@@ -1256,6 +1256,56 @@ namespace ThienDao.Tests
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
+        // Devlog 32: a beast that sees a passer-by gives chase, and the weaker one runs; the far stronger one hunts it.
+        [Test]
+        public void BeastsChaseThoseWhoPassAndTheWeakRun()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var e = sim.Entities;
+            var (x, y) = FindOpenLand(sim, 512, 512);
+            var rng = new DetRandom(11u);
+            foreach (var (realm, grade, mode, trip) in new[]
+                     {
+                         (Realm.LuyenKhi, 6, BeastSystem.ChaseHunts, Trip.Flee),
+                         (Realm.KetDan, 1, BeastSystem.ChaseHunted, Trip.Hunt)
+                     })
+            {
+                var c = sim.Cultivation.All.Find(o => o.Alive && o.Realm == realm && !o.Travelling);
+                Assert.IsNotNull(c);
+                c.LastDuelTick = -10000;
+                e.X[c.Entity] = e.PrevX[c.Entity] = x + 0.5f;
+                e.Y[c.Entity] = e.PrevY[c.Entity] = y + 0.5f;
+                c.Travelling = true; // passing by
+                c.Trip = Trip.Excursion;
+                e.TX[c.Entity] = x + 40.5f;
+                e.TY[c.Entity] = y + 0.5f;
+                var b = sim.Beasts.Spawn(Species.Wolf, grade, x + 3.5f, y + 0.5f, sim.Clock.Tick, ref rng);
+                b.CalmUntil = 0;
+                long tick = sim.Clock.Tick;
+                for (int d = 0; d < 600 && b.ChaseEntity != c.Entity; d++)
+                {
+                    // Kept passing by (a sword-flyer would be out of sight in a day), and the buckets the beast looks through follow.
+                    if (b.ChaseEntity < 0)
+                    {
+                        e.X[c.Entity] = e.PrevX[c.Entity] = x + 0.5f;
+                        e.Y[c.Entity] = e.PrevY[c.Entity] = y + 0.5f;
+                        e.TX[c.Entity] = x + 40.5f;
+                        e.X[b.Entity] = e.PrevX[b.Entity] = x + 3.5f; // and the beast keeps to its spot
+                        e.Y[b.Entity] = e.PrevY[b.Entity] = y + 0.5f;
+                        c.LastDuelTick = -10000;
+                    }
+                    sim.Creatures.Tick(tick + d);
+                    sim.Beasts.DailyStep(tick + d);
+                }
+                Assert.AreEqual(c.Entity, b.ChaseEntity, $"a {b.GradeText} beast notices a {realm} walking past");
+                Assert.AreEqual(mode, b.ChaseMode);
+                Assert.AreEqual(trip, c.Trip, realm == Realm.LuyenKhi ? "the weaker one runs" : "the stronger one goes after it");
+                b.Alive = false;
+                b.ChaseEntity = -1;
+                sim.Cultivation.ReturnHome(c);
+            }
+        }
+
         [Test]
         public void YeuVuongGathersAClan()
         {

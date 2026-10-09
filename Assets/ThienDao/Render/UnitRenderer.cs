@@ -30,6 +30,8 @@ namespace ThienDao.Render
             public int Kind;
             public float Pinned; // real seconds left: spawned by the player, kept on screen beyond the usual cap
             public int Id;
+            public float Panic;  // real seconds left running: from a predator, or (a wolf) after prey
+            public bool Quarry;  // the animal a yêu thú is stalking: it runs, but not fast enough
         }
 
         int _nextId;
@@ -75,7 +77,7 @@ namespace ThienDao.Render
 
         // Decorative wildlife: one token stands for this many animals, capped per region and kind.
         static readonly float[] AnimalsPerToken = { 20f, 30f, 3f };
-        static readonly int[] MaxTokensPerRegion = { 3, 3, 2 };
+        static readonly int[] MaxTokensPerRegion = { 5, 5, 3 };
         static readonly Unit[] TokenLook = { Unit.Deer, Unit.Rabbit, Unit.Wolf };
         static readonly float[] TokenSpeed = { 1.2f, 1f, 1.5f }; // cells per real second
         readonly Dictionary<int, List<Token>> _tokens = new Dictionary<int, List<Token>>();
@@ -144,6 +146,7 @@ namespace ThienDao.Render
             {
                 Vector3 bl = cam.ViewportToWorldPoint(Vector3.zero), tr = cam.ViewportToWorldPoint(Vector3.one);
                 var view = Rect.MinMaxRect(bl.x - 2f, bl.y - 2f, tr.x + 2f, tr.y + 2f);
+                DrawHermitages(view);
                 DrawCreatures(view);
                 DrawFights(view);
                 DrawWildlife(view);
@@ -241,8 +244,8 @@ namespace ThienDao.Render
                 }
 
                 var c = _sim.Cultivation.ForEntity(id);
-                // Nhân vật chính are always drawn, meditating at home included.
-                if (c == null || (!_sim.Cultivation.IsShownOnMap(c) && !c.Watched)) continue;
+                // Only those out and about: at home a cultivator is inside (DrawHermitages), the protagonist too.
+                if (c == null || !_sim.Cultivation.IsShownOnMap(c)) continue;
                 if (FightScenes.Hides(c.Index)) continue; // drawn by the fight scene instead
                 bool flying = e.Flying[id] && moving;
                 if (!flying && !_sim.World.IsWalkable(x, y)) continue; // the sim moves them ashore within the month
@@ -261,6 +264,57 @@ namespace ThienDao.Render
             }
         }
 
+        // Where cultivators go to ground. A tán tu who lives out in the wild has a động phủ there, a mound of rock with
+        // a cave mouth: dark while they are away, lamplit while they sit in seclusion inside (with the glow of their
+        // realm from Kết Đan up). Sect members are inside their sect, town dwellers inside the town; the protagonist,
+        // wherever they are, wears the gold ring over their door so the player can find (and click) them.
+        readonly Dictionary<int, int> _caves = new Dictionary<int, int>(); // home cell → the one drawn there (occupied wins)
+
+        void DrawHermitages(Rect view)
+        {
+            var w = _sim.World;
+            var all = _sim.Cultivation.All;
+            float time = Time.time;
+            _caves.Clear();
+            for (int k = 0; k < all.Count; k++)
+            {
+                var c = all[k];
+                if (!c.Alive || c.HomeX < view.xMin || c.HomeX > view.xMax || c.HomeY < view.yMin || c.HomeY > view.yMax) continue;
+                bool home = _sim.Cultivation.IsAtHome(c);
+                bool wild = c.SectId < 0 && w.InBounds((int)c.HomeX, (int)c.HomeY) && w.Owner[w.Idx((int)c.HomeX, (int)c.HomeY)] == 0;
+                if (!wild)
+                {
+                    if (c.Watched && home)
+                    {
+                        AddQuadCentered(Unit.Aura, ((int)(time * 2f) + k) & 1, c.HomeX, c.HomeY + 0.7f, WatchedTint);
+                        AddHit(Unit.CultivatorLK, c.HomeX, c.HomeY, new Hit { Cultivator = c, Entity = -1, Region = -1, Kind = -1 });
+                    }
+                    continue;
+                }
+                int cell = w.Idx((int)c.HomeX, (int)c.HomeY);
+                if (_caves.TryGetValue(cell, out int other))
+                {
+                    var o = all[other];
+                    bool better = (home && !_sim.Cultivation.IsAtHome(o)) || (c.Watched && !o.Watched);
+                    if (!better) continue;
+                }
+                _caves[cell] = k;
+            }
+            foreach (var pair in _caves)
+            {
+                var c = all[pair.Value];
+                bool home = _sim.Cultivation.IsAtHome(c);
+                float x = (int)c.HomeX + 0.5f, y = (int)c.HomeY + 0.2f;
+                if (home && (c.Watched || c.Realm >= Realm.KetDan))
+                {
+                    var tint = c.Watched ? WatchedTint : c.Demonic ? new Color32(255, 70, 70, 255) : AuraTint[(int)c.Realm];
+                    AddQuadCentered(Unit.Aura, ((int)(time * 1.5f) + pair.Value) & 1, x, y + 1.6f, tint);
+                }
+                AddQuad(Unit.Cave, home ? 1 : 0, x, y, false);
+                if (home) AddHit(Unit.Cave, x, y, new Hit { Cultivator = c, Entity = -1, Region = -1, Kind = -1 });
+            }
+        }
+
         // The fighters of each fight scene: they lunge when they strike, recoil and flash white when struck;
         // after the last blow the loser sinks and fades away, or runs off.
         void DrawFights(Rect view)
@@ -276,16 +330,18 @@ namespace ThienDao.Render
                 {
                     float k = now - at;
                     if (k < 0f || k > FightScene.Flight) continue;
-                    float step = Mathf.Sin(k / FightScene.Flight * Mathf.PI) * 0.35f;
+                    // Claws pounce right onto the foe; a caster only leans into the spell.
+                    bool claws = (byWinner ? f.WinnerSpell : f.LoserSpell) == Spell.Claw;
+                    float step = Mathf.Sin(k / FightScene.Flight * Mathf.PI) * (claws ? 1.1f : 0.3f);
                     if (byWinner) lungeW = step; else lungeL = step;
                 }
                 float flashW = f.Flash(true, now, out float recoilW), flashL = f.Flash(false, now, out float recoilL);
                 int frame = ((int)(now * 8f)) & 1;
                 // Winner: faces the loser.
                 float wx = w.x - dir * lungeW + dir * recoilW;
-                DrawFighter(f.WinnerLook, frame, wx, w.y, f.WinnerRight, 255, flashW, f.WinnerScale);
+                DrawFighter(f.WinnerLook, frame, wx, w.y + f.Shift(true, now), f.WinnerRight, 255, flashW, f.WinnerScale);
                 // Loser: faces the winner until the end.
-                float lx = l.x + dir * lungeL - dir * recoilL, ly = l.y;
+                float lx = l.x + dir * lungeL - dir * recoilL, ly = l.y + (now > f.FinalBlow ? 0f : f.Shift(false, now));
                 byte alpha = 255;
                 if (now > f.FinalBlow)
                 {
@@ -474,6 +530,7 @@ namespace ThienDao.Render
 
             _staleRegions.Clear();
             foreach (var key in _tokens.Keys) _staleRegions.Add(key);
+            GatherPredators(view);
 
             int rx0 = Mathf.Clamp((int)view.xMin / size, 0, wild.RW - 1), rx1 = Mathf.Clamp((int)view.xMax / size, 0, wild.RW - 1);
             int ry0 = Mathf.Clamp((int)view.yMin / size, 0, wild.RH - 1), ry1 = Mathf.Clamp((int)view.yMax / size, 0, wild.RH - 1);
@@ -517,9 +574,24 @@ namespace ThienDao.Render
                         continue;
                     }
                     if (t.Pinned > 0f) t.Pinned -= Time.unscaledDeltaTime;
+                    if (t.Panic > 0f) t.Panic -= dt;
+                    if (dt > 0f && React(ref t, list, k, time))
+                    {
+                        FightScenes.Kills.Add(new Vector2(t.X, t.Y)); // caught: torn apart where it fell
+                        list.RemoveAt(k);
+                        continue;
+                    }
                     float dx = t.TX - t.X, dy = t.TY - t.Y, d = Mathf.Sqrt(dx * dx + dy * dy);
                     bool moving = false;
-                    if (t.Wait > 0f) t.Wait -= dt;
+                    if (t.Panic > 0f && d >= 0.05f)
+                    {
+                        // Running: from a predator, or a wolf after its prey. A stalked animal runs, but slower than death.
+                        float step = Mathf.Min(d, TokenSpeed[t.Kind] * (t.Quarry ? 1.6f : t.Kind == 2 ? 2.6f : 3f) * dt);
+                        t.X += dx / d * step;
+                        t.Y += dy / d * step;
+                        moving = true;
+                    }
+                    else if (t.Wait > 0f) t.Wait -= dt;
                     else if (d < 0.05f || !PathClear(t.X, t.Y, t.TX, t.TY))
                     {
                         float nx = t.X + (float)(_rand.NextDouble() - 0.5) * 10f, ny = t.Y + (float)(_rand.NextDouble() - 0.5) * 10f;
@@ -552,12 +624,107 @@ namespace ThienDao.Render
                         list.RemoveAt(k);
                         continue;
                     }
-                    int frame = moving ? ((int)(time * 6f) + k) & 1 : 0;
+                    int frame = moving ? ((int)(time * (t.Panic > 0f ? 12f : 6f)) + k) & 1 : 0;
                     DrawFighter(TokenLook[t.Kind], frame, t.X, t.Y, dx < 0f, 255, hurt);
+                    if (t.Panic > 0f && moving && ((t.Id + Time.frameCount) % 9) == 0) FightScenes.Dust.Add(new Vector2(t.X, t.Y));
                     AddHit(TokenLook[t.Kind], t.X, t.Y, new Hit { Entity = -1, Region = region, Kind = t.Kind });
                 }
             }
             foreach (int region in _staleRegions) _tokens.Remove(region);
+        }
+
+        // Yêu thú on screen, for the animals to run from. A beast stalking (BeastSystem.Stalk) also gets an animal
+        // put down by its mark, which runs from it, too slowly.
+        readonly List<Vector2> _predators = new List<Vector2>();
+        readonly Dictionary<int, long> _stalkShown = new Dictionary<int, long>();
+        const float FleeRange = 6f, CatchRange = 0.9f;
+
+        void GatherPredators(Rect view)
+        {
+            _predators.Clear();
+            var e = _sim.Entities;
+            float frac = _sim.TickFraction;
+            long tick = _sim.Clock.Tick;
+            var near = Rect.MinMaxRect(view.xMin - 8f, view.yMin - 8f, view.xMax + 8f, view.yMax + 8f);
+            foreach (var b in _sim.Beasts.All)
+            {
+                if (!b.Alive || b.Entity < 0 || _predators.Count >= 96) continue;
+                int id = b.Entity;
+                var p = new Vector2(Mathf.Lerp(e.PrevX[id], e.X[id], frac), Mathf.Lerp(e.PrevY[id], e.Y[id], frac));
+                if (!near.Contains(p)) continue;
+                _predators.Add(p);
+                if (b.HuntUntil <= tick || !view.Contains(new Vector2(b.HuntX, b.HuntY))) continue;
+                if (_stalkShown.TryGetValue(id, out long until) && until == b.HuntUntil) continue;
+                _stalkShown[id] = b.HuntUntil;
+                if (_stalkShown.Count > 256) _stalkShown.Clear();
+                // The mark: a deer if there are deer here, else a hare, grazing where the beast is creeping to.
+                int region = _sim.Wildlife.RegionOf(b.HuntX, b.HuntY);
+                if (!_tokens.TryGetValue(region, out var list)) _tokens[region] = list = new List<Token>();
+                int kind = _sim.Wildlife.At(Species.Deer, region) >= 1f ? 0 : 1;
+                float hx = b.HuntX + 0.5f, hy = b.HuntY + 0.5f;
+                list.Add(new Token { X = hx, Y = hy, TX = hx, TY = hy, Wait = 1f, Kind = kind, Pinned = 20f, Quarry = true, Id = ++_nextId });
+            }
+        }
+
+        // An animal looks round now and then (every frame while running): a yêu thú near makes it bolt straight away;
+        // one on top of it catches it (true: it is gone). Wolves hunt the deer and hares of their region in bouts.
+        bool React(ref Token t, List<Token> list, int self, float time)
+        {
+            bool look = t.Panic > 0f || t.Quarry || ((t.Id + Time.frameCount) & 7) == 0;
+            if (!look) return false;
+            float best = float.MaxValue;
+            Vector2 from = default;
+            foreach (var p in _predators)
+            {
+                float d2 = (p.x - t.X) * (p.x - t.X) + (p.y - t.Y) * (p.y - t.Y);
+                if (d2 < best) { best = d2; from = p; }
+            }
+            if (t.Kind == 2) // a wolf: shy of yêu thú as well, otherwise on the hunt
+            {
+                if (best < FleeRange * FleeRange) { Bolt(ref t, from, best); return false; }
+                bool chasing = t.Panic > 0f;
+                if (!chasing && ((int)(time / 12f) + t.Id) % 3 != 0) return false; // hunts in bouts, a third of the time
+                float near = 64f;
+                int prey = -1;
+                for (int k = 0; k < list.Count; k++)
+                {
+                    if (k == self || list[k].Kind == 2) continue;
+                    float d2 = (list[k].X - t.X) * (list[k].X - t.X) + (list[k].Y - t.Y) * (list[k].Y - t.Y);
+                    if (d2 < near) { near = d2; prey = k; }
+                }
+                if (prey < 0) return false;
+                t.TX = list[prey].X; // kept on it while the run lasts
+                t.TY = list[prey].Y;
+                if (!chasing) t.Panic = 3f;
+                return false;
+            }
+            // Deer and hares run from the wolves of their region too.
+            foreach (var w in list)
+            {
+                if (w.Kind != 2) continue;
+                float d2 = (w.X - t.X) * (w.X - t.X) + (w.Y - t.Y) * (w.Y - t.Y);
+                if (d2 < best) { best = d2; from = new Vector2(w.X, w.Y); }
+            }
+            if (best < CatchRange * CatchRange * (t.Quarry ? 2.5f : 1f)) return true;
+            if (best < FleeRange * FleeRange) Bolt(ref t, from, best);
+            return false;
+        }
+
+        void Bolt(ref Token t, Vector2 from, float d2)
+        {
+            float l = Mathf.Sqrt(d2) + 0.001f, ax = (t.X - from.x) / l, ay = (t.Y - from.y) / l;
+            t.Panic = Mathf.Max(t.Panic, 1.2f);
+            t.Wait = 0f;
+            // Straight away if the way is clear, else off to one side.
+            for (int k = 0; k < 3; k++)
+            {
+                float rx = k == 0 ? ax : k == 1 ? ax - ay : ax + ay, ry = k == 0 ? ay : k == 1 ? ay + ax : ay - ax;
+                float nx = t.X + rx * 4f, ny = t.Y + ry * 4f;
+                if (!PathClear(t.X, t.Y, nx, ny)) continue;
+                t.TX = nx;
+                t.TY = ny;
+                return;
+            }
         }
 
         bool RandomWildSpot(int x0, int y0, int size, out Vector2 p)

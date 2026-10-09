@@ -52,7 +52,8 @@ namespace ThienDao.Player
         Cripple,
         PlaceTreasure,
         OpenRealm,
-        GrantTechnique // devlog 28
+        GrantTechnique, // devlog 28
+        Lure // devlog 32: thiên cơ hiển lộ
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -65,7 +66,7 @@ namespace ThienDao.Player
             "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
             "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
             "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn", "Thả yêu thú",
-            "Thả tu sĩ", "Đánh thức hung thú", "Ban pháp bảo", "Giáng tâm ma", "Phế tu vi", "Thiên tài địa bảo", "Mở bí cảnh", "Ban công pháp"
+            "Thả tu sĩ", "Đánh thức hung thú", "Ban pháp bảo", "Giáng tâm ma", "Phế tu vi", "Thiên tài địa bảo", "Mở bí cảnh", "Ban công pháp", "Thiên cơ hiển lộ"
         };
 
         readonly Simulation _sim;
@@ -129,7 +130,8 @@ namespace ThienDao.Player
         // Tools that act on one spot rather than painting an area.
         public static bool IsPointTool(BrushTool t) =>
             t == BrushTool.Inspect || t == BrushTool.FoundVillage || t == BrushTool.SpawnDeer || t == BrushTool.SpawnRabbit || t == BrushTool.SpawnWolf ||
-            t == BrushTool.SpawnBeast || t == BrushTool.SpawnCultivator || t == BrushTool.SpawnHungThu || t == BrushTool.PlaceTreasure || t == BrushTool.OpenRealm;
+            t == BrushTool.SpawnBeast || t == BrushTool.SpawnCultivator || t == BrushTool.SpawnHungThu || t == BrushTool.PlaceTreasure || t == BrushTool.OpenRealm ||
+            t == BrushTool.Lure;
 
         public static ObjectType BuildingFor(BrushTool t) => t == BrushTool.SectHall ? ObjectType.SectHall : ObjectType.House;
 
@@ -145,7 +147,7 @@ namespace ThienDao.Player
                 return;
             }
             if (Tool == BrushTool.SpawnBeast || Tool == BrushTool.SpawnHungThu || Tool == BrushTool.SpawnCultivator ||
-                Tool == BrushTool.PlaceTreasure || Tool == BrushTool.OpenRealm)
+                Tool == BrushTool.PlaceTreasure || Tool == BrushTool.OpenRealm || Tool == BrushTool.Lure)
             {
                 if (!pressedThisFrame) return; // one per click
                 switch (Tool)
@@ -153,6 +155,7 @@ namespace ThienDao.Player
                     case BrushTool.SpawnBeast: _sim.Enqueue(new SpawnBeastCommand(cx, cy, Level)); break;
                     case BrushTool.SpawnHungThu: _sim.Enqueue(new SpawnHungThuCommand(cx, cy, Level)); break;
                     case BrushTool.SpawnCultivator: _sim.Enqueue(new SpawnCultivatorCommand(cx, cy, (Realm)Level)); break;
+                    case BrushTool.Lure: _sim.Enqueue(new LureCommand(cx, cy)); break;
                     default: _sim.Enqueue(new PlaceRelicCommand(cx, cy, Tool == BrushTool.OpenRealm)); break;
                 }
                 return;
