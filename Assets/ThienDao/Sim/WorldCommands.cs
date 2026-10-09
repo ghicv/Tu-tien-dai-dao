@@ -292,7 +292,6 @@ namespace ThienDao.Sim
                 village.Food += village.Population * 6f; // a good harvest for the chosen village
                 bool cured = sim.Disasters.Cure(village.Id, tick); // and the sickness is driven out
                 sim.Events.Add(tick, EventKind.Divine, 1, $"Thiên Đạo ban phúc cho {village.Name}, mùa màng bội thu{(cured ? ", ôn dịch tiêu tan" : "")}.", village.X + 0.5f, village.Y + 0.5f, Fx.Blessing);
-                sim.Faith.OnBlessed(village, tick);
                 return;
             }
             if (Act == DivineAct.Bless)
@@ -304,7 +303,6 @@ namespace ThienDao.Sim
                 return;
             }
             var beast = Beast >= 0 && Beast < sim.Beasts.All.Count && sim.Beasts.All[Beast].Alive ? sim.Beasts.All[Beast] : null;
-            if (chosen == null && village != null) sim.Faith.OnSmitten(village); // fear, and resentment
             Smite(sim, chosen, village == null ? beast : null, tick);
         }
 

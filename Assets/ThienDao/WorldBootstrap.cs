@@ -576,24 +576,12 @@ namespace ThienDao
             _cursor.enabled = !overUI && inside && Brush.Tool != BrushTool.Inspect && !WorldBrush.IsDivineTool(Brush.Tool);
             if (!_cursor.enabled) return;
 
-            if (WorldBrush.IsBuildingTool(Brush.Tool))
-            {
-                var type = WorldBrush.BuildingFor(Brush.Tool);
-                int fw = ObjectInfo.FootprintW[(int)type], fh = ObjectInfo.FootprintH[(int)type];
-                int ox = HoverX - fw / 2, oy = HoverY - fh / 2;
-                _cursor.size = new Vector2(fw, fh);
-                _cursor.transform.position = new Vector3(ox + fw * 0.5f, oy + fh * 0.5f, 0f);
-                _cursor.color = new Color(1f, 0.95f, 0.6f);
-            }
-            else
-            {
-                bool calamity = WorldBrush.IsCalamityTool(Brush.Tool);
-                float s = calamity ? DisasterSystem.Radius(WorldBrush.CalamityFor(Brush.Tool), Brush.Size) * 2f + 1f :
-                          WorldBrush.IsPointTool(Brush.Tool) ? 1f : Brush.Size;
-                _cursor.size = new Vector2(s, s);
-                _cursor.transform.position = new Vector3(HoverX + 0.5f, HoverY + 0.5f, 0f);
-                _cursor.color = calamity ? new Color(1f, 0.45f, 0.35f) : Color.white;
-            }
+            bool calamity = WorldBrush.IsCalamityTool(Brush.Tool);
+            float s = calamity ? DisasterSystem.Radius(WorldBrush.CalamityFor(Brush.Tool), Brush.Size) * 2f + 1f :
+                      WorldBrush.IsPointTool(Brush.Tool) ? 1f : Brush.Size;
+            _cursor.size = new Vector2(s, s);
+            _cursor.transform.position = new Vector3(HoverX + 0.5f, HoverY + 0.5f, 0f);
+            _cursor.color = calamity ? new Color(1f, 0.45f, 0.35f) : Color.white;
         }
     }
 }

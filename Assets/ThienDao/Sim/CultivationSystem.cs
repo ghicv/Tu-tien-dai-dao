@@ -186,13 +186,7 @@ namespace ThienDao.Sim
                 var old = MasterOf(kv.Key);
                 if (old == kv.Value) continue;
                 _masters[kv.Key] = kv.Value;
-                if (old != null)
-                {
-                    _successionTick[kv.Key] = tick;
-                    // The old master is gone: word gets around that the sect is weak while the new one finds their feet.
-                    var seat = _sim.Settlements.All[kv.Key];
-                    if (!old.Alive) _sim.Knowledge?.Spread(RumorKind.WeakSect, kv.Key, seat.X + 0.5f, seat.Y + 0.5f, 20f, tick, 10);
-                }
+                if (old != null) _successionTick[kv.Key] = tick;
                 if (old != null || tick > 0)
                     _sim.Events.Add(tick, EventKind.Succession, kv.Value.Realm >= Realm.KetDan ? 2 : 1,
                         $"{kv.Value.Title} trở thành tông chủ {SectName(kv.Value)}.", -1f, -1f, Fx.None, kv.Value.Index, old?.Index ?? -1, kv.Key);
@@ -342,7 +336,7 @@ namespace ThienDao.Sim
                     SendTo(c, c.HomeX, c.HomeY, Trip.Return);
                     continue;
                 }
-                else if (!c.Away && !c.Watched && !CombatSystem.Wounded(c) && rng.NextFloat() < ErrandChancePerMonth(c)) // the wounded stay in to heal
+                else if (!c.Away && !CombatSystem.Wounded(c) && rng.NextFloat() < ErrandChancePerMonth(c)) // the wounded stay in to heal
                 {
                     if (StartErrand(c, tick, ref rng)) continue;
                 }
@@ -400,9 +394,8 @@ namespace ThienDao.Sim
             float baseChance = Realms.BreakChance[(int)next] * _sim.Rules[Rule.Breakthrough];
             float chance = baseChance * (1f + c.Comprehension * 0.8f + c.DaoHeart * 0.4f + c.Luck * 0.4f);
             // The sect buys Trúc Cơ Đan with its linh thạch; a poor sect's disciples go without.
-            // From the sect's own alchemists if they have one in store (TradeSystem), else bought with linh thạch.
             bool pill = next == Realm.TrucCo && c.SectId >= 0 && _sim.Factions != null &&
-                        ((_sim.Trade != null && _sim.Trade.TakePill(c.SectId)) || _sim.Factions.TrySpend(c.SectId, FactionSystem.PillCost));
+                        _sim.Factions.TrySpend(c.SectId, FactionSystem.PillCost);
             if (pill) chance += 0.25f;
             // Their own pill for this gate, bought or found on the road.
             bool ownPill = c.Pills > 0;
@@ -630,7 +623,7 @@ namespace ThienDao.Sim
             for (int k = 0; k < count; k++)
             {
                 var c = All[k];
-                if (c.Alive && !c.Travelling && !c.Watched) ConsiderRelocating(c, tick); // nhân vật chính choose for themselves
+                if (c.Alive && !c.Travelling) ConsiderRelocating(c, tick);
                 if (c.Alive && c.SectId >= 0) c.Stones += 1f + 2f * (int)c.Realm; // the sect's yearly stipend
             }
         }

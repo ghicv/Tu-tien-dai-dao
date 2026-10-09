@@ -123,48 +123,6 @@ namespace ThienDao.Render
             }
         }
 
-        // Tin đồn: while a talked-about relic or hung thú is on the card, the edge of each place its word has
-        // reached is drawn as a ring of pixel dots that marches slowly outward-round, so the player sees who knows.
-        public Rumor ShownRumor;
-
-        void DrawRumor(Rect view, float now)
-        {
-            var word = ShownRumor;
-            if (word == null) return;
-            var tint = new Color32(255, 214, 110, 200);
-            foreach (var d in word.Discs)
-            {
-                if (d.X + d.R < view.xMin || d.X - d.R > view.xMax || d.Y + d.R < view.yMin || d.Y - d.R > view.yMax) continue;
-                int n = Mathf.Clamp(Mathf.RoundToInt(2f * Mathf.PI * d.R / 2.5f), 12, 220);
-                float phase = now * 0.15f;
-                for (int k = 0; k < n; k++)
-                {
-                    if (((k + (int)(now * 3f)) & 3) == 0) continue; // dashes, marching round
-                    float a = (k + phase) / n * Mathf.PI * 2f;
-                    float x = d.X + Mathf.Cos(a) * d.R, y = d.Y + Mathf.Sin(a) * d.R;
-                    if (view.Contains(new Vector2(x, y))) Quad(Sprite.Spark, x, y, 2f, 2f, tint);
-                }
-            }
-        }
-
-        // A village praying to Thiên Đạo: incense smoke rising in a thin column from its heart, a golden fleck now and then.
-        void DrawPrayers(Rect view, float dt)
-        {
-            var all = _sim.Settlements.All;
-            foreach (var p in _sim.Faith.Open)
-            {
-                var s = all[p.Settlement];
-                float x = s.X + 0.5f, y = s.Y + 1f;
-                if (!view.Contains(new Vector2(x, y))) continue;
-                if (_rand.NextDouble() < dt * 5f)
-                    _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x + Rand(-0.3f, 0.3f), Y = y, VX = Rand(-0.15f, 0.15f), VY = Rand(0.8f, 1.3f),
-                        Life = Rand(1.8f, 2.6f), Size = 1f, Color = new Color32(226, 222, 214, 255) });
-                if (_rand.NextDouble() < dt * 2f)
-                    _particles.Add(new Particle { Sprite = Sprite.Spark, X = x + Rand(-0.8f, 0.8f), Y = y + Rand(0.5f, 2.5f), VY = Rand(0.4f, 0.9f),
-                        Life = Rand(0.6f, 1.1f), Size = 1f, Color = new Color32(255, 214, 110, 255) });
-            }
-        }
-
         // A Hóa Thần who crossed the land in a single day tore the void: a rift where they went in and one where
         // they came out. Only Hóa Thần are checked, and there are never many.
         readonly Dictionary<int, long> _rifted = new Dictionary<int, long>();
@@ -697,8 +655,6 @@ namespace ThienDao.Render
             DrawShots(now, dt);
             DrawChases(view, now, dt);
             DrawLoot(view, now, dt);
-            DrawPrayers(view, Time.unscaledDeltaTime);
-            DrawRumor(view, now);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
             foreach (var p in FightScenes.Kills) Torn(p.x, p.y);

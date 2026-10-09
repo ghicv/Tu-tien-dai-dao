@@ -46,7 +46,7 @@ namespace ThienDao.UI
 
         // windows
         RectTransform _windowStack;
-        Window _ranking, _events, _stats, _powers, _destiny;
+        Window _ranking, _events, _stats, _powers;
         ChronicleWindow _chronicle;
         float _slowRefresh;
         readonly List<Cultivator> _rank = new List<Cultivator>();
@@ -73,7 +73,7 @@ namespace ThienDao.UI
             { BrushTool.Grass, "Cỏ — biến đất thành đồng cỏ" }, { BrushTool.Sand, "Cát — bãi cát" }, { BrushTool.Desert, "Sa mạc" },
             { BrushTool.Shallow, "Nước nông — ai đứng đó sẽ chết đuối" }, { BrushTool.DeepWater, "Biển sâu — nhấn chìm mọi thứ" },
             { BrushTool.Hills, "Đồi" }, { BrushTool.Mountain, "Núi — làng bị đè sẽ phải dời đi" }, { BrushTool.Snow, "Tuyết" },
-            { BrushTool.Trees, "Trồng cây theo khí hậu" }, { BrushTool.House, "Đặt nhà dân" }, { BrushTool.SectHall, "Đặt đại điện tông môn" },
+            { BrushTool.Trees, "Trồng cây theo khí hậu" },
             { BrushTool.FoundVillage, "Lập làng — 24 phàm nhân khai hoang" }, { BrushTool.Erase, "Xóa cây, nhà, công trình" },
             { BrushTool.SpawnDeer, "Thả hươu vào vùng" }, { BrushTool.SpawnRabbit, "Thả thỏ vào vùng" }, { BrushTool.SpawnWolf, "Thả sói vào vùng" },
             { BrushTool.LeyAdd, "Vẽ linh mạch — trần linh khí quanh đó tăng dần" }, { BrushTool.LeyErase, "Phá linh mạch" },
@@ -381,8 +381,6 @@ namespace ThienDao.UI
                     break;
                 case 1:
                     AddTool(BrushTool.Trees, Icons.Object(ObjectType.TreeOak));
-                    AddTool(BrushTool.House, Icons.Object(ObjectType.House));
-                    AddTool(BrushTool.SectHall, Icons.Object(ObjectType.SectHall));
                     AddTool(BrushTool.FoundVillage, Icons.Unit(Unit.Migrants));
                     AddTool(BrushTool.SpawnDeer, Icons.Unit(Unit.Deer));
                     AddTool(BrushTool.SpawnRabbit, Icons.Unit(Unit.Rabbit));
@@ -603,12 +601,9 @@ namespace ThienDao.UI
             _stats = MakeWindow("Thống kê");
             BuildStatChips();
             _powers = MakeWindow("Thế lực");
-            _destiny = MakeWindow("Thiên mệnh");
-            BuildDestinyRows();
             _chronicle = new ChronicleWindow(_root, _game);
             var book = Ui.Button(buttons, Icons.Book, "Biên niên sử: sử sách, truyền kỳ, danh nhân (H)", () => _chronicle.Toggle(), 56f);
             Size(book.Frame, 56f, 56f);
-            AddWindowButton(buttons, Icons.Star, "Thiên mệnh: mục tiêu thế giới gợi ý, và lời cầu nguyện của chúng sinh đang chờ đáp", _destiny);
             AddWindowButton(buttons, Icons.Banner, "Thế lực: tông môn, lãnh thổ, chiến tranh", _powers);
             AddWindowButton(buttons, Icons.Crown, "Bảng cường giả", _ranking);
             AddWindowButton(buttons, Icons.Scroll, "Sự kiện thế giới", _events);
@@ -681,7 +676,7 @@ namespace ThienDao.UI
             Height(buttons, 46f);
             _followButton = Ui.Button(buttons, Icons.Target, "Camera bám theo", () => _game.Follow = !_game.Follow, 44f);
             Size(_followButton.Frame, 44f, 44f);
-            _watchButton = Ui.Button(buttons, Icons.Bookmark, "Theo dõi: người này sẽ sống như nhân vật chính", ToggleWatchSelected, 44f);
+            _watchButton = Ui.Button(buttons, Icons.Bookmark, "Theo dõi: ghim người này, luôn tìm thấy trên map", ToggleWatchSelected, 44f);
             Size(_watchButton.Frame, 44f, 44f);
             _reviveButton = Ui.Button(buttons, Icons.Revive, "Hồi sinh: sống lại với thêm trăm năm thọ, mang huyết thù với kẻ đã giết mình", _game.ReviveSelected, 44f);
             Size(_reviveButton.Frame, 44f, 44f);
@@ -827,7 +822,7 @@ namespace ThienDao.UI
             if (_minusTip != null) _minusTip.Text = leveled ? (current == BrushTool.SpawnCultivator ? "Cảnh giới thấp hơn ( [ )" : "Giai thấp hơn ( [ )") : "Cọ nhỏ hơn ( [ )";
             // The brush size only matters to tools that paint an area or reach over one; the level to those that send a being down.
             bool sized = leveled || (current != BrushTool.Inspect && !WorldBrush.IsDivineTool(current) && !WorldBrush.IsPointTool(current) &&
-                         !WorldBrush.IsBuildingTool(current) && current != BrushTool.Plague && current != BrushTool.Eruption && current != BrushTool.GreatCalamity);
+                         current != BrushTool.Plague && current != BrushTool.Eruption && current != BrushTool.GreatCalamity);
             _sizeGroup.alpha = sized ? 1f : 0.15f; // faded, not hidden, so the toolbar keeps its shape
             _sizeGroup.interactable = _sizeGroup.blocksRaycasts = sized;
             _toolTitle.text = $"{TabNames[_tab].ToUpper()}  <color=#ffd873>›  {WorldBrush.ToolNames[(int)current]}</color>";
@@ -840,7 +835,6 @@ namespace ThienDao.UI
                 UpdateWatchList();
                 if (_events.Open) UpdateEventRows();
                 if (_powers.Open) _powers.Body.text = PowersText();
-                if (_destiny.Open) UpdateDestinyRows();
             }
             if (_stats.Open)
             {
@@ -1196,91 +1190,6 @@ namespace ThienDao.UI
             }
         }
 
-        // ---------------------------------------------------------------- thiên mệnh window: soft goals and prayers
-
-        const int DestinyRows = DestinySystem.Slots + 8;
-        readonly (Image icon, Text text)[] _destinyRows = new (Image, Text)[DestinyRows];
-        readonly Vector2[] _destinyAt = new Vector2[DestinyRows];
-        readonly bool[] _destinyPlaced = new bool[DestinyRows];
-
-        void BuildDestinyRows()
-        {
-            _destiny.Body.fontSize = 17;
-            for (int k = 0; k < DestinyRows; k++)
-            {
-                var row = Ui.Node("Destiny", _destiny.Root);
-                Row(row, 8).childAlignment = TextAnchor.UpperLeft;
-                var icon = Ui.Icon(row, null, 26f);
-                var t = Ui.Label(row, "", 17);
-                Element(t).preferredWidth = 380f;
-                _destinyRows[k] = (icon, t);
-                int slot = k;
-                row.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
-                row.gameObject.AddComponent<Button>().onClick.AddListener(() =>
-                {
-                    if (!_destinyPlaced[slot]) { ShowToast("Mục tiêu này không gắn với một nơi nào trên bản đồ."); return; }
-                    var cam = _game.Camera;
-                    cam.GlideTo(_destinyAt[slot], Mathf.Min(cam.Cam.orthographicSize, 28f)); // click to fly there
-                });
-                row.gameObject.SetActive(false);
-            }
-        }
-
-        string DestinyProgress(Destiny d, int p)
-        {
-            switch (d.Kind)
-            {
-                case DestinyKind.AnswerPrayers: return $"đã đáp {p}/{d.Goal}";
-                case DestinyKind.SlayHungThu: return $"nó đã tàn sát thêm {p}/{d.Goal} thành";
-                case DestinyKind.Ascend: return $"hiện ở {Realms.Names[Mathf.Clamp(p, 0, (int)Realm.HoaThan)]}";
-                case DestinyKind.ProtectSect: return $"{p}/{d.Goal} năm";
-                case DestinyKind.Population: return $"{p:N0}/{d.Goal:N0}";
-                default: return $"{p}/{d.Goal} nơi";
-            }
-        }
-
-        void UpdateDestinyRows()
-        {
-            var sim = _game.Sim;
-            var ds = sim.Destiny;
-            long tick = sim.Clock.Tick;
-            var sb = new StringBuilder();
-            sb.Append($"<color=#ffd873>Thiên uy {ds.Merit}</color>  <color=#8890a8>· đã thành {ds.Completed} · không thành {ds.Failed}</color>\n");
-            sb.Append("<color=#8890a8>Thế giới tự gợi ý; theo hay không, theo cách nào, tùy Thiên Đạo. Bấm một dòng để tới nơi đó.</color>");
-            for (int k = 0; k < Mathf.Min(2, ds.Past.Count); k++)
-            {
-                var d = ds.Past[k];
-                sb.Append($"\n<color={(d.Done ? "#a8e890" : "#ff8a80")}>{(d.Done ? "Đã thành" : "Không thành")}</color> <color=#8890a8>({d.EndTick / SimClock.DaysPerYear + 1})</color> {d.Text}");
-            }
-            _destiny.Body.text = sb.ToString();
-
-            int shown = 0;
-            foreach (var d in ds.Active)
-            {
-                if (shown >= DestinyRows) break;
-                int p = ds.Progress(d, tick);
-                long years = Mathf.Max(0, (int)((d.Until - tick) / SimClock.DaysPerYear));
-                _destinyPlaced[shown] = ds.Where(d, out _destinyAt[shown]);
-                var (icon, text) = _destinyRows[shown++];
-                icon.sprite = Icons.Star;
-                text.text = $"<color=#ffd873>{d.Text}</color>\n<color=#b8bccc>{DestinyProgress(d, p)} · còn {years} năm · thiên uy +{d.Reward}</color>";
-                text.transform.parent.gameObject.SetActive(true);
-            }
-            foreach (var pr in sim.Faith.Open)
-            {
-                if (shown >= DestinyRows) break;
-                var s = sim.Settlements.All[pr.Settlement];
-                _destinyPlaced[shown] = true;
-                _destinyAt[shown] = new Vector2(s.X + 0.5f, s.Y + 0.5f);
-                var (icon, text) = _destinyRows[shown++];
-                icon.sprite = Icons.Incense;
-                text.text = $"<color=#ffffff>{s.Name}: {FaithSystem.KindNames[(int)pr.Kind]}</color> <color=#8890a8>· còn {(pr.Until - tick) / SimClock.DaysPerMonth} tháng</color>\n" +
-                            $"<color=#b8bccc>{AnswerHint(pr.Kind)}</color>";
-                text.transform.parent.gameObject.SetActive(true);
-            }
-            for (int k = shown; k < DestinyRows; k++) _destinyRows[k].text.transform.parent.gameObject.SetActive(false);
-        }
-
         void UpdateEventRows()
         {
             var events = _game.Sim.Events.Recent;
@@ -1356,8 +1265,6 @@ namespace ThienDao.UI
             _statChips[k++].Set(Icons.Unit(Unit.Beast), $"{sim.Beasts.AliveCount}", "Yêu thú");
             _statChips[k++].Set(Icons.Crown, $"{kings}", "Yêu Vương (mỗi người một yêu tộc)");
             _statChips[k++].Set(Icons.Book, $"{found}/{open}", "Bí cảnh đã lộ diện / còn chưa bị vét sạch");
-            _statChips[k++].Set(Icons.Unit(Unit.Caravan), $"{sim.Trade.CaravanCount}", $"Thương đội đang đi · đã giao {sim.Trade.Delivered:N0} chuyến");
-            _statChips[k++].Set(Icons.Tag, $"{sim.Paths.RoadCells:N0} · {sim.Paths.TrailCells:N0}", "Ô đường đất · ô đường mòn: người đi bộ, di dân, thương đội đi nhiều thành đường; bỏ không thì cỏ mọc lại");
             _statChips[k++].Set(Icons.Orb, $"{sim.Eras.QiFactor(sim.Clock.Tick) * 100f:0}%", $"Linh khí thiên địa theo chu kỳ ({(sim.Eras.Waxing(sim.Clock.Tick) ? "đang dâng" : "đang suy")})");
             while (k < _statChips.Length) _statChips[k++].Hide();
         }
@@ -1385,42 +1292,10 @@ namespace ThienDao.UI
             return sb.ToString();
         }
 
-        // How Thiên Đạo can answer a prayer of this kind (more than one way, on purpose).
-        static string AnswerHint(PrayerKind kind)
-        {
-            switch (kind)
-            {
-                case PrayerKind.Rain: return "ban mưa xuống vùng đó (tab Thời tiết) hoặc ban cơ duyên cho làng";
-                case PrayerKind.Cure: return "ban cơ duyên cho làng, ôn dịch sẽ tiêu tan";
-                case PrayerKind.Harvest: return "ban cơ duyên cho làng hoặc ban mưa";
-                default: return "giáng thiên phạt diệt hung thú (tu sĩ giết được thì dân cảm ơn tu sĩ)";
-            }
-        }
-
-        // Tin đồn (devlog 29): how far the word of a relic has gone, and how it has grown in the telling.
-        string RelicWord(Relic r)
-        {
-            var word = _game.Sim.Knowledge.Of(RumorKind.Relic, r.Index);
-            if (word == null) return "\n<color=#8890a8>Đã có người biết, nhưng tin chưa lan ra ngoài; ai chưa nghe thì sẽ không tới.</color>";
-            return $"\n<color=#e8d8a8>Tin đồn đã lan tới {word.Heard.Count} tông môn{HeardNames(word)}</color>" +
-                   (word.Exaggeration >= 1.3f ? $"<color=#ff8a80> · đồn thổi gấp {word.Exaggeration:0.0} lần</color>" : "") +
-                   "\n<color=#8890a8>Tin loang dần mỗi tháng và theo thương đội, di dân; tông nào nghe muộn thì đến muộn.</color>";
-        }
-
-        string HeardNames(Rumor word)
-        {
-            if (word == null || word.Heard.Count == 0) return "";
-            var names = new List<string>();
-            for (int k = 0; k < word.Heard.Count && names.Count < 3; k++)
-                if (_game.Sim.Factions.Get(word.Heard[k]) is Faction f && f.Alive) names.Add(_game.Sim.Factions.NameOf(f.Id));
-            return names.Count == 0 ? "" : ": " + string.Join(", ", names) + (word.Heard.Count > names.Count ? "…" : "");
-        }
-
         void UpdateCard()
         {
             var sim = _game.Sim;
             var sel = _game.Selection;
-            _game.Fx.ShownRumor = null; // set again below if the card shows something talked about
             var c = _game.Selected;
             var s = _game.SelectedSettlement;
             bool show = sel.Kind != InspectKind.None;
@@ -1520,7 +1395,7 @@ namespace ThienDao.UI
                 _followButton.Frame.gameObject.SetActive(c.Alive);
                 _watchButton.Frame.gameObject.SetActive(true);
                 _watchButton.SetSelected(c.Watched);
-                _watchButton.Frame.GetComponent<Tooltip>().Text = c.Watched ? "Bỏ theo dõi" : "Theo dõi: người này sẽ sống như nhân vật chính";
+                _watchButton.Frame.GetComponent<Tooltip>().Text = c.Watched ? "Bỏ theo dõi" : "Theo dõi: ghim người này, luôn tìm thấy trên map";
                 ShowDivineButtons(c.Alive, false);
                 ShowRevive(!c.Alive);
                 _followButton.SetSelected(_game.Follow);
@@ -1549,32 +1424,6 @@ namespace ThienDao.UI
                 if (sim.Disasters.IsInfected(s.Id)) Chip(Icons.Skull, "Ôn dịch", "Ôn dịch đang hoành hành", new Color(0.6f, 0.9f, 0.5f));
                 int drought = sim.Disasters.DroughtMonthsLeft(s.X, s.Y, sim.Clock.Tick);
                 if (drought >= 0) Chip(Icons.Sun, $"{drought} th", "Đại hạn, còn khoảng chừng ấy tháng", new Color(1f, 0.75f, 0.4f));
-                // Bất mãn with the crown, and the rising they have joined.
-                var rising = sim.Politics.RebellionAt(s.Id);
-                Chip(Icons.Torch, $"{s.Unrest:0}",
-                    "Bất mãn với triều đình (0–100). Đói kém, chết chóc, hạn hán, ôn dịch, vua bạo ngược, xa kinh đô làm tăng; " +
-                    "tông môn bảo hộ, miếu thờ, gia tộc tu tiên trên ngai vàng, kinh thành làm giảm. Từ 75 có thể khởi nghĩa",
-                    s.Unrest >= 75f ? warn : s.Unrest >= 55f ? new Color(1f, 0.75f, 0.4f) : (Color?)null);
-                if (rising != null)
-                    Chip(Icons.Torch, rising.Usurper ? "Tranh ngôi" : "Khởi nghĩa", $"Theo {rising.Leader} chống triều đình, đã {(sim.Clock.Tick - rising.Start) / SimClock.DaysPerYear} năm", warn);
-                // Tín ngưỡng, and the prayer they are waiting on.
-                var prayer = sim.Faith.PrayerOf(s.Id);
-                if (prayer != null)
-                    Chip(Icons.Incense, $"{FaithSystem.KindShort[(int)prayer.Kind]} · {(prayer.Until - sim.Clock.Tick) / SimClock.DaysPerMonth} th",
-                        $"Đang {FaithSystem.KindNames[(int)prayer.Kind]}, chờ Thiên Đạo đáp lời: {AnswerHint(prayer.Kind)}. Làm ngơ thì lòng tin nguội lạnh",
-                        new Color(1f, 0.85f, 0.45f));
-                Chip(Icons.Incense, $"{s.Faith:0}",
-                    "Tín ngưỡng Thiên Đạo (0–100). Đáp lời cầu nguyện thì tăng, làm ngơ hay giáng thiên phạt thì giảm. " +
-                    $"Từ {FaithSystem.ShrineFaith:0} dựng miếu; từ 80 trời có thể giáng phúc, sinh người có linh căn; dưới {FaithSystem.ShrineFloor:0} bỏ miếu; gần 0 dễ sinh tà giáo, ma tu",
-                    s.Faith >= FaithSystem.ShrineFaith ? new Color(1f, 0.85f, 0.45f) : s.Faith < FaithSystem.ShrineFloor ? new Color(0.75f, 0.55f, 0.95f) : (Color?)null);
-                // The market: stock and price against the usual (red when dear).
-                var m = sim.Trade.MarketOf(s);
-                Color? Dear(Good g) => sim.Trade.PriceFactor(s, g) > 1.5f ? warn : sim.Trade.PriceFactor(s, g) < 0.7f ? new Color(0.6f, 0.95f, 0.6f) : (Color?)null;
-                Chip(Icons.Bowl, $"giá ×{sim.Trade.PriceFactor(s, Good.Food):0.0}", "Giá lương thực ở chợ so với bình thường", Dear(Good.Food));
-                Chip(Icons.Herb, $"{m.Herbs:0} · ×{sim.Trade.PriceFactor(s, Good.Herb):0.0}", "Linh thảo trong kho · giá so với bình thường", Dear(Good.Herb));
-                Chip(Icons.Pill, $"{m.Pills:0} · ×{sim.Trade.PriceFactor(s, Good.Pill):0.0}", "Đan dược trong kho · giá so với bình thường", Dear(Good.Pill));
-                if (m.CaravansSent + m.CaravansReceived > 0)
-                    Chip(Icons.Unit(Unit.Caravan), $"{m.CaravansSent}/{m.CaravansReceived}", "Thương đội đã gửi đi / đã nhận");
             }
             if (s.Sect)
             {
@@ -1597,17 +1446,6 @@ namespace ThienDao.UI
                     Chip(Icons.Sword, $"{f.Power:N0}", $"Thực lực · thắng {f.BattlesWon}, thua {f.BattlesLost}, tử trận {f.Fallen}");
                     string ties = TiesText(f.Id, 3);
                     if (ties.Length > 0) body.Append(ties);
-                    // What word has reached this mountain gate: what they can act on.
-                    var news = new List<string>();
-                    foreach (var word in sim.Knowledge.All)
-                    {
-                        if (news.Count >= 3 || !word.Heard.Contains(s.Id)) continue;
-                        if (word.Kind == RumorKind.Relic && word.Subject < sim.Relics.All.Count)
-                            news.Add(sim.Relics.All[word.Subject].Name + (word.Exaggeration >= 1.3f ? " (đồn thổi)" : ""));
-                        else if (word.Kind == RumorKind.HungThu && word.Subject < sim.Beasts.All.Count) news.Add(sim.Beasts.All[word.Subject].Title + " đang tàn sát");
-                        else if (word.Kind == RumorKind.WeakSect && word.Subject != s.Id) news.Add($"{sim.Factions.NameOf(word.Subject)} đang suy yếu");
-                    }
-                    if (news.Count > 0) body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#e8d8a8>Nghe đồn:</color> {string.Join(" · ", news)}");
                 }
                 // Sử sách of the sect: its greatest moments.
                 sim.History.OfFaction(s.Id, _bio, 30);
@@ -1624,17 +1462,6 @@ namespace ThienDao.UI
             var kingdom = s.Kingdom >= 0 && s.Kingdom < wd.Kingdoms.Count ? wd.Kingdoms[s.Kingdom] : null;
             string regionName = wd.Lore.RegionNames[wd.Region[wd.Idx(s.X, s.Y)]];
             body.Append(body.Length > 0 ? "\n" : "").Append($"<color=#e8d8a8>{(s.Capital ? "Kinh thành của " : "")}{(kingdom != null ? kingdom.Name + " · " : "")}{regionName}</color>");
-            // The crown over it (PoliticsSystem), and the gia tộc whose ancestral land it is (ClanSystem).
-            if (kingdom != null && !kingdom.Fallen && kingdom.Ruler != null)
-            {
-                long now = sim.Clock.Tick;
-                var royal = kingdom.RoyalClan >= 0 && kingdom.RoyalClan < sim.Clans.All.Count ? sim.Clans.All[kingdom.RoyalClan] : null;
-                body.Append($"\n<color=#e8d8a8>{kingdom.Name}: vua {kingdom.Ruler}</color> ({PoliticsSystem.RulerAge(kingdom, now)} tuổi, {PoliticsSystem.Temper(kingdom)})" +
-                            $" · triều {kingdom.Dynasty} {Mathf.Max(0, PoliticsSystem.DynastyYears(kingdom, now))} năm{(royal != null ? $" ({royal.Title})" : "")} · ổn định {kingdom.Stability:0}");
-                var war = sim.Politics.RebellionOf(kingdom.Id);
-                if (war != null)
-                    body.Append($"\n<color=#ff8a80>Nội chiến: {war.Leader} {(war.Usurper ? "tranh ngôi" : "khởi nghĩa")} ở {sim.Settlements.All[war.Seat].Name}, {war.Towns.Count} thành theo, đã {(now - war.Start) / SimClock.DaysPerYear} năm</color>");
-            }
             var clanSeat = sim.Clans.SeatedAt(s.Id);
             if (clanSeat != null)
             {
@@ -1730,9 +1557,6 @@ namespace ThienDao.UI
             {
                 int hunters = sim.Beasts.HuntersOf(b);
                 Chip(Icons.Sword, hunters > 0 ? $"{hunters}" : "—", hunters > 0 ? $"Liên minh trảm yêu: {hunters} cao thủ đang truy sát" : "Chưa có liên minh nào dám ra tay", red);
-                var word = sim.Knowledge.Of(RumorKind.HungThu, b.Index);
-                Chip(Icons.Scroll, $"{sim.Knowledge.HeardCount(word)} tông", $"Tin dữ về nó đã lan tới {sim.Knowledge.HeardCount(word)} tông môn{HeardNames(word)}. Chỉ tông đã nghe tin mới có thể vào liên minh trảm yêu; vòng loang của tin đồn hiện trên bản đồ");
-                _game.Fx.ShownRumor = word;
             }
             Chip(Icons.Hourglass, $"{b.AgeYears(sim.Clock.Tick):0}/{b.LifespanYears}", "Tuổi / thọ nguyên");
             Chip(Icons.Skull, $"{b.Kills}", "Số người đã giết", b.Kills > 0 ? red : (Color?)null);
@@ -1795,20 +1619,6 @@ namespace ThienDao.UI
                 case InspectKind.Beast:
                     if (sim.Beasts.ForEntity(t.Entity) == null) sb.Append("<color=#8890a8>Đã bị trảm sát hoặc chết già.</color>");
                     break;
-                case InspectKind.Caravan:
-                {
-                    var c = sim.Trade.ForEntity(t.Entity);
-                    if (c == null)
-                    {
-                        sb.Append("<color=#8890a8>Thương đội đã tới nơi.</color>");
-                        break;
-                    }
-                    var all = sim.Settlements.All;
-                    sb.Append($"{all[c.From].Name} → {all[c.To].Name}\n");
-                    sb.Append($"Chở {c.Amount:0} {TradeSystem.GoodNames[(int)c.Good]} · đi được {(sim.Clock.Tick - c.Start) / (float)SimClock.DaysPerMonth:0} tháng\n");
-                    sb.Append($"<color=#ff8a80>Sinh lực: {SpeciesInfo.Hp[(int)Species.Caravan]:0} máu mỗi người</color> · phàm nhân, gặp yêu thú hay lũ lụt là mất mạng");
-                    break;
-                }
                 case InspectKind.Migrants:
                     if (sim.Entities.Species[t.Entity] != Species.Migrants || !sim.Settlements.MigrantInfo(t.Entity, out var from, out int people, out float food))
                     {
@@ -1874,8 +1684,7 @@ namespace ThienDao.UI
             inside.Add(r.Kind == RelicKind.Treasure ? "thọ nguyên" : "truyền thừa");
             sb.Append($"\nBên trong: {string.Join(", ", inside)} · còn {r.Layers} tầng");
             sb.Append(sim.Relics.Contested(r) ? "\n<color=#ff8070>Các thế lực đang tranh đoạt cơ duyên nơi đây.</color>"
-                : r.Discovered ? RelicWord(r) : "\n<color=#8890a8>Chưa ai phát hiện, chờ người có cơ duyên.</color>");
-            _game.Fx.ShownRumor = sim.Knowledge.Of(RumorKind.Relic, r.Index); // the reach of the word, drawn on the map
+                : r.Discovered ? "\n<color=#e8d8a8>Đã lộ diện; tu sĩ quanh vùng sẽ tìm tới.</color>" : "\n<color=#8890a8>Chưa ai phát hiện, chờ người có cơ duyên.</color>");
         }
 
         void AppendCell(StringBuilder sb, int x, int y)
@@ -1892,8 +1701,6 @@ namespace ThienDao.UI
             sb.Append($"<color=#e8d8a8>{w.Lore.Continent} đại lục · {regionName}{(kingdom != null ? " · " + kingdom.Name : "")}</color>\n");
             sb.Append($"Nhiệt độ {tempC:0}°C · độ ẩm {w.Moisture[i] * 100 / 255}%");
             if (TerrainInfo.IsLand(terrain)) sb.Append($" · màu mỡ {w.Fertility(i) * 100f:0}%");
-            if ((w.Zone[i] & ZoneFlags.Road) != 0) sb.Append($" · <color=#e0c08a>đường đất</color> ({sim.Paths.TreadsAt(i)} lượt qua)");
-            else if ((w.Zone[i] & ZoneFlags.Trail) != 0) sb.Append($" · <color=#e0c08a>đường mòn</color> ({sim.Paths.TreadsAt(i)}/{PathSystem.RoadAt} lượt để thành đường đất)");
             sb.Append('\n');
             sb.Append($"Linh khí {sim.Qi.SampleQi(x, y):0} / trần {w.QiCap[i]}{(w.LeyLine[i] ? " · <color=#9fe0ff>LINH MẠCH</color>" : "")}\n");
             if (TerrainInfo.IsLand(terrain))
@@ -1981,21 +1788,6 @@ namespace ThienDao.UI
                     // Sects in a light tint of their colour; mortal villages in plain ink.
                     var color = f != null ? Color.Lerp(f.Color, Color.white, 0.45f) : Ui.Ink;
                     PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 5f, 0f), $"{s.Name} ({s.Population})", color, 20);
-                }
-                // Risings against the crown, over the town they began in.
-                foreach (var war in sim.Politics.Rebellions)
-                {
-                    var seat = sim.Settlements.All[war.Seat];
-                    if (seat.Alive)
-                        PlaceLabel(ref used, cam, new Vector3(seat.X + 0.5f, seat.Y + 10f, 0f),
-                            war.Usurper ? $"{war.Leader} tranh ngôi" : $"Khởi nghĩa · {war.Leader}", new Color(1f, 0.5f, 0.4f), 19);
-                }
-                // Villages praying to Thiên Đạo, and how long they will wait.
-                foreach (var p in sim.Faith.Open)
-                {
-                    var s = sim.Settlements.All[p.Settlement];
-                    PlaceLabel(ref used, cam, new Vector3(s.X + 0.5f, s.Y + 7.5f, 0f),
-                        $"{FaithSystem.KindShort[(int)p.Kind]} · còn {(p.Until - sim.Clock.Tick) / SimClock.DaysPerMonth} tháng", new Color(1f, 0.85f, 0.45f), 18);
                 }
                 foreach (var l in sim.Disasters.Landmarks)
                     if (l.Alive)

@@ -352,50 +352,6 @@ namespace ThienDao.Tests
         }
 
         [Test]
-        public void PrayersAreAnsweredOrIgnoredAndHeavenOffersDestinies()
-        {
-            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
-            Run(sim, SimClock.DaysPerYear * 2);
-            Assert.GreaterOrEqual(sim.Destiny.Active.Count, 2, "thiên mệnh are on offer from the start");
-
-            // Two villages far apart fall into drought; both pray.
-            var villages = sim.Settlements.All.FindAll(s => s.Alive && !s.Sect && s.Population >= 20);
-            var a = villages[0];
-            var b = villages.Find(s => (s.X - a.X) * (s.X - a.X) + (s.Y - a.Y) * (s.Y - a.Y) > 300 * 300);
-            Assert.IsNotNull(b);
-            foreach (var s in new[] { a, b })
-            {
-                s.Faith = 100f; // the faithful pray soonest
-                sim.Enqueue(new CalamityCommand(Calamity.Drought, s.X, s.Y, 2));
-            }
-            sim.ApplyPending();
-            for (int m = 0; m < 12 && (sim.Faith.PrayerOf(a.Id) == null || sim.Faith.PrayerOf(b.Id) == null); m++) Run(sim, SimClock.DaysPerMonth);
-            Assert.IsNotNull(sim.Faith.PrayerOf(a.Id), "a prays for rain");
-            Assert.IsNotNull(sim.Faith.PrayerOf(b.Id), "so does b");
-            Assert.AreEqual(PrayerKind.Rain, sim.Faith.PrayerOf(a.Id).Kind);
-
-            // Heaven answers a with rain: faith rises and the prayer is closed.
-            float before = a.Faith;
-            int answered = sim.Faith.Answered;
-            sim.Enqueue(new CalamityCommand(Calamity.Rain, a.X, a.Y, 6));
-            sim.ApplyPending();
-            Assert.AreEqual(answered + 1, sim.Faith.Answered);
-            Assert.IsNull(sim.Faith.PrayerOf(a.Id));
-            Assert.GreaterOrEqual(a.Faith, UnityEngine.Mathf.Min(100f, before));
-
-            // b is left to wait: when the drought outlasts the prayer, faith cools.
-            float bFaith = b.Faith;
-            int ignored = sim.Faith.Ignored;
-            Run(sim, SimClock.DaysPerMonth * 7);
-            if (sim.Disasters.DroughtMonthsLeft(b.X, b.Y, sim.Clock.Tick) >= 0 || sim.Faith.Ignored > ignored)
-            {
-                Assert.Greater(sim.Faith.Ignored, ignored, "a prayer left unanswered lapses");
-                Assert.Less(b.Faith, bFaith);
-            }
-            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
-        }
-
-        [Test]
         public void MethodsCapTheClimbAndFallenSectsRiseAgainFromTheirLegacy()
         {
             var sim = new Simulation(MapGenerator.Generate("ThienDao"));
@@ -439,75 +395,6 @@ namespace ThienDao.Tests
         }
 
         [Test]
-        public void WordSpreadsOutwardAndAlongTheRoadsGrowingInTheTelling()
-        {
-            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
-            Run(sim, SimClock.DaysPerYear * 2);
-            var k = sim.Knowledge;
-
-            // A linh vật set down: known around its light, not across the world.
-            var town = sim.Settlements.All.Find(s => s.Alive && !s.Sect && s.Population > 30);
-            int before = sim.Relics.All.Count;
-            sim.Enqueue(new PlaceRelicCommand(town.X + 8, town.Y, false));
-            sim.ApplyPending();
-            Assert.Greater(sim.Relics.All.Count, before);
-            var relic = sim.Relics.All[before];
-            var word = k.Of(RumorKind.Relic, relic.Index);
-            Assert.IsNotNull(word, "word of it starts at once");
-            Assert.IsTrue(KnowledgeSystem.Knows(word, relic.X, relic.Y));
-            var far = sim.Settlements.All.Find(s => s.Alive && (s.X - relic.X) * (s.X - relic.X) + (s.Y - relic.Y) * (s.Y - relic.Y) > 500 * 500);
-            Assert.IsNotNull(far);
-            Assert.IsFalse(KnowledgeSystem.Knows(word, far.X, far.Y), "the far side of the world has not heard yet");
-
-            // Word of a weakened sect spreads outward month by month ...
-            var f = sim.Factions.All.Find(o => o.Alive);
-            var seat = sim.Settlements.All[f.Id];
-            var weak = k.Spread(RumorKind.WeakSect, f.Id, seat.X, seat.Y, 5f, sim.Clock.Tick);
-            float r0 = weak.Discs[0].R;
-            Run(sim, SimClock.DaysPerMonth * 2 + 1);
-            Assert.Greater(weak.Discs[0].R, r0, "it spreads");
-            // ... and leaps along the roads, a little bigger each time it is told.
-            var far2 = sim.Settlements.All.Find(s => s.Alive && !KnowledgeSystem.Knows(weak, s.X, s.Y));
-            Assert.IsNotNull(far2);
-            k.Carry(seat.X, seat.Y, far2.X, far2.Y);
-            Assert.IsTrue(KnowledgeSystem.Knows(weak, far2.X, far2.Y), "a caravan carried it there");
-            Assert.Greater(weak.Exaggeration, 1f, "and it grew in the telling");
-            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
-        }
-
-        [Test]
-        public void KingdomsHaveKingsAndARisingEndsInOneOfThreeWays()
-        {
-            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
-            foreach (var kg in sim.World.Kingdoms)
-            {
-                Assert.IsNotNull(kg.Ruler, "every kingdom has a king");
-                Assert.IsNotNull(kg.Dynasty);
-            }
-            Run(sim, SimClock.DaysPerYear * 40); // towns grow big enough to rise
-            // A cruel king, a land at the end of its patience.
-            Kingdom k = null;
-            foreach (var kg in sim.World.Kingdoms)
-                if (!kg.Fallen && sim.Settlements.All.Exists(s => s.Alive && !s.Sect && s.Kingdom == kg.Id && !s.Capital && s.Population >= 120)) { k = kg; break; }
-            Assert.IsNotNull(k, "a kingdom with a town big enough to rise");
-            k.Benevolence = 0f;
-            for (int y = 0; y < 80 && sim.Politics.RebellionOf(k.Id) == null; y++)
-            {
-                foreach (var s in sim.Settlements.All)
-                    if (s.Alive && s.Kingdom == k.Id) s.Unrest = 100f;
-                Run(sim, SimClock.DaysPerYear);
-            }
-            var r = sim.Politics.RebellionOf(k.Id);
-            Assert.IsNotNull(r, "the people rise");
-            long start = sim.Clock.Tick;
-            for (int y = 0; y < 8 && sim.Politics.RebellionOf(k.Id) == r; y++) Run(sim, SimClock.DaysPerYear);
-            Assert.AreNotEqual(r, sim.Politics.RebellionOf(k.Id), "the civil war ends");
-            bool ended = sim.History.All.Exists(e => e.Tick >= start && (e.Text.Contains("dẹp yên") || e.Text.Contains("lập triều") || e.Text.Contains("cát cứ")));
-            Assert.IsTrue(ended, "crushed, a new dynasty, or a new kingdom");
-            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
-        }
-
-        [Test]
         public void ClansRiseOnAncestralLandAndAvengeTheirOwn()
         {
             var sim = new Simulation(MapGenerator.Generate("ThienDao"));
@@ -531,32 +418,6 @@ namespace ThienDao.Tests
             founder.Nemesis = -1;
             sim.Combat.Kill(killer, kin, sim.Clock.Tick, "thử nghiệm", 1);
             Assert.AreEqual(killer.Index, founder.Nemesis, "the head of the house will hunt the killer");
-            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
-        }
-
-        [Test]
-        public void WalkersWearTrailsIntoRoadsAndGrassTakesThemBack()
-        {
-            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
-            var w = sim.World;
-            var town = sim.Settlements.All.Find(s => s.Alive && !s.Sect);
-            int x = town.X + 12, y = town.Y;
-            bool Open(int cx, int cy) { var tt = w.Terrain[w.Idx(cx, cy)]; return TerrainInfo.IsWalkable(tt) && TerrainInfo.IsLand(tt) && tt != Terrain.Farmland && w.Zone[w.Idx(cx, cy)] == 0; }
-            for (int k = 0; k < 200 && !Open(x, y); k++) { x++; if (k % 20 == 19) { x -= 20; y++; } }
-            int i = w.Idx(x, y);
-            Assert.IsTrue(Open(x, y), "a patch of open ground to walk on");
-            float grass = sim.Nav.SpeedAt(x + 0.5f, y + 0.5f);
-            for (int k = 0; k < PathSystem.TrailAt; k++) sim.Paths.Tread(x, y, 1);
-            Assert.AreNotEqual(0, w.Zone[i] & ZoneFlags.Trail, "trodden often, the grass wears into a trail");
-            Assert.Greater(sim.Nav.SpeedAt(x + 0.5f, y + 0.5f), grass, "easier going than the grass");
-            for (int k = PathSystem.TrailAt; k < PathSystem.RoadAt; k++) sim.Paths.Tread(x, y, 1);
-            Assert.AreNotEqual(0, w.Zone[i] & ZoneFlags.Road, "kept in use, the trail is packed into a road");
-            // No one walks it any more: a road falls back to a trail, then to grass.
-            for (int k = 0; k < 30; k++) sim.Paths.YearlyStep();
-            Assert.AreEqual(0, w.Zone[i] & (ZoneFlags.Road | ZoneFlags.Trail), "grass takes it back");
-            // In a living world the walkers draw their own roads.
-            Run(sim, SimClock.DaysPerYear * 40);
-            Assert.Greater(sim.Paths.TrailCells + sim.Paths.RoadCells, 50, "the roads between towns draw themselves");
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
@@ -888,18 +749,6 @@ namespace ThienDao.Tests
             sim.Enqueue(new WatchCommand(hero.Index, true));
             Run(sim, SimClock.DaysPerYear * 40);
             return sim;
-        }
-
-        [Test]
-        public void WatchedCultivatorLivesByGoals()
-        {
-            var sim = RunWatched(out var hero);
-            Assert.IsTrue(hero.Watched);
-            var bio = new System.Collections.Generic.List<HistoryRecord>();
-            sim.History.OfCultivator(hero.Index, bio);
-            // A protagonist's life is full: seclusions, journeys, finds, dangers, not just a line at birth and death.
-            Assert.GreaterOrEqual(bio.Count, 6, "a watched cultivator should have a rich biography after 40 years");
-            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 
         [Test]
@@ -1374,16 +1223,6 @@ namespace ThienDao.Tests
             sim.Relics.Explore(explorer, relic, sim.Clock.Tick);
             Assert.IsTrue(relic.Discovered);
             if (explorer.Alive) Assert.AreEqual(treasures + 1, explorer.Treasures, "the explorer carries the pháp bảo out");
-            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
-        }
-
-        [Test]
-        public void CaravansCarryGoodsAndWearRoads()
-        {
-            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
-            Run(sim, SimClock.DaysPerYear * 30);
-            Assert.Greater(sim.Trade.Delivered, 20, "caravans reach their markets");
-            Assert.Greater(sim.Trade.Roads, 20, "and wear roads into the land");
             CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
         }
 

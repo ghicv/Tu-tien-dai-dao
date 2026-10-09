@@ -18,8 +18,6 @@ namespace ThienDao.Player
         Mountain,
         Snow,
         Trees,
-        House,
-        SectHall,
         Erase,
         LeyAdd,
         LeyErase,
@@ -62,7 +60,7 @@ namespace ThienDao.Player
         public static readonly string[] ToolNames =
         {
             "Xem", "Cỏ", "Cát", "Sa mạc", "Nước nông", "Biển sâu", "Đồi", "Núi", "Tuyết",
-            "Trồng cây", "Nhà dân", "Tông môn", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
+            "Trồng cây", "Xóa vật", "Vẽ linh mạch", "Phá linh mạch",
             "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Lập làng",
             "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
             "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn", "Thả yêu thú",
@@ -101,8 +99,6 @@ namespace ThienDao.Player
             _rng = new DetRandom(sim.World.Seed ^ 0xB2B2u);
         }
 
-        public static bool IsBuildingTool(BrushTool t) => t == BrushTool.House || t == BrushTool.SectHall;
-
         public static bool IsDivineTool(BrushTool t) =>
             t == BrushTool.GrantRoot || t == BrushTool.Bless || t == BrushTool.Smite || t == BrushTool.Tribulation || t == BrushTool.Annihilate ||
             t == BrushTool.GrantTreasure || t == BrushTool.HeartDemon || t == BrushTool.Cripple || t == BrushTool.GrantTechnique;
@@ -133,19 +129,10 @@ namespace ThienDao.Player
             t == BrushTool.SpawnBeast || t == BrushTool.SpawnCultivator || t == BrushTool.SpawnHungThu || t == BrushTool.PlaceTreasure || t == BrushTool.OpenRealm ||
             t == BrushTool.Lure;
 
-        public static ObjectType BuildingFor(BrushTool t) => t == BrushTool.SectHall ? ObjectType.SectHall : ObjectType.House;
-
         public void Apply(int cx, int cy, bool pressedThisFrame, float dt)
         {
             if (Tool == BrushTool.Inspect || !_sim.World.InBounds(cx, cy)) return;
 
-            if (IsBuildingTool(Tool))
-            {
-                if (!pressedThisFrame) return;
-                var type = BuildingFor(Tool);
-                _sim.Enqueue(new PlaceBuildingCommand(type, cx, cy, (byte)_rng.Range(0, SpriteLibrary.VariantCount(type))));
-                return;
-            }
             if (Tool == BrushTool.SpawnBeast || Tool == BrushTool.SpawnHungThu || Tool == BrushTool.SpawnCultivator ||
                 Tool == BrushTool.PlaceTreasure || Tool == BrushTool.OpenRealm || Tool == BrushTool.Lure)
             {

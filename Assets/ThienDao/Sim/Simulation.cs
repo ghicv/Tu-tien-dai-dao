@@ -29,7 +29,6 @@ namespace ThienDao.Sim
         public readonly QiSystem Qi;
         public readonly ForageSystem Forage;
         public readonly NavSystem Nav;
-        public readonly PathSystem Paths;
         public readonly EntityStore Entities = new EntityStore();
         public readonly CreatureSystem Creatures;
         public readonly WildlifeSystem Wildlife;
@@ -40,19 +39,13 @@ namespace ThienDao.Sim
         public readonly CombatSystem Combat;
         public readonly HistoryLog History = new HistoryLog();
         public readonly StoryDetector Stories;
-        public readonly ProtagonistAI Protagonists;
         public readonly ScarSystem Scars;
         public readonly DisasterSystem Disasters;
         public readonly BeastSystem Beasts;
         public readonly RelicSystem Relics;
-        public readonly TradeSystem Trade;
         public readonly EraSystem Eras;
         public readonly HarmSystem Harm;
-        public readonly FaithSystem Faith;
-        public readonly DestinySystem Destiny;
-        public readonly KnowledgeSystem Knowledge;
         public readonly ClanSystem Clans;
-        public readonly PoliticsSystem Politics;
         public readonly WorldRules Rules = new WorldRules();
         public readonly EventLog Events = new EventLog();
 
@@ -79,7 +72,6 @@ namespace ThienDao.Sim
             Forage = new ForageSystem(world);
             world.TerrainChanged += Forage.RebuildCapBlocks; // must exist before settlements start clearing fields
             world.LookChanged += Forage.RebuildCapBlocks;    // scars change how much grass grows
-            Paths = new PathSystem(this);  // trails and roads worn by walkers (before the routes that follow them)
             Nav = new NavSystem(this);     // routes for walkers, rebuilt where the land changes
             Creatures = new CreatureSystem(this);
             Settlements = new SettlementSystem(this);
@@ -89,19 +81,13 @@ namespace ThienDao.Sim
             Techniques = new TechniqueSystem(this); // công pháp for every sect and every one alive; before the relics that hold some
             Combat = new CombatSystem(this);
             Stories = new StoryDetector(this);
-            Protagonists = new ProtagonistAI(this);
             Scars = new ScarSystem(this);
             Disasters = new DisasterSystem(this);
             Beasts = new BeastSystem(this);
             Relics = new RelicSystem(this);
-            Trade = new TradeSystem(this);
             Eras = new EraSystem(this);
             Harm = new HarmSystem(this);
-            Faith = new FaithSystem(this);
-            Destiny = new DestinySystem(this);
-            Knowledge = new KnowledgeSystem(this);
             Clans = new ClanSystem(this);
-            Politics = new PoliticsSystem(this); // a king of a ruling house for every kingdom
         }
 
         public void Enqueue(IWorldCommand command) => _pending.Enqueue(command);
@@ -111,9 +97,7 @@ namespace ThienDao.Sim
             while (_pending.Count > 0)
             {
                 var c = _pending.Dequeue();
-                Faith.Heaven = true; // whatever this act kills, heaven killed (FaithSystem)
-                try { c.Apply(this); }
-                finally { Faith.Heaven = false; }
+                c.Apply(this);
                 Log.Add(new LoggedCommand(Clock.Tick, c));
             }
         }
@@ -121,8 +105,8 @@ namespace ThienDao.Sim
         // Per-system CPU time (ms, accumulated) for the Stats window and the perf probe; not part of the world.
         public static readonly string[] SystemNames =
         {
-            "Di chuyển", "Linh khí", "Cỏ", "Thiên tai", "Thú hoang", "Làng", "Tu sĩ", "Đấu pháp", "Yêu thú", "Nhân vật chính",
-            "Bí cảnh", "Thương mại", "Thế lực", "Thời đại", "Truyền kỳ", "Tín ngưỡng", "Tin đồn", "Chính trị"
+            "Di chuyển", "Linh khí", "Cỏ", "Thiên tai", "Thú hoang", "Làng", "Tu sĩ", "Đấu pháp", "Yêu thú",
+            "Bí cảnh", "Thế lực", "Thời đại", "Truyền kỳ"
         };
         [System.NonSerialized] public readonly double[] SystemMs = new double[SystemNames.Length];
         static readonly double MsPerTick = 1000.0 / Stopwatch.Frequency;
@@ -144,7 +128,6 @@ namespace ThienDao.Sim
             Beasts.DailyStep(tick); Mark(8, ref t); // beasts and passers-by: chases, fights, flights (BeastChase)
             if (Clock.IsMonthStart)
             {
-                Paths.MonthlyStep(tick); Mark(0, ref t); // villagers tread their roads; new trails reach the map and the routes
                 Qi.MonthlyStep(RegenMultiplier(Clock.Season), QiScale); Mark(1, ref t);
                 Forage.MonthlyStep(Clock.Season); Mark(2, ref t);
                 Disasters.MonthlyStep(tick); Mark(3, ref t); // floods recede, droughts wither the grass, epidemics run their course
@@ -153,31 +136,23 @@ namespace ThienDao.Sim
                 Cultivation.MonthlyStep(tick); Mark(6, ref t);
                 Combat.MonthlyStep(tick); Mark(7, ref t);
                 Beasts.MonthlyStep(tick); Mark(8, ref t);
-                Protagonists.MonthlyStep(tick); Mark(9, ref t);
-                Relics.MonthlyStep(tick); Mark(10, ref t);
-                Trade.MonthlyStep(tick); Mark(11, ref t);
-                Factions.MonthlyStep(tick); Mark(12, ref t);
-                Faith.MonthlyStep(tick);
-                Destiny.MonthlyStep(tick); Mark(15, ref t);
-                Knowledge.MonthlyStep(tick); Mark(16, ref t);
+                Relics.MonthlyStep(tick); Mark(9, ref t);
+                Factions.MonthlyStep(tick); Mark(10, ref t);
             }
             if (Clock.IsYearStart)
             {
                 Settlements.YearlyStep(tick); Mark(5, ref t);
                 Cultivation.YearlyStep(tick);
                 Techniques.YearlyStep(tick); Mark(6, ref t);
-                Factions.YearlyStep(tick); Mark(12, ref t);
+                Factions.YearlyStep(tick); Mark(10, ref t);
                 Combat.YearlyStep(tick); Mark(7, ref t);
                 Disasters.YearlyStep(tick);
                 Scars.YearlyStep(tick); Mark(3, ref t); // the land heals its scars
-                Paths.YearlyStep(); Mark(0, ref t); // grass takes back the trails no one walks
                 Beasts.YearlyStep(tick); Mark(8, ref t);
-                Relics.YearlyStep(tick); Mark(10, ref t);
-                Eras.YearlyStep(tick); Mark(13, ref t);
-                Stories.YearlyStep(tick); Mark(14, ref t);
-                Faith.YearlyStep(tick); Mark(15, ref t);
+                Relics.YearlyStep(tick); Mark(9, ref t);
+                Eras.YearlyStep(tick); Mark(11, ref t);
+                Stories.YearlyStep(tick); Mark(12, ref t);
                 Clans.YearlyStep(tick);
-                Politics.YearlyStep(tick); Mark(17, ref t);
             }
         }
 
@@ -209,7 +184,6 @@ namespace ThienDao.Sim
             Cultivation.Flood(x0, y0, x1, y1, tick);
             Settlements.Flood(x0, y0, x1, y1, tick);
             Beasts?.Flood(x0, y0, x1, y1, tick);
-            Trade?.Flood(x0, y0, x1, y1);
         }
 
         public static float RegenMultiplier(Season s)
@@ -255,15 +229,9 @@ namespace ThienDao.Sim
             Rules.HashInto(ref h);
             Beasts.HashInto(ref h);
             Relics.HashInto(ref h);
-            Trade.HashInto(ref h);
             Eras.HashInto(ref h);
-            Paths.HashInto(ref h);
             Techniques.HashInto(ref h);
-            Faith.HashInto(ref h);
-            Destiny.HashInto(ref h);
-            Knowledge.HashInto(ref h);
             Clans.HashInto(ref h);
-            Politics.HashInto(ref h);
             return h;
         }
     }

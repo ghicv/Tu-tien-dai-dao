@@ -16,7 +16,7 @@ namespace ThienDao.Sim
 
         public struct Report
         {
-            public int Fallen, Wounded, BeastsSlain, BeastsWounded, People, Animals, Caravans;
+            public int Fallen, Wounded, BeastsSlain, BeastsWounded, People, Animals;
         }
 
         readonly Simulation _sim;
@@ -99,7 +99,6 @@ namespace ThienDao.Sim
                 else r.BeastsWounded++;
             }
             r.People = _sim.Settlements.HarmMigrants(this, damage, tick);
-            r.Caravans = _sim.Trade.Harm(this, damage);
             r.Animals = HarmHerds(damage);
             return r;
         }
@@ -154,7 +153,6 @@ namespace ThienDao.Sim
             if (r.BeastsSlain > 0) sb.Append($", {r.BeastsSlain} yêu thú bỏ mạng");
             if (r.BeastsWounded > 0) sb.Append($", {r.BeastsWounded} yêu thú bị thương");
             if (r.People > 0) sb.Append($", {r.People} di dân thiệt mạng");
-            if (r.Caravans > 0) sb.Append($", {r.Caravans} thương đội tan tác");
             if (r.Animals >= 5) sb.Append($", {r.Animals:N0} con thú chết");
             return sb.ToString();
         }

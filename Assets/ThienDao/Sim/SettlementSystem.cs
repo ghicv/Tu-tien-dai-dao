@@ -29,8 +29,6 @@ namespace ThienDao.Sim
         public int WallX0 = -1, WallY0, WallX1, WallY1;    // the ring of its walls, if it has any
         public long CivicRetry;                            // no room for its next công trình: look again from this tick
         public int ClaimFrom = 2;                          // rings inside this have no free farmland (until land is freed nearby)
-        public float Faith = FaithSystem.StartFaith;       // tín ngưỡng 0..100: how much its people trust Thiên Đạo (FaithSystem)
-        public long LastPrayer = -100000;                  // when it last prayed
 
         // Caches (exact: same result as recomputing): fields are re-checked only after the land nearby changed,
         // and the harvest's fertility sum only when the fields or the number tended changed.
@@ -40,7 +38,6 @@ namespace ThienDao.Sim
 
         public float LastHarvest, LastHunt;
         public int BirthsLastYear, DeathsLastYear, StarvedThisYear, StarvedLastYear;
-        public float Unrest = 20f;                         // bất mãn 0..100 of its people toward the crown (PoliticsSystem)
 
         public int Population
         {
@@ -295,7 +292,6 @@ namespace ThienDao.Sim
             k.CapitalX = s.X;
             k.CapitalY = s.Y;
             _sim.Events.Add(tick, EventKind.Founding, 2, $"Di dân dựng {s.Name} trên đất cũ của {k.Name}: {k.Name} phục quốc.", s.X + 0.5f, s.Y + 0.5f);
-            _sim.Politics?.OnRestored(k, tick); // a new house to rule it
         }
 
         public Settlement FoundVillage(int x, int y, byte roof, int people, long tick)
@@ -1039,7 +1035,6 @@ namespace ThienDao.Sim
             {
                 if (max <= 0) return ok;
                 if (HasCivic(s, type)) continue;
-                if (type == ObjectType.Shrine && s.Faith < FaithSystem.ShrineFloor) continue; // a people who turned from heaven keep no miếu
                 if (PlaceCivic(s, type, s.X, s.Y, 14, false)) max--;
                 else ok = false;
             }
@@ -1302,9 +1297,6 @@ namespace ThienDao.Sim
             if (gi < 0) return;
             var group = _groups[gi];
             _groups.RemoveAt(gi);
-            if (group.From >= 0 && group.From < All.Count) // migrants bring the news of the land they left
-                _sim.Knowledge?.Carry(All[group.From].X + 0.5f, All[group.From].Y + 0.5f, cx + 0.5f, cy + 0.5f);
-
             var rng = RngFor(tick, entity + 200000);
             for (int r = 0; r <= 8; r += 2)
             for (int dy = -r; dy <= r; dy += 2)

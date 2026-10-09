@@ -104,14 +104,14 @@ namespace ThienDao.Sim
                 if (s == Species.None) continue;
                 _e.PrevX[id] = _e.X[id];
                 _e.PrevY[id] = _e.Y[id];
-                if (s == Species.Migrants) { TickMigrants(id, tick); Trod(id, 3); } // a crowd wears the ground fast
+                if (s == Species.Migrants) TickMigrants(id, tick);
                 else if (s == Species.Cultivator)
                 {
                     var c = _sim.Cultivation.ForEntity(id);
                     // Bế quan, or resting where an outing took them: off the road, there is nothing to move. Most
                     // cultivators are like this most of the time, so they are not stepped at all.
                     if (c == null || !c.Travelling) continue;
-                    if (!_e.Flying[id]) { Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.04f * c.Stage), tick); Trod(id, 1); } // Luyện Khí: the higher the tầng, the lighter the step
+                    if (!_e.Flying[id]) Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.04f * c.Stage), tick); // Luyện Khí: the higher the tầng, the lighter the step
                     else if (c.Realm >= Realm.HoaThan) TearTheVoid(id);
                     else Fly(id, FlightByRealm[(int)c.Realm]);
                 }
@@ -123,21 +123,7 @@ namespace ThienDao.Sim
                     if (_e.Flying[id]) Fly(id, 2f + 0.9f * grade);
                     else Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.17f * (grade - 1)), tick);
                 }
-                else if (s == Species.Caravan)
-                {
-                    Walk(id, SpeciesInfo.Speed[(int)s], tick);
-                    Trod(id, 3); // carts and oxen
-                    _sim.Trade.Walked(id, tick); // delivers on arrival
-                }
             }
-        }
-
-        // A mortal walker who stepped into a new cell wears it a little (PathSystem: trails, then roads).
-        void Trod(int id, int weight)
-        {
-            if (!_e.IsAlive(id)) return; // arrived and settled, or lost on the road
-            int x = (int)_e.X[id], y = (int)_e.Y[id];
-            if (x != (int)_e.PrevX[id] || y != (int)_e.PrevY[id]) _sim.Paths.Tread(x, y, weight);
         }
 
         // Journeys take about 2.2 times as long as before speeds were lowered (devlog 25). Chances rolled each month

@@ -19,7 +19,7 @@ namespace ThienDao.Sim
         const int ChaseDays = 15;
         const int HuntedDays = 8;        // a beast that runs from a hunter shakes it off sooner
         const float NoticeChance = 0.04f;
-        const int PreyMask = (1 << (int)Species.Cultivator) | (1 << (int)Species.Migrants) | (1 << (int)Species.Caravan);
+        const int PreyMask = (1 << (int)Species.Cultivator) | (1 << (int)Species.Migrants);
 
         public static float Sight(Beast b) => 5f + b.Grade;
 
@@ -181,15 +181,6 @@ namespace ThienDao.Sim
                 return;
             }
             float x = _e.X[id], y = _e.Y[id];
-            if (_e.Species[id] == Species.Caravan)
-            {
-                if (_sim.Trade.Maul(id))
-                {
-                    b.Kills += 4;
-                    _sim.Events.Add(tick, EventKind.Beast, 1, $"{b.Title} ({b.GradeText}) đuổi kịp một thương đội, người ngựa tan tác, hàng hóa vương vãi.", x, y, Fx.Stampede);
-                }
-                return;
-            }
             int dead = _sim.Settlements.MaulMigrants(id, rng.Range(0.2f, 0.5f), tick);
             b.Kills += dead;
             if (dead > 0) _sim.Events.Add(tick, EventKind.Beast, 1, $"{b.Title} ({b.GradeText}) đuổi kịp một đoàn di dân, {dead} người bỏ mạng.", x, y, Fx.Stampede);
