@@ -230,7 +230,7 @@ namespace ThienDao.Sim
             Beast best = null;
             foreach (var b in _sim.Beasts.All)
             {
-                if (!b.Alive || b.Rampage || b.ChaseEntity >= 0) continue;
+                if (!b.Alive || b.Rampage || b.ChaseEntity >= 0 || b.War >= 0) continue;
                 float s = BeastSystem.Strength(b);
                 if (s > mine * 0.8f || s < mine * 0.05f) continue; // too strong, or not worth the flight
                 float dx = _e.X[b.Entity] - c.HomeX, dy = _e.Y[b.Entity] - c.HomeY, d = dx * dx + dy * dy;

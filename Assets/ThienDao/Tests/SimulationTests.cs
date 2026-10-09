@@ -1167,6 +1167,23 @@ namespace ThienDao.Tests
             Assert.AreEqual("Thủy tổ tu tiên", other.Eras.EpochName);
         }
 
+        // Devlog 36: the yêu tộc go to war over the land; their hosts meet on a field and the beaten one pays for it.
+        [Test]
+        public void YeuTocGoToWarOverTheLand()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao", true));
+            Run(sim, SimClock.DaysPerYear * 30);
+            Assert.Greater(sim.Beasts.Wars.Count, 0, "where their lands meet, the tộc fight");
+            var done = sim.Beasts.Wars.Find(w => w.Over);
+            Assert.IsNotNull(done, "and wars end");
+            Assert.Greater(done.FallenA + done.FallenB, 0, "with beasts fallen on the field");
+            Assert.IsTrue(sim.History.All.Exists(r => r.Text.Contains("khai chiến với")));
+            Assert.Greater(sim.Beasts.AliveCount, 250, "the young born in each tộc's land fill the ranks again");
+            foreach (var b in sim.Beasts.All)
+                if (b.Alive && b.War >= 0) Assert.IsFalse(sim.Beasts.Wars[b.War].Over, "no beast is left marching in a war that is over");
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
         [Test]
         public void AFallenChanLinhLeavesItsLairToTheAgesAfter()
         {

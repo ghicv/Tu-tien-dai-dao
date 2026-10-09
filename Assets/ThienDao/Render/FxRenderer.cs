@@ -247,9 +247,31 @@ namespace ThienDao.Render
 
         Color32 ColorOf(Spell s, Cultivator c) => s == Spell.Qi && c != null ? QiOf(c) : SpellColor[(int)s];
 
+        // Two beasts of warring yêu tộc tear at each other: each its own kind, size and way of fighting.
+        void StartBrawl(WorldEvent ev, int salt)
+        {
+            var beasts = _sim.Beasts.All;
+            if (ev.A < 0 || ev.B < 0 || ev.A >= beasts.Count || ev.B >= beasts.Count) return;
+            Beast w = beasts[ev.A], l = beasts[ev.B];
+            var f = FightScene.Make(Time.unscaledTime, ev.X, ev.Y, (int)(ev.Tick * 37 + salt), 6);
+            f.WinnerLook = SpriteLibrary.BeastUnit((int)w.Kind, w.Grade);
+            f.WinnerScale = SpriteLibrary.BeastScale(w.Grade, w.Rampage);
+            f.WinnerSpell = SpellOf(w);
+            f.WinnerColor = ColorOf(f.WinnerSpell, null);
+            f.WinnerEntity = w.Alive ? w.Entity : -1;
+            f.LoserLook = SpriteLibrary.BeastUnit((int)l.Kind, l.Grade);
+            f.LoserScale = SpriteLibrary.BeastScale(l.Grade, l.Rampage);
+            f.LoserSpell = SpellOf(l);
+            f.LoserColor = ColorOf(f.LoserSpell, null);
+            f.LoserEntity = l.Alive ? l.Entity : -1;
+            f.LoserDies = !l.Alive;
+            FightScenes.Active.Add(f);
+        }
+
         void StartFight(WorldEvent ev, int salt)
         {
             if (FightScenes.Active.Count >= FightScenes.Max) return;
+            if (ev.Fx == Fx.BeastBrawl) { StartBrawl(ev, salt); return; }
             var all = _sim.Cultivation.All;
             Cultivator a = ev.A >= 0 && ev.A < all.Count ? all[ev.A] : null, b = ev.B >= 0 && ev.B < all.Count ? all[ev.B] : null;
             if (a == null) return;
@@ -655,6 +677,7 @@ namespace ThienDao.Render
             DrawSkirmishes(view, now);
             DrawShots(now, dt);
             DrawChases(view, now, dt);
+            DrawYeuToc(view, now, dt);
             DrawLoot(view, now, dt);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
@@ -1034,6 +1057,68 @@ namespace ThienDao.Render
                     var bs = SpellOf(b);
                     if (bs != Spell.Claw) Shoot(bs, to, from, ColorOf(bs, null));
                 }
+            }
+        }
+
+        // Yêu tộc tranh bá (devlog 36): the land each tộc holds, as a ring of pixel dots in its colour round its king's
+        // lair (a chân linh's in the colour of its kind); the field where two tộc are at war, beating red; and dust
+        // thrown up by the hosts on the march.
+        static readonly Color32[] ClanColors =
+        {
+            new Color32(255, 120, 90, 255), new Color32(180, 120, 255, 255), new Color32(120, 220, 140, 255), new Color32(255, 200, 90, 255),
+            new Color32(110, 200, 255, 255), new Color32(255, 140, 200, 255), new Color32(200, 220, 120, 255), new Color32(240, 240, 240, 255),
+        };
+
+        static Color32 ClanColor(Beast king)
+        {
+            if (king.ChanLinh)
+                switch (king.Kind)
+                {
+                    case BeastKind.Dragon: return new Color32(255, 214, 90, 255);
+                    case BeastKind.Phoenix: return new Color32(255, 90, 60, 255);
+                    case BeastKind.Qilin: return new Color32(255, 150, 60, 255);
+                    case BeastKind.KunPeng: return new Color32(90, 150, 255, 255);
+                    default: return new Color32(80, 220, 200, 255);
+                }
+            return ClanColors[(king.Index * 7 + 3) % ClanColors.Length];
+        }
+
+        void DrawYeuToc(Rect view, float now, float dt)
+        {
+            var e = _sim.Entities;
+            foreach (var king in _sim.Beasts.All)
+            {
+                if (!king.Alive || !king.IsKing || king.ClanCount < 2) continue;
+                float r = BeastSystem.Territory(king), cx = king.HomeX, cy = king.HomeY;
+                if (cx + r < view.xMin || cx - r > view.xMax || cy + r < view.yMin || cy - r > view.yMax) continue;
+                var col = ClanColor(king);
+                col.a = 150;
+                int n = Mathf.Clamp(Mathf.RoundToInt(2f * Mathf.PI * r / 4f), 16, 200);
+                float phase = now * 0.05f;
+                for (int k = 0; k < n; k++)
+                {
+                    if ((k & 3) == 3) continue; // dashes
+                    float a = (k + phase) / n * Mathf.PI * 2f;
+                    float x = cx + Mathf.Cos(a) * r, y = cy + Mathf.Sin(a) * r;
+                    if (view.Contains(new Vector2(x, y))) Quad(Sprite.Spark, x, y, 1f, 1f, col);
+                }
+                // The tộc's banner over its lair.
+                if (view.Contains(new Vector2(cx, cy))) Quad(Sprite.IconFlag, cx, cy + 3.2f, 1f, 1f, new Color32(255, 255, 255, 255));
+            }
+            foreach (var w in _sim.Beasts.Wars)
+            {
+                if (w.Over || !view.Contains(new Vector2(w.FieldX, w.FieldY))) continue;
+                float k = (now * 0.7f) % 1f;
+                Quad(Sprite.Ring, w.FieldX, w.FieldY, 1f + k * 6f, 1f + k * 3f, new Color32(255, 70, 50, (byte)(220 * (1f - k))));
+                Quad(Sprite.IconHunt, w.FieldX, w.FieldY + 1.5f, 1f, 1f, new Color32(255, 120, 100, 255));
+            }
+            // Dust off the hosts on the march.
+            foreach (var b in _sim.Beasts.All)
+            {
+                if (!b.Alive || b.War < 0 || BeastSystem.Flies(b.Kind)) continue;
+                int id = b.Entity;
+                if (e.X[id] == e.PrevX[id] && e.Y[id] == e.PrevY[id]) continue;
+                if (Position(id, out float x, out float y, out _) && view.Contains(new Vector2(x, y))) Dust(x, y, dt);
             }
         }
 

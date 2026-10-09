@@ -75,9 +75,11 @@ namespace ThienDao.Render
 
         readonly List<Hit> _hits = new List<Hit>();
 
-        // Decorative wildlife: one token stands for this many animals, capped per region and kind.
-        static readonly float[] AnimalsPerToken = { 20f, 30f, 3f };
-        static readonly int[] MaxTokensPerRegion = { 5, 5, 3 };
+        // Wildlife (devlog 36): every animal of a region in view is drawn, one token each, up to a generous cap; regions
+        // out of view have none, and zoomed far out there are none at all (the herds are numbers in WildlifeSystem).
+        static readonly float[] AnimalsPerToken = { 1f, 1f, 1f };
+        static readonly int[] MaxTokensPerRegion = { 40, 40, 12 };
+        const float WildlifeFromPixelsPerCell = 2.5f;
         static readonly Unit[] TokenLook = { Unit.Deer, Unit.Rabbit, Unit.Wolf };
         static readonly float[] TokenSpeed = { 1.2f, 1f, 1.5f }; // cells per real second
         readonly Dictionary<int, List<Token>> _tokens = new Dictionary<int, List<Token>>();
@@ -149,7 +151,8 @@ namespace ThienDao.Render
                 DrawHermitages(view);
                 DrawCreatures(view);
                 DrawFights(view);
-                DrawWildlife(view);
+                if (pixelsPerCell >= WildlifeFromPixelsPerCell) DrawWildlife(view);
+                else _tokens.Clear();
                 if (pixelsPerCell >= VillagersFromPixelsPerCell) DrawVillagers(view);
                 else _villagers.Clear();
             }
@@ -218,6 +221,7 @@ namespace ThienDao.Render
 
                 if (s == Species.Beast)
                 {
+                    if (FightScenes.HidesEntity(id)) continue; // drawn by the fight scene instead
                     // Yêu thú: a red aura from tứ giai up, gold for a Yêu Vương.
                     var b = _sim.Beasts.ForEntity(id);
                     var look = b != null ? SpriteLibrary.BeastUnit((int)b.Kind, b.Grade) : Unit.Beast;

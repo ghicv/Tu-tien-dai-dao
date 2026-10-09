@@ -40,6 +40,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 33 | [33-viec-ngoai-kia-nhat-ky.md](33-viec-ngoai-kia-nhat-ky.md) | Việc ngoài kia thay du ngoạn ngẫu nhiên: hái linh dược, săn yêu, đi chợ, tuần tra, ngộ đạo, thăm cố hương, có icon trên đầu và cảnh làm việc trên map; nhật ký nhân vật trộn với sự tích trên thẻ; tu sĩ ngoài map 4 → 50 | `b99a4e6` |
 | 34 | [34-doi-huong-tu-tien-box.md](34-doi-huong-tu-tien-box.md) | Đổi hướng sang Tu Tiên Box (Docs/Vision.md: ba trụ cột, tông môn ít mà lớn, timeline hồng hoang, biome tu tiên); gỡ Thiên mệnh, AI nhân vật chính, chính trị, thương mại, đường mòn, tín ngưỡng, tin đồn, công cụ đặt nhà | `d9c529b` |
 | 35 | [35-khai-thien-lap-dia-hong-hoang.md](35-khai-thien-lap-dia-hong-hoang.md) | Khai thiên lập địa: ván mới mở ở hồng hoang, chỉ có yêu thú và 5 chân linh (Chân Long, Thiên Phượng, Kỳ Lân, Côn Bằng, Huyền Vũ) cùng yêu tộc; nhân tộc tự xuất hiện hoặc do Thiên Đạo tạo hóa; thời kỳ Hồng hoang, Mông muội, Thủy tổ, Thượng cổ…; chân linh chết để lại bí cảnh huyết mạch | `5dd8974` |
+| 36 | [36-yeu-toc-tranh-ba.md](36-yeu-toc-tranh-ba.md) | Yêu tộc tranh bá: lãnh địa theo quân số, khai chiến khi lãnh địa chạm nhau, đại quân ra chiến trường, vương xuất trận, thu phục hoặc đuổi khỏi linh mạch, cổ chiến trường; con non sinh mỗi năm; thú hoang vẽ đúng số lượng trong camera, tắt khi zoom xa; 400 yêu thú thời hồng hoang | `PENDING` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).

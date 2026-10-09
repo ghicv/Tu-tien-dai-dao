@@ -25,6 +25,7 @@ namespace ThienDao.Render
         public Unit WinnerLook, LoserLook;
         public float WinnerScale = 1f, LoserScale = 1f; // a great beast fights at its own size
         public int WinnerIdx = -1, LoserIdx = -1; // cultivators hidden from normal drawing while this plays
+        public int WinnerEntity = -1, LoserEntity = -1; // beasts hidden the same way (a war of the yêu tộc)
         public bool LoserDies;
         public Color32 WinnerColor, LoserColor;   // their kiếm khí
         public Spell WinnerSpell, LoserSpell;     // the look of their spells: by method, by sect, by beast kind (Claw: it tears)
@@ -121,6 +122,14 @@ namespace ThienDao.Render
         {
             foreach (var s in Active)
                 if (s.Involves(cultivator)) return true;
+            return false;
+        }
+
+        public static bool HidesEntity(int entity)
+        {
+            if (entity < 0) return false;
+            foreach (var s in Active)
+                if (s.WinnerEntity == entity || s.LoserEntity == entity) return true;
             return false;
         }
 

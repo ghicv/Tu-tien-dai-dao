@@ -136,7 +136,7 @@ namespace ThienDao.Sim
             {
                 x = field.X + 0.5f;
                 y = field.Y + 0.5f;
-                origin = $"Oán khí của {field.Toll} người chết ở {field.Name} ngưng tụ thành hình";
+                origin = $"Oán khí của {field.Toll} sinh linh chết ở {field.Name} ngưng tụ thành hình";
             }
             else
             {

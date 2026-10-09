@@ -121,7 +121,8 @@ namespace ThienDao.Sim
                     var beast = _sim.Beasts.ForEntity(id);
                     int grade = beast != null ? beast.Grade : 1;
                     if (_e.Flying[id]) Fly(id, 2f + 0.9f * grade);
-                    else Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.17f * (grade - 1)), tick);
+                    else if (_w.IsWalkable(_e.X[id], _e.Y[id])) Roam(id, SpeciesInfo.Speed[(int)s] * (1f + 0.17f * (grade - 1)));
+                    else Walk(id, SpeciesInfo.Speed[(int)s], tick); // stranded: Walk wades it ashore
                 }
             }
         }
@@ -180,6 +181,27 @@ namespace ThienDao.Sim
         }
 
         static readonly float[] Detours = { 0.5f, -0.5f, 1f, -1f, 1.57f, -1.57f };
+
+        // Beasts go straight across the wilds, sidestepping what is in the way, with no route planned (devlog 36): a
+        // host of hundreds marching to war must not each ask for an A* path every day. Blocked all round, it stops.
+        void Roam(int id, float pace)
+        {
+            float x = _e.X[id], y = _e.Y[id];
+            float dx = _e.TX[id] - x, dy = _e.TY[id] - y, d = Mathf.Sqrt(dx * dx + dy * dy);
+            if (d < 1e-3f) return;
+            float s = Mathf.Min(d, pace * Mathf.Max(0.2f, _sim.Nav.SpeedAt(x, y)));
+            float a = Mathf.Atan2(dy, dx);
+            foreach (float turn in Detours)
+            {
+                float sx = x + Mathf.Cos(a + turn) * s, sy = y + Mathf.Sin(a + turn) * s;
+                if (!_w.IsWalkable(sx, sy)) continue;
+                _e.X[id] = sx;
+                _e.Y[id] = sy;
+                return;
+            }
+            _e.TX[id] = x;
+            _e.TY[id] = y;
+        }
 
         // Walkers follow their route around sea, peaks and lava, at the pace the ground allows (a road is fast,
         // a swamp or a mountain slow); a step that runs into something tries to sidestep before replanning.

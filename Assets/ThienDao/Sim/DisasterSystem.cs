@@ -1253,7 +1253,7 @@ namespace ThienDao.Sim
         }
 
         // "gần Thanh Ngưu Thôn", "quanh Lôi Cốc", or the wilds.
-        string PlaceName(int x, int y)
+        public string PlaceName(int x, int y)
         {
             var s = NearestSettlement(x, y, 60);
             if (s != null) return $"gần {s.Name}";

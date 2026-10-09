@@ -1802,9 +1802,13 @@ namespace ThienDao.UI
                             sim.Relics.Contested(r) ? new Color(1f, 0.55f, 0.45f) : new Color(0.55f, 0.95f, 0.85f), 17);
                 var ent = sim.Entities;
                 foreach (var b in sim.Beasts.All)
-                    if (b.Alive && (b.IsKing || b.Grade >= 5))
+                    if (b.Alive && (b.IsKing || b.Grade >= 7)) // kings and the great ones only: the wilds teem with lesser beasts
                         PlaceLabel(ref used, cam, new Vector3(ent.X[b.Entity], ent.Y[b.Entity] + 2.4f, 0f),
                             b.IsKing ? $"{b.ClanName} · {b.Name}" : $"{b.Name} · {b.GradeText}", new Color(1f, 0.5f, 0.45f), 17);
+                foreach (var w in sim.Beasts.Wars) // yêu tộc at war: the field their hosts meet on
+                    if (!w.Over)
+                        PlaceLabel(ref used, cam, new Vector3(w.FieldX, w.FieldY + 4f, 0f),
+                            $"Yêu tộc đại chiến: {sim.Beasts.All[w.A].ClanName} – {sim.Beasts.All[w.B].ClanName}", new Color(1f, 0.4f, 0.3f), 19);
                 sim.Factions.ActiveBattles(_battleInfo);
                 foreach (var b in _battleInfo)
                     PlaceLabel(ref used, cam, new Vector3(b.X, b.Y + 3.5f, 0f),

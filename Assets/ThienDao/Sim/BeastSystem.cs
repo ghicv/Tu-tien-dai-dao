@@ -26,6 +26,9 @@ namespace ThienDao.Sim
         public bool Humanoid;        // hóa hình
         public BeastKind Kind;       // what it looks and fights like (BeastSystem.Kinds)
         public bool ChanLinh;        // one of the five chân linh of the hồng hoang (devlog 35): one of each, lords of the beasts
+        public int War = -1;          // the war of the yêu tộc it is fighting in (index into BeastSystem.Wars), -1 at peace
+        public long PeaceUntil;       // a king: no new war before this
+        public int ClanCount;         // a king: how many kneel to it, counted each year (its land grows with it)
         public bool Rampage;         // hung thú: roams from town to town, killing (BeastHorde.cs)
         public int Prey = -1;        // the settlement it is heading for
         public long RestUntil;       // gorged after a massacre
@@ -53,7 +56,9 @@ namespace ThienDao.Sim
     // raids the lands of men until a sect comes to cut the king down.
     public sealed partial class BeastSystem
     {
-        public const int MaxAlive = 160;
+        public const int MaxAliveAgeOfMen = 160, MaxAlivePrimordial = 500;
+        // The hồng hoang teems with beasts; once men spread they are hunted back into the wilds (devlog 36).
+        public int MaxAlive => _w.Primordial ? MaxAlivePrimordial : MaxAliveAgeOfMen;
         public static readonly int[] Lifespan = { 0, 80, 150, 250, 400, 600, 900, 1300, 2000, 3000 };
         static readonly float[] Need = { 0f, 30f, 80f, 180f, 380f, 800f, 1700f, 3500f, 7000f, 99999f }; // progress to try the next grade
         static readonly float[] GradeUpChance = { 0f, 0.6f, 0.45f, 0.3f, 0.18f, 0.1f, 0.05f, 0.025f, 0.01f, 0f };
@@ -105,7 +110,7 @@ namespace ThienDao.Sim
             (BeastKind.KunPeng, "Bắc Minh Côn Bằng", "Côn Bằng tộc", true),
             (BeastKind.Turtle, "Huyền Vũ Thánh Quy", "Huyền Vũ tộc", true),
         };
-        const int PrimordialBeasts = 150;
+        const int PrimordialBeasts = 400;
         const float ChanLinhApart = 180f, ClanReach = 200f;
 
         // Khai thiên lập địa: no man walks the land yet. Beasts fill it wherever qi runs, the stronger where it runs
@@ -222,7 +227,7 @@ namespace ThienDao.Sim
             if (b.Alive) Die(b, tick, text, importance, null, fx);
         }
 
-        void Die(Beast b, long tick, string text, int importance, Cultivator killer = null, Fx fx = Fx.None)
+        void Die(Beast b, long tick, string text, int importance, Cultivator killer = null, Fx fx = Fx.None, bool quiet = false)
         {
             float x = _e.X[b.Entity], y = _e.Y[b.Entity];
             b.DeathX = x;
@@ -237,7 +242,7 @@ namespace ThienDao.Sim
                 foreach (var o in All)
                     if (o.Clan == b.Index) o.Clan = -1;
             b.Clan = -1;
-            _sim.Events.Add(tick, EventKind.Beast, importance, text, x, y, killer != null ? Fx.BeastSlain : fx, killer?.Index ?? -1, -1, killer?.SectId ?? -1);
+            if (!quiet) _sim.Events.Add(tick, EventKind.Beast, importance, text, x, y, killer != null ? Fx.BeastSlain : fx, killer?.Index ?? -1, -1, killer?.SectId ?? -1);
             if (b.ChanLinh) _sim.Relics?.OnChanLinhFell(b, x, y, tick); // its blood and bones become a bí cảnh for the ages after
         }
 
@@ -254,7 +259,7 @@ namespace ThienDao.Sim
                 float qi = _sim.Qi.SampleQi(cx, cy);
                 if (qi < 2500f) continue;
                 float wolves = wild.At(Species.Wolf, r), deer = wild.At(Species.Deer, r), rabbits = wild.At(Species.Rabbit, r);
-                float chance = Mathf.Min(0.25f, (wolves * 6f + deer + rabbits * 0.3f) / 2000f) * (qi / 4000f);
+                float chance = Mathf.Min(0.25f, (wolves * 6f + deer + rabbits * 0.3f) / 2000f) * (qi / 4000f) * (_w.Primordial ? 3f : 1f);
                 if (rng.NextFloat() >= chance) continue;
                 // Somewhere walkable in the region, out in the wilds: not where a sect would see it born.
                 for (int k = 0; k < 8; k++)
@@ -264,7 +269,7 @@ namespace ThienDao.Sim
                     float pick = rng.NextFloat() * (wolves * 6f + deer + rabbits * 0.3f);
                     var from = pick < wolves * 6f ? Species.Wolf : pick < wolves * 6f + deer ? Species.Deer : Species.Rabbit;
                     var b = Spawn(from, 1, x, y, tick, ref rng);
-                    _sim.Events.Add(tick, EventKind.Beast, 1,
+                    _sim.Events.Add(tick, EventKind.Beast, _w.Primordial ? 0 : 1,
                         $"Một con {SpeciesInfo.Names[(int)from].ToLower()} sống lâu nơi linh khí dồi dào, khai mở linh trí thành {b.Name} ({b.GradeText}).", x, y);
                     break;
                 }
@@ -315,7 +320,7 @@ namespace ThienDao.Sim
                         CountByGrade[b.Grade]++;
                         bool human = b.Grade == HumanoidGrade;
                         if (human) b.Humanoid = true;
-                        _sim.Events.Add(tick, EventKind.Beast, b.Grade >= KingGrade ? 2 : b.Grade >= 3 ? 1 : 0,
+                        _sim.Events.Add(tick, EventKind.Beast, b.Grade >= 7 ? 2 : b.Grade >= 4 ? 1 : 0,
                             human ? $"{b.Name} tu luyện đến {b.GradeText}, hóa hình thành người, yêu khí ngút trời."
                                   : $"{b.Title} tiến giai lên {b.GradeText}.", b.HomeX, b.HomeY, Fx.LightPillar);
                     }
@@ -343,7 +348,7 @@ namespace ThienDao.Sim
                 wild.Cull(Species.Rabbit, region, 1f - 0.004f * b.Grade);
 
                 // Prowls its territory.
-                if (b.ChaseEntity < 0 && tick >= b.HuntUntil && rng.NextFloat() < 0.5f) // not while it is after something
+                if (b.ChaseEntity < 0 && b.War < 0 && tick >= b.HuntUntil && rng.NextFloat() < 0.5f) // not while it is after something, or at war
                 {
                     float r = 4f + b.Grade;
                     float tx = b.HomeX + rng.Range(-r, r), ty = b.HomeY + rng.Range(-r, r);
@@ -354,7 +359,7 @@ namespace ThienDao.Sim
                     }
                 }
 
-                if (b.Grade >= 2 && rng.NextFloat() < 0.012f * b.Grade) Raid(b, tick, ref rng);
+                if (b.War < 0 && b.Grade >= 2 && rng.NextFloat() < 0.012f * b.Grade) Raid(b, tick, ref rng);
                 // Meetings with passers-by are played out day by day now (BeastChase.DailyStep), not settled here.
             }
             CoalitionStep(tick);
@@ -457,6 +462,7 @@ namespace ThienDao.Sim
             }
             foreach (var b in All) // beasts born near a chân linh's lair swear to it
                 if (b.Alive && b.Clan < 0) Recruit(b);
+            WarsYearly(tick); // yêu tộc tranh bá (BeastWars)
             foreach (var king in All)
             {
                 if (!king.Alive || !king.IsKing) continue;
@@ -513,6 +519,7 @@ namespace ThienDao.Sim
 
         public void HashInto(ref ulong h)
         {
+            HashWars(ref h);
             foreach (var b in All)
             {
                 StateHash.Add(ref h, b.Alive ? b.Index : -b.Index - 1);
