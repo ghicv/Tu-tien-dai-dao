@@ -217,13 +217,14 @@ namespace ThienDao.Sim
             if (b.Ravaged >= SlumberAfter || tick - b.RampageSince > SlumberYears * (long)SimClock.DaysPerYear)
             {
                 b.Rampage = false;
+                b.Ravaging = -1;
                 b.Prey = -1;
                 b.CalmUntil = tick + 50L * SimClock.DaysPerYear;
                 if (_w.IsWalkable(x, y)) { b.HomeX = x; b.HomeY = y; }
                 _sim.Events.Add(tick, EventKind.Beast, 2, $"Sau {b.Ravaged} lần tàn sát, hung thú {b.Name} ({b.GradeText}) no say, quay về chốn hoang sơn ngủ vùi.", x, y);
                 return;
             }
-            if (tick < b.RestUntil) return;
+            if (tick < b.RestUntil || b.Ravaging >= 0) return; // resting, or in the middle of a town (RavageDaily)
             var all = _sim.Settlements.All;
             if (b.Prey < 0 || !all[b.Prey].Alive)
             {
@@ -256,15 +257,65 @@ namespace ThienDao.Sim
                 _e.TY[b.Entity] = prey.Y + 0.5f;
                 return;
             }
-            Massacre(b, prey, tick, ref rng);
+            if (b.Ravaging < 0) StartRavage(b, prey, tick, ref rng); // normally the daily step has begun it already
+        }
+
+        // A massacre is not over in a breath (devlog 38 fix): the hung thú breaks in and goes through the town for some
+        // days, killing a share each day, the people running, before it moves on. The daily step starts it the day the
+        // beast reaches the town; RavageDaily plays it out; Massacre tells the end of it.
+        void StartRavage(Beast b, Settlement s, long tick, ref DetRandom rng)
+        {
+            float share = 0.06f * (b.Grade - 4) * rng.Range(0.7f, 1.3f); // a thất giai takes near a fifth of an open town
+            if (s.Walled) share *= 0.4f;          // the gates hold, for a while
+            if (_sim.Settlements.HasCivic(s, ObjectType.Shrine)) share *= 0.9f;
+            b.Ravaging = s.Id;
+            b.RavageUntil = tick + rng.Range(5, 10);
+            b.RavageTotal = Mathf.Max(1, (int)(s.Population * share));
+            b.RavageDead = 0;
+            _sim.Events.Add(tick, EventKind.Beast, 2, $"{b.Title} ({b.GradeText}) xông vào {s.Name}! Dân chúng kêu khóc chạy trốn.", s.X + 0.5f, s.Y + 0.5f, Fx.Stampede);
+        }
+
+        public void RavageDaily(Beast b, long tick)
+        {
+            var all = _sim.Settlements.All;
+            if (b.Ravaging < 0)
+            {
+                // Rested and with no town in mind: it picks one now, not at the turn of the month.
+                if (tick >= b.RestUntil && (b.Prey < 0 || !all[b.Prey].Alive) && (tick + b.Index) % 5 == 0)
+                {
+                    var pick = RngFor(tick, 992000 + b.Index);
+                    RampageStep(b, tick, ref pick);
+                }
+                if (!b.Rampage) return; // RampageStep may have sent it back to sleep
+                if (b.Ravaging < 0)
+                {
+                    // Reached the town it was making for: in it goes, the same day.
+                    if (b.Prey < 0 || tick < b.RestUntil || !all[b.Prey].Alive) return;
+                    var target = all[b.Prey];
+                    float dx = target.X + 0.5f - _e.X[b.Entity], dy = target.Y + 0.5f - _e.Y[b.Entity];
+                    if (dx * dx + dy * dy > 25f) return;
+                    var start = RngFor(tick, 990000 + b.Index);
+                    StartRavage(b, target, tick, ref start);
+                }
+            }
+            var s = all[b.Ravaging];
+            var rng = RngFor(tick, 991000 + b.Index);
+            if (!s.Alive) { b.Ravaging = -1; b.Prey = -1; return; }
+            // A share of the dead each day, the beast going from house to house.
+            int days = (int)System.Math.Max(1, b.RavageUntil - tick + 1);
+            int today = Mathf.Max(0, Mathf.CeilToInt((b.RavageTotal - b.RavageDead) / (float)days));
+            int dead = today > 0 ? _sim.Settlements.Kill(s, today) : 0;
+            b.RavageDead += dead;
+            float x = s.X + 0.5f + rng.Range(-5f, 5f), y = s.Y + 0.5f + rng.Range(-5f, 5f);
+            if (_w.IsWalkable(x, y)) { _e.TX[b.Entity] = x; _e.TY[b.Entity] = y; }
+            if (dead > 0) _sim.Events.Add(tick, EventKind.Beast, 0, $"{b.Title} cắn xé ở {s.Name}, {dead} người bỏ mạng.", _e.X[b.Entity], _e.Y[b.Entity], Fx.Stampede);
+            if (tick >= b.RavageUntil) Massacre(b, s, tick, ref rng);
         }
 
         void Massacre(Beast b, Settlement s, long tick, ref DetRandom rng)
         {
-            float share = 0.03f * (b.Grade - 4) * rng.Range(0.7f, 1.3f);
-            if (s.Walled) share *= 0.4f;          // the gates hold, for a while
-            if (_sim.Settlements.HasCivic(s, ObjectType.Shrine)) share *= 0.9f;
-            int dead = _sim.Settlements.Kill(s, Mathf.Max(1, (int)(s.Population * share)));
+            int dead = b.RavageDead;
+            b.Ravaging = -1;
             int houses = 0, wreck = Mathf.Max(0, b.Grade - 5 - (s.Walled ? 1 : 0));
             for (int k = 0; k < wreck && s.Houses.Count > 1; k++)
             {

@@ -42,7 +42,8 @@ namespace ThienDao.Sim
             for (int k = 0; k < _living.Count; k++)
             {
                 var b = _living[k];
-                if (!b.Alive || b.Rampage || tick < b.CalmUntil || b.War >= 0) continue; // a hung thú hunts towns, a sleeper sleeps, a warrior fights
+                if (b.Alive && b.Rampage) { RavageDaily(b, tick); continue; } // a hung thú hunts towns, day by day
+                if (!b.Alive || b.Rampage || tick < b.CalmUntil || b.War >= 0) continue; // a sleeper sleeps, a warrior fights
                 if (b.ChaseEntity >= 0) { ChaseStep(b, tick); continue; }
                 if (tick < b.HuntUntil) continue; // stalking a deer: the renderer plays it
                 if ((tick + b.Index) % 3 != 0) { Stalk(b, tick); continue; } // looks around every third day

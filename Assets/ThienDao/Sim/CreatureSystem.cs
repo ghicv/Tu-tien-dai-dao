@@ -121,6 +121,7 @@ namespace ThienDao.Sim
                     var beast = _sim.Beasts.ForEntity(id);
                     int grade = beast != null ? beast.Grade : 1;
                     if (_e.Flying[id]) Fly(id, 2f + 0.9f * grade);
+                    else if (beast != null && beast.Rampage) Walk(id, SpeciesInfo.Speed[(int)s] * (1f + 0.17f * (grade - 1)), tick); // a hung thú finds its way to the towns
                     else if (_w.IsWalkable(_e.X[id], _e.Y[id])) Roam(id, SpeciesInfo.Speed[(int)s] * (1f + 0.17f * (grade - 1)));
                     else Walk(id, SpeciesInfo.Speed[(int)s], tick); // stranded: Walk wades it ashore
                 }

@@ -29,6 +29,9 @@ namespace ThienDao.Sim
         public int War = -1;          // the war of the yêu tộc it is fighting in (index into BeastSystem.Wars), -1 at peace
         public long PeaceUntil;       // a king: no new war before this
         public int ClanCount;         // a king: how many kneel to it, counted each year (its land grows with it)
+        public int Ravaging = -1;     // a hung thú: the town it is tearing through right now (BeastHorde.RavageDaily), -1 none
+        public long RavageUntil;
+        public int RavageTotal, RavageDead;
         public bool Rampage;         // hung thú: roams from town to town, killing (BeastHorde.cs)
         public int Prey = -1;        // the settlement it is heading for
         public long RestUntil;       // gorged after a massacre

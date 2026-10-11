@@ -1167,6 +1167,33 @@ namespace ThienDao.Tests
             Assert.AreEqual("Thủy tổ tu tiên", other.Eras.EpochName);
         }
 
+        // Fix after devlog 38: a hung thú that reaches a town tears through it over some days, the same day it arrives,
+        // instead of standing by it until the turn of the month and settling it all in a breath.
+        [Test]
+        public void HungThuTearsThroughTheTownOverDays()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            var v = sim.Settlements.All.Find(s => s.Alive && !s.Sect && !s.Capital && s.Population >= 40);
+            int sx = v.X + 30, sy = v.Y;
+            for (int k = 0; k < 40 && !sim.World.IsWalkable(sx + 0.5f, sy + 0.5f); k++) sx--;
+            sim.Enqueue(new SpawnHungThuCommand(sx, sy, 7));
+            sim.ApplyPending();
+            var b = sim.Beasts.All[sim.Beasts.All.Count - 1];
+            Assert.IsTrue(b.Rampage);
+            int pop = v.Population, began = -1, ended = -1;
+            for (int d = 0; d < 90 && ended < 0; d++)
+            {
+                sim.Step();
+                if (b.Ravaging >= 0 && began < 0) began = d;
+                if (began >= 0 && b.Ravaging < 0) ended = d;
+            }
+            Assert.GreaterOrEqual(began, 0, "within three months it is in the town");
+            Assert.Greater(ended, 0);
+            Assert.GreaterOrEqual(ended - began, 4, "and the massacre takes days, not a breath");
+            Assert.Less(v.Population, pop, "and people die in it");
+            Assert.AreEqual(1, b.Ravaged);
+        }
+
         // Devlog 38: sơn môn. Sects are ranked, build their complex module by module, and leave ruins when they fall.
         [Test]
         public void SectsBuildTheirSonMonAndLeaveRuins()

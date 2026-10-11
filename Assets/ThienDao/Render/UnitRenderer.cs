@@ -22,6 +22,7 @@ namespace ThienDao.Render
             public Unit Look;
             public Cultivator Who; // the real sect member this stand-in shows; null for mortals
             public int Id;         // stable, for who falls when the village is hurt
+            public float Panic;    // real seconds left running from a beast (devlog 38 fix)
         }
 
         struct Token
@@ -410,9 +411,24 @@ namespace ThienDao.Render
                         list.RemoveAt(k); // ground changed under them; a replacement spawns on dry land
                         continue;
                     }
+                    // Mortals run from a beast that comes near; a hung thú that catches one tears it apart.
+                    if (dt > 0f && v.Who == null && Flee(ref v, out bool caught) && caught)
+                    {
+                        FightScenes.Kills.Add(new Vector2(v.X, v.Y));
+                        list.RemoveAt(k);
+                        continue;
+                    }
+                    if (v.Panic > 0f) v.Panic -= dt;
                     float dx = v.TX - v.X, dy = v.TY - v.Y, d = Mathf.Sqrt(dx * dx + dy * dy);
                     bool moving = false;
-                    if (v.Wait > 0f) v.Wait -= dt;
+                    if (v.Panic > 0f && d >= 0.05f)
+                    {
+                        float run = Mathf.Min(d, 4f * dt);
+                        v.X += dx / d * run;
+                        v.Y += dy / d * run;
+                        moving = true;
+                    }
+                    else if (v.Wait > 0f) v.Wait -= dt;
                     else if (d < 0.05f || !PathClear(v.X, v.Y, v.TX, v.TY))
                     {
                         var p = RandomSpot(s, objects, v.Look);
@@ -445,8 +461,9 @@ namespace ThienDao.Render
                         list.RemoveAt(k);
                         continue;
                     }
-                    int frame = moving ? ((int)(time * 7f) + k) & 1 : 0;
+                    int frame = moving ? ((int)(time * (v.Panic > 0f ? 13f : 7f)) + k) & 1 : 0;
                     DrawFighter(v.Look, frame, v.X, v.Y, dx < 0f, 255, hurt);
+                    if (v.Panic > 0f && moving && ((v.Id + Time.frameCount) % 9) == 0) FightScenes.Dust.Add(new Vector2(v.X, v.Y));
                     AddHit(v.Look, v.X, v.Y, new Hit { Cultivator = v.Who, Settlement = s, Entity = -1, Region = -1, Kind = -1 });
                 }
             }
@@ -643,12 +660,14 @@ namespace ThienDao.Render
         // Yêu thú on screen, for the animals to run from. A beast stalking (BeastSystem.Stalk) also gets an animal
         // put down by its mark, which runs from it, too slowly.
         readonly List<Vector2> _predators = new List<Vector2>();
+        readonly List<bool> _predatorRampage = new List<bool>(); // a hung thú: it kills the mortals it catches
         readonly Dictionary<int, long> _stalkShown = new Dictionary<int, long>();
         const float FleeRange = 6f, CatchRange = 0.9f;
 
         void GatherPredators(Rect view)
         {
             _predators.Clear();
+            _predatorRampage.Clear();
             var e = _sim.Entities;
             float frac = _sim.TickFraction;
             long tick = _sim.Clock.Tick;
@@ -660,6 +679,7 @@ namespace ThienDao.Render
                 var p = new Vector2(Mathf.Lerp(e.PrevX[id], e.X[id], frac), Mathf.Lerp(e.PrevY[id], e.Y[id], frac));
                 if (!near.Contains(p)) continue;
                 _predators.Add(p);
+                _predatorRampage.Add(b.Rampage);
                 if (b.HuntUntil <= tick || !view.Contains(new Vector2(b.HuntX, b.HuntY))) continue;
                 if (_stalkShown.TryGetValue(id, out long until) && until == b.HuntUntil) continue;
                 _stalkShown[id] = b.HuntUntil;
@@ -715,6 +735,38 @@ namespace ThienDao.Render
             if (best < CatchRange * CatchRange * (t.Quarry ? 2.5f : 1f)) return true;
             if (best < FleeRange * FleeRange) Bolt(ref t, from, best);
             return false;
+        }
+
+        // A mortal sees a beast within six cells and runs straight away from it (true); one caught by a hung thú, within
+        // a cell of it, is torn apart (caught). The deaths that count are the sim's (RavageDaily); this is how they look.
+        bool Flee(ref Villager v, out bool caught)
+        {
+            caught = false;
+            float best = float.MaxValue;
+            int who = -1;
+            for (int k = 0; k < _predators.Count; k++)
+            {
+                var p = _predators[k];
+                float d2 = (p.x - v.X) * (p.x - v.X) + (p.y - v.Y) * (p.y - v.Y);
+                if (d2 < best) { best = d2; who = k; }
+            }
+            if (who < 0 || best > FleeRange * FleeRange) return false;
+            if (_predatorRampage[who] && best < 1.2f * 1.2f) { caught = true; return true; }
+            if (v.Panic > 0.3f) return true; // already running
+            var from = _predators[who];
+            float l = Mathf.Sqrt(best) + 0.001f, ax = (v.X - from.x) / l, ay = (v.Y - from.y) / l;
+            v.Panic = 1.5f;
+            v.Wait = 0f;
+            for (int k = 0; k < 3; k++)
+            {
+                float rx = k == 0 ? ax : k == 1 ? ax - ay : ax + ay, ry = k == 0 ? ay : k == 1 ? ay + ax : ay - ax;
+                float nx = v.X + rx * 5f, ny = v.Y + ry * 5f;
+                if (!PathClear(v.X, v.Y, nx, ny)) continue;
+                v.TX = nx;
+                v.TY = ny;
+                break;
+            }
+            return true;
         }
 
         void Bolt(ref Token t, Vector2 from, float d2)
