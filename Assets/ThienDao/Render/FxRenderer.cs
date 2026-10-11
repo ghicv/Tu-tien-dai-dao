@@ -680,6 +680,7 @@ namespace ThienDao.Render
             DrawChases(view, now, dt);
             DrawYeuToc(view, now, dt);
             DrawBiomeAmbience(view, now, dt);
+            DrawSectLife(view, now, dt);
             DrawLoot(view, now, dt);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
@@ -1189,6 +1190,58 @@ namespace ThienDao.Render
                     case Biome.KimSon:
                         if (roll < 0.06f) _particles.Add(new Particle { Sprite = Sprite.Flash, X = x, Y = y, Life = 0.15f, Size = 1f, Color = new Color32(255, 245, 210, 255) });
                         break;
+                }
+            }
+        }
+
+        // Life in the sơn môn (devlog 38): smoke from the alchemy cauldron and the incense burner, sparks over the
+        // training ground where disciples spar, the formation platforms glowing (brighter while the sect is at war),
+        // a light on top of the pagoda.
+        void DrawSectLife(Rect view, float now, float dt)
+        {
+            if (view.width > 420f || dt <= 0f) return;
+            var layout = FactionSystem.Layout;
+            foreach (var f in _sim.Factions.All)
+            {
+                if (!f.Alive || f.Built == 0) continue;
+                var s = _sim.Settlements.All[f.Id];
+                if (!view.Overlaps(new Rect(s.X - 30f, s.Y - 20f, 60f, 42f))) continue;
+                bool war = _sim.Factions.AtWar(f.Id);
+                for (int m = 0; m < layout.Length; m++)
+                {
+                    if (!FactionSystem.Has(f.Built, m) || FactionSystem.Has(f.Ruined, m)) continue;
+                    var mod = layout[m];
+                    float cx = s.X + 0.5f + (mod.X0 + mod.X1) * 0.5f, cy = s.Y + 0.5f + (mod.Y0 + mod.Y1) * 0.5f;
+                    switch (mod.Part)
+                    {
+                        case SectPart.Hall: // incense before the main hall
+                            if (_rand.NextDouble() < dt * 3f)
+                                _particles.Add(new Particle { Sprite = Sprite.Smoke, X = cx + Rand(-0.2f, 0.2f), Y = s.Y + mod.Y0 + 3f, VY = Rand(0.5f, 0.9f), VX = Rand(-0.1f, 0.1f),
+                                    Life = Rand(1.4f, 2f), Size = 1f, Color = new Color32(230, 226, 218, 255) });
+                            break;
+                        case SectPart.Alchemy: // the cauldron's smoke, now and then a burst of flame
+                            if (_rand.NextDouble() < dt * 4f)
+                                _particles.Add(new Particle { Sprite = Sprite.Smoke, X = cx + Rand(-0.3f, 0.3f), Y = s.Y + mod.Y0 + 2.5f, VY = Rand(0.8f, 1.3f), VX = Rand(-0.2f, 0.2f),
+                                    Life = Rand(1.5f, 2.4f), Size = 1f, Grow = 0.4f, Color = new Color32(196, 210, 200, 255) });
+                            if (_rand.NextDouble() < dt * 0.5f) Burst(cx, s.Y + mod.Y0 + 2f, new Color32(255, 170, 60, 255), 5, 2f, false);
+                            break;
+                        case SectPart.Training: // sparring
+                            if (_rand.NextDouble() < dt * 1.5f)
+                                Burst(cx + Rand(-2f, 2f), cy + Rand(-1.5f, 1.5f), KiemKhi[(int)_rand.Next(1, 4)], 4, 2.5f, false);
+                            break;
+                        case SectPart.Formation: // hộ sơn đại trận
+                        {
+                            float k = (now * (war ? 1.6f : 0.4f) + m * 0.3f) % 1f;
+                            var glow = war ? new Color32(255, 120, 90, 255) : new Color32(120, 240, 240, 255);
+                            Quad(Sprite.Ring, cx, cy, 2f + k * 2f, 2f + k * 2f, new Color32(glow.r, glow.g, glow.b, (byte)((war ? 220 : 120) * (1f - k))));
+                            if (_rand.NextDouble() < dt * (war ? 6f : 1.5f))
+                                _particles.Add(new Particle { Sprite = Sprite.Spark, X = cx + Rand(-2f, 2f), Y = cy + Rand(-2f, 2f), VY = Rand(0.8f, 1.6f), Life = 1f, Size = 1f, Color = glow });
+                            break;
+                        }
+                        case SectPart.Pagoda:
+                            if (((int)(now * 2f) & 1) == 0) Quad(Sprite.Flash, cx, s.Y + mod.Y1 + 0.5f, 1f, 1f, new Color32(255, 236, 150, 200));
+                            break;
+                    }
                 }
             }
         }

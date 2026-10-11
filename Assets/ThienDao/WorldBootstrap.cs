@@ -51,6 +51,7 @@ namespace ThienDao
         WorldRenderer _renderer;
         UnitRenderer _units;
         FxRenderer _fx;
+        SectRenderer _sects; // sơn môn (devlog 38)
         public FxRenderer Fx => _fx;
         CameraController _cam;
         SpriteRenderer _cursor;
@@ -102,6 +103,8 @@ namespace ThienDao
             if (_units == null) _units = gameObject.AddComponent<UnitRenderer>();
             _fx = GetComponent<FxRenderer>();
             if (_fx == null) _fx = gameObject.AddComponent<FxRenderer>();
+            _sects = GetComponent<SectRenderer>();
+            if (_sects == null) _sects = gameObject.AddComponent<SectRenderer>();
             _highlight = GetComponent<HighlightRenderer>();
             if (_highlight == null) _highlight = gameObject.AddComponent<HighlightRenderer>();
             _highlight.Init();
@@ -138,6 +141,7 @@ namespace ThienDao
             _renderer.Init(World, Sim);
             _units.Init(Sim);
             _fx.Init(Sim);
+            _sects.Init(Sim);
 
             var prev = Brush;
             Brush = new WorldBrush(Sim);
@@ -286,6 +290,7 @@ namespace ThienDao
             _renderer.Tick(_cam.Cam);
             _units.Tick(_cam.Cam, _cam.PixelsPerCell);
             _fx.Tick(_cam.Cam);
+            _sects.Tick();
             UpdateHighlights();
         }
 

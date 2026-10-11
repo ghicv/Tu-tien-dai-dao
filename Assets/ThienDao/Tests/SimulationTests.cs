@@ -1167,6 +1167,37 @@ namespace ThienDao.Tests
             Assert.AreEqual("Thủy tổ tu tiên", other.Eras.EpochName);
         }
 
+        // Devlog 38: sơn môn. Sects are ranked, build their complex module by module, and leave ruins when they fall.
+        [Test]
+        public void SectsBuildTheirSonMonAndLeaveRuins()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao"));
+            Run(sim, SimClock.DaysPerYear * 12);
+            var alive = sim.Factions.All.FindAll(f => f.Alive);
+            Assert.Greater(alive.Count, 1);
+            Assert.IsTrue(alive.Exists(f => f.Tier == FactionSystem.TierHoly), "the strongest is a thánh địa");
+            foreach (var f in alive)
+            {
+                Assert.IsTrue(FactionSystem.Has(f.Built | f.Skipped, 0), "every sect has (or tried for) its main hall");
+                int built = 0;
+                for (int m = 0; m < FactionSystem.Layout.Length; m++) if (FactionSystem.Has(f.Built, m)) built++;
+                Assert.LessOrEqual(built, f.Tier == FactionSystem.TierHoly ? 17 : f.Tier == FactionSystem.TierGreat ? 12 : 5, "its rank caps how far it can build");
+            }
+            Assert.IsTrue(alive.Exists(f => FactionSystem.Has(f.Built, 1) && FactionSystem.Has(f.Built, 2)), "and in a dozen years some have a gate and dorms");
+            Assert.IsTrue(sim.History.All.Exists(r => r.Text.Contains("xây xong")));
+
+            // Its members are found in its halls and grounds.
+            var big = alive.Find(f => FactionSystem.Has(f.Built, 2));
+            var seat = sim.Settlements.All[big.Id];
+            Assert.IsTrue(sim.Factions.SpotIn(big, false, 0.3f, 0.5f, 0.5f, out float sx, out float sy));
+            Assert.Less(UnityEngine.Mathf.Abs(sx - seat.X), 30f);
+            Assert.Less(UnityEngine.Mathf.Abs(sy - seat.Y), 22f);
+
+            // A sect that is gone leaves its sơn môn standing as a ruin.
+            sim.Factions.SectGone(big.Id, sim.Clock.Tick);
+            Assert.IsTrue(sim.Factions.Ruins.Exists(r => r.X == seat.X && r.Y == seat.Y && r.Built == big.Built));
+        }
+
         // Devlog 37: biome tu tiên giới. The land has a spirit: it shapes qi, cultivation, beasts, and can be changed.
         [Test]
         public void BiomesGiveTheLandItsSpirit()

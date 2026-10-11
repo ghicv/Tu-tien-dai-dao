@@ -26,6 +26,10 @@ namespace ThienDao.Sim
         public int Wars;
         public int BattlesWon, BattlesLost, Fallen;
         public Color32 Color;
+        // Sơn môn (devlog 38): its rank, and which modules of the plan stand, were skipped (the land would not take
+        // them) or lie in ruin, one bit each (FactionSystem.Layout).
+        public byte Tier, PeakTier;
+        public uint Built, Skipped, Ruined;
     }
 
     public sealed class Relation
@@ -52,7 +56,7 @@ namespace ThienDao.Sim
 
     // Thế lực: territory over coarse tiles, linh thạch, opinion and stances between sects, wars fought as
     // battles over tiles (linh mạch first), sects founded by strong tán tu and by elders who break away.
-    public sealed class FactionSystem
+    public sealed partial class FactionSystem
     {
         public const int Tile = 16;
         public const float PillCost = 30f;
@@ -396,6 +400,7 @@ namespace ThienDao.Sim
             var f = Get(id);
             if (f == null || !f.Alive) return;
             f.Alive = false;
+            LeaveRuin(f, tick); // the empty sơn môn stands on as a ruin
             AliveCount--;
             for (int t = 0; t < TileOwner.Length; t++)
                 if (TileOwner[t] == id + 1) TileOwner[t] = 0;
@@ -534,6 +539,7 @@ namespace ThienDao.Sim
             Foundings(tick, ref rng);
             Census();
             CountTiles();
+            SectComplexYearly(tick); // sơn môn: rank, build, decay
         }
 
         // A sect with no cultivators left fades into an ordinary town.
@@ -1138,6 +1144,7 @@ namespace ThienDao.Sim
 
         public void HashInto(ref ulong h)
         {
+            HashComplexes(ref h);
             foreach (var f in All)
             {
                 StateHash.Add(ref h, f.Id | (f.Alive ? 1L << 32 : 0) | (f.Demonic ? 1L << 33 : 0));

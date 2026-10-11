@@ -477,10 +477,12 @@ namespace ThienDao.Render
                 if (c.Realm == Realm.LuyenKhi) _disciples.Add(c);
                 else _elders.Add(c);
             }
-            int shown = Mathf.Min(6, (_disciples.Count + 2) / 3);
+            var sect = _sim.Factions.Get(sectId);
+            int cap = sect == null ? 6 : 6 + 5 * sect.Tier; // a thánh địa teems with disciples
+            int shown = Mathf.Min(cap, (_disciples.Count + 1) / 2);
             for (int k = 0; k < shown; k++) Want(CultivatorLook(_disciples[k]), _disciples[k]);
             _elders.Sort((a, b) => b.Rank.CompareTo(a.Rank));
-            for (int k = 0; k < Mathf.Min(2, _elders.Count); k++) Want(CultivatorLook(_elders[k]), _elders[k]);
+            for (int k = 0; k < Mathf.Min(sect == null ? 2 : 2 + 2 * sect.Tier, _elders.Count); k++) Want(CultivatorLook(_elders[k]), _elders[k]);
         }
 
         // Keep the stand-ins in step with what is wanted, reusing existing ones so they don't jump around.
@@ -761,7 +763,15 @@ namespace ThienDao.Render
 
         Vector2 RandomSpotOnce(Settlement s, WorldObjects objects, Unit look)
         {
-            // Disciples and elders keep to the sect hall grounds; mortals go between fields and houses.
+            // Disciples and elders keep to their sơn môn (devlog 38): the dorms, the training ground and the fields for the
+            // one, their halls, the scripture and alchemy halls for the other. Mortals go between fields and houses.
+            if (!IsVillagerLook(look))
+            {
+                var f = s.Sect ? _sim.Factions.Get(s.Id) : null;
+                bool elder = look != Unit.CultivatorLK;
+                if (f != null && _sim.Factions.SpotIn(f, elder, (float)_rand.NextDouble(), (float)_rand.NextDouble(), (float)_rand.NextDouble(), out float sx, out float sy))
+                    return new Vector2(sx, sy);
+            }
             if (!IsVillagerLook(look))
                 return new Vector2(s.X + 0.5f + (float)(_rand.NextDouble() - 0.5) * 8f, s.Y - 1f + (float)(_rand.NextDouble() - 0.5) * 4f);
             if (s.Farms.Count > 0 && (_rand.NextDouble() < 0.6 || s.Houses.Count == 0))
