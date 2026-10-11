@@ -51,7 +51,8 @@ namespace ThienDao.Player
         PlaceTreasure,
         OpenRealm,
         GrantTechnique, // devlog 28
-        Lure // devlog 32: thiên cơ hiển lộ
+        Lure, // devlog 32: thiên cơ hiển lộ
+        BiomeLinhSon, BiomeLinhHo, BiomeTrucLam, BiomeDaoHoa, BiomeLoiTrach, BiomeHoaVuc, BiomeMaVuc, BiomeCamDia, BiomeErase // devlog 37: biome tu tiên giới
     }
 
     // Turns mouse input into world commands; it never mutates the world itself.
@@ -64,7 +65,8 @@ namespace ThienDao.Player
             "Rót linh khí", "Hút linh khí", "Thả hươu", "Thả thỏ", "Thả sói", "Tạo hóa nhân tộc",
             "Ban linh căn", "Ban cơ duyên", "Thiên phạt", "Thiên kiếp",
             "Động đất", "Núi lửa", "Lũ lụt", "Hạn hán", "Ôn dịch", "Thú triều", "Đại kiếp", "Mưa", "Bão", "Rét", "Diệt môn", "Thả yêu thú",
-            "Thả tu sĩ", "Đánh thức hung thú", "Ban pháp bảo", "Giáng tâm ma", "Phế tu vi", "Thiên tài địa bảo", "Mở bí cảnh", "Ban công pháp", "Thiên cơ hiển lộ"
+            "Thả tu sĩ", "Đánh thức hung thú", "Ban pháp bảo", "Giáng tâm ma", "Phế tu vi", "Thiên tài địa bảo", "Mở bí cảnh", "Ban công pháp", "Thiên cơ hiển lộ",
+            "Tạo linh sơn", "Tạo linh hồ", "Tạo trúc lâm", "Tạo đào hoa lâm", "Tạo lôi trạch", "Tạo hỏa vực", "Tạo ma vực", "Tạo cấm địa", "Trả về đất thường"
         };
 
         readonly Simulation _sim;
@@ -119,6 +121,11 @@ namespace ThienDao.Player
             }
         }
 
+        public static bool IsBiomeTool(BrushTool t) => t >= BrushTool.BiomeLinhSon && t <= BrushTool.BiomeErase;
+
+        static readonly Biome[] BiomeOfTool = { Biome.LinhSon, Biome.LinhHo, Biome.TrucLam, Biome.DaoHoa, Biome.LoiTrach, Biome.HoaVuc, Biome.MaVuc, Biome.CamDia, Biome.None };
+        public static Biome BiomeFor(BrushTool t) => BiomeOfTool[t - BrushTool.BiomeLinhSon];
+
         public static bool IsCalamityTool(BrushTool t) => t >= BrushTool.Earthquake && t <= BrushTool.Cold;
 
         public static Calamity CalamityFor(BrushTool t) => (Calamity)(t - BrushTool.Earthquake);
@@ -172,6 +179,7 @@ namespace ThienDao.Player
             _cooldown -= dt;
             if (!pressedThisFrame && _cooldown > 0f) return;
             _cooldown = 1f / 30f;
+            if (IsBiomeTool(Tool)) { _cooldown = 0.12f; _sim.Enqueue(new PaintBiomeCommand(cx, cy, Size, BiomeFor(Tool))); return; } // Thiên Đạo tạo hóa: the spirit of the land
 
             switch (Tool)
             {

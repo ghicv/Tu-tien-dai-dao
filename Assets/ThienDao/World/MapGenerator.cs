@@ -28,6 +28,8 @@ namespace ThienDao.World
             ClassifyTerrain(w, river, waterDist);
             FinishRegions(w);
             GenerateQi(w);
+            AssignBiomes(w); // the spirit of each land, then the qi it gathers
+            QiCap.Recompute(w, 0, 0, w.W - 1, w.H - 1);
             var noTree = new bool[w.W * w.H];
             if (!primordial)
             {
@@ -557,6 +559,201 @@ namespace ThienDao.World
             QiCap.Recompute(w, 0, 0, n - 1, n - 1);
         }
 
+        // ---------------------------------------------------------------- biome tu tiên giới (devlog 37)
+
+        // What heaven and earth made of each land: read off its ground, its region, its qi and two noise fields (one
+        // the same groves the bamboo and the peach trees follow, so the trúc lâm is where the bamboo stands).
+        static void AssignBiomes(WorldData w)
+        {
+            int n = w.W, total = n * w.H;
+            uint s = w.Seed;
+            var biome = w.Biome;
+            int[] land = LandComponents(w, out var sizes);
+            for (int y = 0; y < w.H; y++)
+            for (int x = 0; x < n; x++)
+            {
+                int i = y * n + x;
+                var t = w.Terrain[i];
+                var region = (RegionKind)w.Region[i];
+                float q = w.QiCap[i] / (float)WorldData.MaxQi;
+                float patch = Noise.Fbm(s + 77u, x / 40f, y / 40f, 3);
+                float grove = Noise.Fbm(s + 55u, x / 26f, y / 26f, 2);
+                bool heartland = region == RegionKind.ChinhDao || region == RegionKind.CuuQuocMinh;
+                var pick = Biome.None;
+                if (TerrainInfo.IsWater(t))
+                {
+                    if ((t == Terrain.Shallow || t == Terrain.River) && q >= 0.2f && patch > -0.35f) pick = Biome.LinhHo;
+                }
+                else if (land[i] >= 0 && sizes[land[i]] >= 20 && sizes[land[i]] <= 1500) pick = Biome.TienDao;
+                else if (t == Terrain.Lava) pick = Biome.HoaVuc;
+                else if (t == Terrain.Snow || t == Terrain.Tundra || region == RegionKind.BangNguyen) pick = Biome.HanBang;
+                else if ((t == Terrain.Mountain || t == Terrain.Peak || t == Terrain.Hills) && q >= 0.55f) pick = Biome.LinhSon;
+                else if (region == RegionKind.MaDao)
+                    pick = t == Terrain.Ashland || patch > 0.05f ? Biome.MaVuc : (t == Terrain.Hills || t == Terrain.Mountain) && patch < -0.25f ? Biome.HoaVuc : Biome.None;
+                else if (t == Terrain.Swamp) pick = patch > 0f ? Biome.LoiTrach : Biome.DocChuong;
+                else if (t == Terrain.Jungle) pick = patch > 0.15f ? Biome.DocChuong : Biome.None;
+                else if (t == Terrain.Desert) pick = Biome.HoangMac;
+                else if (t == Terrain.Badlands) pick = patch > 0.1f ? Biome.HoaVuc : Biome.HoangMac;
+                else if (heartland && (t == Terrain.Forest || t == Terrain.Hills || t == Terrain.Grass) && grove > 0.28f) pick = Biome.TrucLam;
+                else if (heartland && t == Terrain.Grass && grove < -0.32f) pick = Biome.DaoHoa;
+                else if ((region == RegionKind.ThienDaoMinh && (t == Terrain.Hills || t == Terrain.Mountain || t == Terrain.Peak) && patch > -0.1f) || (region == RegionKind.SaMac && t == Terrain.Hills)) pick = Biome.KimSon;
+                biome[i] = pick;
+            }
+
+            // A linh hồ's shore is of the lake.
+            var shore = new List<int>();
+            for (int i = 0; i < total; i++)
+            {
+                if (biome[i] != Biome.LinhHo || !TerrainInfo.IsWater(w.Terrain[i])) continue;
+                int x = i % n, y = i / n;
+                for (int dy = -2; dy <= 2; dy++)
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    int xx = x + dx, yy = y + dy;
+                    if (!w.InBounds(xx, yy)) continue;
+                    int j = yy * n + xx;
+                    if (!TerrainInfo.IsWater(w.Terrain[j]) && biome[j] != Biome.HanBang && biome[j] != Biome.TienDao) shore.Add(j);
+                }
+            }
+            foreach (int j in shore) biome[j] = Biome.LinhHo;
+
+            // Cấm địa: two of them, far apart, in the wild interior, their edge ragged.
+            var rng = new DetRandom(s ^ 0xC4D1Au);
+            var forbidden = new List<(int x, int y)>();
+            for (int attempt = 0; attempt < 2000 && forbidden.Count < 2; attempt++)
+            {
+                int x = rng.Range(60, n - 60), y = rng.Range(60, w.H - 60);
+                int i = y * n + x;
+                if (!TerrainInfo.IsLand(w.Terrain[i]) || w.WaterDist[i] < 12 || biome[i] == Biome.TienDao) continue;
+                bool far = true;
+                foreach (var (fx, fy) in forbidden) if ((fx - x) * (fx - x) + (fy - y) * (fy - y) < 300 * 300) far = false;
+                if (!far) continue;
+                forbidden.Add((x, y));
+                const int r = 18;
+                for (int yy = y - r; yy <= y + r; yy++)
+                for (int xx = x - r; xx <= x + r; xx++)
+                {
+                    float d = Mathf.Sqrt((xx - x) * (xx - x) + (yy - y) * (yy - y)) + Noise.Fbm(s + 99u, xx / 6f, yy / 6f, 2) * 5f;
+                    int j = yy * n + xx;
+                    if (d <= r && TerrainInfo.IsLand(w.Terrain[j])) biome[j] = Biome.CamDia;
+                }
+            }
+
+            NameBiomePatches(w);
+        }
+
+        // Each land mass, by component id (-1 for water), with the size of each.
+        static int[] LandComponents(WorldData w, out List<int> sizes)
+        {
+            int n = w.W, total = n * w.H;
+            var comp = new int[total];
+            for (int i = 0; i < total; i++) comp[i] = -1;
+            sizes = new List<int>();
+            var stack = new Stack<int>();
+            for (int i = 0; i < total; i++)
+            {
+                if (comp[i] >= 0 || TerrainInfo.IsWater(w.Terrain[i])) continue;
+                int id = sizes.Count, size = 0;
+                comp[i] = id;
+                stack.Push(i);
+                while (stack.Count > 0)
+                {
+                    int c = stack.Pop();
+                    size++;
+                    int x = c % n, y = c / n;
+                    if (x > 0) Visit(c - 1);
+                    if (x < n - 1) Visit(c + 1);
+                    if (y > 0) Visit(c - n);
+                    if (y < w.H - 1) Visit(c + n);
+                }
+                sizes.Add(size);
+
+                void Visit(int j)
+                {
+                    if (comp[j] >= 0 || TerrainInfo.IsWater(w.Terrain[j])) return;
+                    comp[j] = id;
+                    stack.Push(j);
+                }
+            }
+            return comp;
+        }
+
+        // Specks of a biome too small to be a land of their own go back to ordinary ground; the great ones get names.
+        public static void NameBiomePatches(WorldData w)
+        {
+            int n = w.W, total = n * w.H;
+            var biome = w.Biome;
+            var seen = new bool[total];
+            var stack = new Stack<int>();
+            var cells = new List<int>();
+            var words = new List<string>(BiomeInfo.PlaceWords);
+            var rng = new DetRandom(w.Seed ^ 0xB10E5u);
+            for (int k = words.Count - 1; k > 0; k--) { int j = rng.Range(0, k + 1); (words[k], words[j]) = (words[j], words[k]); }
+            w.BiomePatches.Clear();
+            var used = new HashSet<string>();
+            for (int i = 0; i < total; i++)
+            {
+                if (seen[i] || biome[i] == Biome.None) continue;
+                var kind = biome[i];
+                cells.Clear();
+                seen[i] = true;
+                stack.Push(i);
+                long sx = 0, sy = 0;
+                while (stack.Count > 0)
+                {
+                    int c = stack.Pop();
+                    cells.Add(c);
+                    int x = c % n, y = c / n;
+                    sx += x;
+                    sy += y;
+                    if (x > 0) Visit(c - 1);
+                    if (x < n - 1) Visit(c + 1);
+                    if (y > 0) Visit(c - n);
+                    if (y < w.H - 1) Visit(c + n);
+                }
+                if (cells.Count < 40 && kind != Biome.CamDia && kind != Biome.TienDao)
+                {
+                    foreach (int c in cells) biome[c] = Biome.None;
+                    continue;
+                }
+                if (cells.Count < 400 || kind == Biome.HoangMac) continue;
+                // Named by its middle; the cell nearest the middle that is of it, so the label sits on it.
+                int mx = (int)(sx / cells.Count), my = (int)(sy / cells.Count), best = cells[0];
+                long bestD = long.MaxValue;
+                foreach (int c in cells)
+                {
+                    long d = (long)(c % n - mx) * (c % n - mx) + (long)(c / n - my) * (c / n - my);
+                    if (d < bestD) { bestD = d; best = c; }
+                }
+                // A great range or ice field takes a greater name; no two lands share one.
+                string kindName = kind == Biome.LinhSon && cells.Count > 3000 ? "Sơn Mạch" : kind == Biome.HanBang && cells.Count > 5000 ? "Băng Nguyên" : BiomeInfo.PlaceKinds[(int)kind];
+                string name = null;
+                for (int k = 0; k < words.Count && (name == null || used.Contains(name)); k++)
+                {
+                    string word = words[(w.BiomePatches.Count + k) % words.Count];
+                    if (Repeats(word, kindName)) continue; // no "Thúy Trúc Trúc Lâm"
+                    name = $"{word} {kindName}";
+                }
+                name ??= $"{words[w.BiomePatches.Count % words.Count]} {kindName}";
+                used.Add(name);
+                w.BiomePatches.Add(new BiomePatch { Biome = kind, Name = name, X = best % n, Y = best / n, Cells = cells.Count });
+
+                void Visit(int j)
+                {
+                    if (seen[j] || biome[j] != kind) return;
+                    seen[j] = true;
+                    stack.Push(j);
+                }
+            }
+        }
+
+        static bool Repeats(string word, string kind)
+        {
+            foreach (var part in word.Split(' '))
+                if (kind.Contains(part)) return true;
+            return false;
+        }
+
         static void DrawLeyLine(WorldData w, Vector2Int a, Vector2Int b, ref DetRandom rng)
         {
             int x = a.x, y = a.y;
@@ -697,8 +894,26 @@ namespace ThienDao.World
                 float roll = Hash.Float01(s, x, y);
                 ObjectType type = PickVegetation(w, i, clump, roll, Hash.U32(s + 1u, x, y));
                 type = RegionalTree(w, i, x, y, type, roll);
+                type = BiomeTree(w.Biome[i], w.Terrain[i], type, roll);
                 if (type == ObjectType.None) continue;
                 w.Objects.Place(type, x, y, (byte)(Hash.U32(s + 2u, x, y) & 0xFF));
+            }
+        }
+
+        // The biome has the last word: bamboo thick in the trúc lâm, peach in the đào hoa, dead black trunks in the ma vực,
+        // snow pine in the hàn băng, jungle in the độc chướng; a cấm địa grows nothing but stones.
+        static ObjectType BiomeTree(Biome b, Terrain t, ObjectType type, float roll)
+        {
+            switch (b)
+            {
+                case Biome.TrucLam: return roll < 0.3f ? ObjectType.TreeBamboo : type;
+                case Biome.DaoHoa: return roll < 0.12f ? ObjectType.TreePeach : type == ObjectType.None ? type : ObjectType.TreePeach;
+                case Biome.MaVuc: return type != ObjectType.None ? ObjectType.TreeDead : roll < 0.02f ? ObjectType.TreeDead : type;
+                case Biome.HanBang: return type != ObjectType.None && t != Terrain.Snow ? ObjectType.TreeSnowPine : type;
+                case Biome.DocChuong: return roll < 0.25f ? ObjectType.TreeJungle : type;
+                case Biome.CamDia: return roll < 0.03f ? ObjectType.Rock : ObjectType.None;
+                case Biome.LinhSon: return type == ObjectType.TreeOak || type == ObjectType.TreeAutumn ? ObjectType.TreePine : type;
+                default: return type;
             }
         }
 

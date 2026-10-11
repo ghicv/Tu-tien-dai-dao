@@ -20,6 +20,7 @@ namespace ThienDao.Sim
         public long Tick;
         public long Until = long.MaxValue; // lôi khí fades over centuries; a volcano stays
         public string Origin;              // "thiên kiếp của Hàn Lập năm 203"
+        public bool Tainted;               // a battlefield whose oán khí soured the land around into ma vực (devlog 37)
         public bool Alive = true;
         public int Toll;                   // chiến trường cổ: the fallen whose oán khí still hangs there
     }
@@ -1053,6 +1054,7 @@ namespace ThienDao.Sim
                 field.R = Mathf.Max(field.R, r);
                 if (field.Toll >= 10 && field.Toll - dead < 10)
                     _sim.Events.Add(tick, EventKind.Calamity, 2, $"Máu đổ lần nữa ở {field.Name}: oán khí nơi đây ngày càng nặng.", x + 0.5f, y + 0.5f);
+                Taint(field, tick);
                 return;
             }
             var near = NearestSettlement(x, y, 80);
@@ -1063,6 +1065,21 @@ namespace ThienDao.Sim
             };
             Landmarks.Add(field);
             _sim.Relics?.OnLandmark(field, tick);
+            Taint(field, tick);
+        }
+
+        // So much blood soaked in that the oán khí sours the land itself: a ma vực spreads round the field, where ma tu
+        // cultivate fast and the righteous wither (devlog 37). Once only.
+        const int TaintToll = 25;
+
+        void Taint(Landmark field, long tick)
+        {
+            if (field.Tainted || field.Toll < TaintToll) return;
+            field.Tainted = true;
+            int changed = BiomeInfo.Paint(_w, field.X, field.Y, field.R + 6, Biome.MaVuc);
+            if (changed > 0)
+                _sim.Events.Add(tick, EventKind.Calamity, 3,
+                    $"Oán khí của {field.Toll} sinh linh ở {field.Name} ngưng kết không tan, đất đai quanh đó hóa thành ma vực.", field.X + 0.5f, field.Y + 0.5f, Fx.Miasma);
         }
 
         DetRandom _fieldRng = new DetRandom(0xF1E1Du);

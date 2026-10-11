@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ThienDao.Sim;
+using ThienDao.World;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -678,6 +679,7 @@ namespace ThienDao.Render
             DrawShots(now, dt);
             DrawChases(view, now, dt);
             DrawYeuToc(view, now, dt);
+            DrawBiomeAmbience(view, now, dt);
             DrawLoot(view, now, dt);
             foreach (var p in FightScenes.Poofs) Poof(p.x, p.y + 0.4f);
             FightScenes.Poofs.Clear();
@@ -1119,6 +1121,75 @@ namespace ThienDao.Render
                 int id = b.Entity;
                 if (e.X[id] == e.PrevX[id] && e.Y[id] == e.PrevY[id]) continue;
                 if (Position(id, out float x, out float y, out _) && view.Contains(new Vector2(x, y))) Dust(x, y, dt);
+            }
+        }
+
+        // The air of each land (devlog 37): petals drifting down in the đào hoa, snow on the hàn băng, embers off a hỏa
+        // vực, lightning flicking across a lôi trạch, mist on a linh sơn, black motes over a ma vực, a sickly haze in the
+        // độc chướng. A few random cells of the view are tried each frame; zoomed far out, none.
+        float _nextBolt;
+
+        void DrawBiomeAmbience(Rect view, float now, float dt)
+        {
+            if (view.width > 420f || dt <= 0f) return;
+            var w = _sim.World;
+            int samples = Mathf.Clamp((int)(view.width * view.height / 1500f), 6, 40);
+            for (int k = 0; k < samples; k++)
+            {
+                float x = Rand(view.xMin + 4f, view.xMax - 4f), y = Rand(view.yMin + 4f, view.yMax - 24f);
+                if (!w.InBounds((int)x, (int)y)) continue;
+                var b = w.Biome[w.Idx((int)x, (int)y)];
+                float roll = (float)_rand.NextDouble();
+                switch (b)
+                {
+                    case Biome.DaoHoa:
+                        if (roll < 0.5f) _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y + 2f, VX = Rand(0.4f, 1f), VY = Rand(-0.8f, -0.4f),
+                            Life = Rand(1.5f, 2.5f), Size = 1f, Color = new Color32(255, 180, 210, 255) });
+                        break;
+                    case Biome.HanBang:
+                        if (roll < 0.4f) _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y + 3f, VX = Rand(-0.3f, 0.3f), VY = Rand(-1.2f, -0.6f),
+                            Life = Rand(1.5f, 2.5f), Size = 1f, Color = new Color32(245, 250, 255, 255) });
+                        break;
+                    case Biome.HoaVuc:
+                        if (roll < 0.45f) _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y, VX = Rand(-0.2f, 0.2f), VY = Rand(0.8f, 1.6f),
+                            Life = Rand(0.6f, 1.2f), Size = 1f, Color = new Color32(255, (byte)Rand(110, 210), 40, 255) });
+                        break;
+                    case Biome.LoiTrach:
+                        if (roll < 0.03f && now >= _nextBolt)
+                        {
+                            _nextBolt = now + Rand(0.3f, 0.9f);
+                            _particles.Add(new Particle { Sprite = roll < 0.015f ? Sprite.BoltA : Sprite.BoltB, X = x, Y = y + 6f, Life = 0.16f, Size = 1f, Color = new Color32(220, 200, 255, 255) });
+                            _particles.Add(new Particle { Sprite = Sprite.Flash, X = x, Y = y, Life = 0.12f, Size = 1f, Color = new Color32(235, 225, 255, 255) });
+                        }
+                        else if (roll < 0.2f) _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y, VY = 0.3f, Life = 0.3f, Size = 1f, Color = new Color32(200, 170, 255, 255) });
+                        break;
+                    case Biome.LinhSon:
+                    case Biome.TienDao:
+                        if (roll < 0.04f) _particles.Add(new Particle { Sprite = Sprite.Cloud, X = x, Y = y + 1f, VX = Rand(0.3f, 0.7f), Life = Rand(3f, 5f), Size = 1f,
+                            Color = new Color32(240, 250, 255, 120) });
+                        else if (roll < 0.15f) _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y, VY = Rand(0.4f, 0.9f), Life = 1.2f, Size = 1f,
+                            Color = new Color32(180, 255, 220, 255) });
+                        break;
+                    case Biome.LinhHo:
+                        if (roll < 0.35f) _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y, VY = Rand(0.2f, 0.6f), Life = Rand(0.6f, 1f), Size = 1f,
+                            Color = new Color32(170, 255, 245, 255) });
+                        break;
+                    case Biome.MaVuc:
+                        if (roll < 0.25f) _particles.Add(new Particle { Sprite = roll < 0.08f ? Sprite.Smoke : Sprite.Spark, X = x, Y = y, VX = Rand(-0.2f, 0.2f), VY = Rand(0.3f, 0.8f),
+                            Life = Rand(0.8f, 1.4f), Size = 1f, Color = new Color32(90, 20, 60, 255) });
+                        break;
+                    case Biome.DocChuong:
+                        if (roll < 0.15f) _particles.Add(new Particle { Sprite = Sprite.Smoke, X = x, Y = y, VX = Rand(-0.2f, 0.2f), VY = Rand(0.1f, 0.4f),
+                            Life = Rand(1.2f, 2f), Size = 1f, Grow = 0.4f, Color = new Color32(176, 200, 70, 255) });
+                        break;
+                    case Biome.CamDia:
+                        if (roll < 0.2f) _particles.Add(new Particle { Sprite = Sprite.Spark, X = x, Y = y, VY = Rand(0.2f, 0.6f), Life = 1f, Size = 1f,
+                            Color = roll < 0.03f ? new Color32(220, 60, 80, 255) : new Color32(120, 110, 130, 255) });
+                        break;
+                    case Biome.KimSon:
+                        if (roll < 0.06f) _particles.Add(new Particle { Sprite = Sprite.Flash, X = x, Y = y, Life = 0.15f, Size = 1f, Color = new Color32(255, 245, 210, 255) });
+                        break;
+                }
             }
         }
 

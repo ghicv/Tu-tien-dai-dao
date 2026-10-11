@@ -217,7 +217,8 @@ namespace ThienDao.Sim
                 if (!_w.InBounds((int)tx, (int)ty) || !_w.IsWalkable(tx, ty)) continue;
                 int i = _w.Idx((int)tx, (int)ty);
                 if (_w.Owner[i] != 0 || _w.Terrain[i] == Terrain.Farmland) continue;
-                float q = _sim.Qi.SampleQi((int)tx, (int)ty);
+                var b = _w.Biome[i];
+                float q = _sim.Qi.SampleQi((int)tx, (int)ty) * (b == Biome.TrucLam || b == Biome.DaoHoa || b == Biome.LinhSon ? 1.5f : 1f); // herb lands first
                 if (q > best) { best = q; x = (int)tx + 0.5f; y = (int)ty + 0.5f; }
             }
             return best >= 0f;
@@ -399,13 +400,21 @@ namespace ThienDao.Sim
                 {
                     float qi = _sim.Qi.SampleQi((int)x, (int)y) / Mathf.Max(1f, Realms.RequiredQi[(int)c.Realm]);
                     float chance = Mathf.Clamp(0.35f + 0.3f * qi + 0.3f * c.Luck, 0.2f, 0.9f);
+                    // Some lands grow herbs (devlog 37); the poison jungle grows the rarest, and bites back.
+                    var land = _w.Biome[_w.Idx(Mathf.Clamp((int)x, 0, _w.W - 1), Mathf.Clamp((int)y, 0, _w.H - 1))];
+                    if (land == Biome.TrucLam || land == Biome.DaoHoa || land == Biome.LinhSon || land == Biome.DocChuong) chance = Mathf.Min(0.95f, chance + 0.15f);
+                    if (land == Biome.DocChuong && rng.NextFloat() < 0.3f)
+                    {
+                        CombatSystem.Hurt(c, 0.35f);
+                        Note(c, tick, "Trúng chướng khí độc trong rừng, ho ra máu, may còn giữ được mạng.");
+                    }
                     if (late || rng.NextFloat() >= chance)
                     {
                         Note(c, tick, Pick(ref rng, "Lục tìm mấy ngày không thấy linh dược nào, tay trắng trở về.", "Linh thảo chỗ này đã bị kẻ khác hái sạch.", "Chỉ tìm được ít cỏ dại tầm thường, đành quay về."));
                         break;
                     }
                     string herb = _w.Lore.Herbs[rng.Range(0, _w.Lore.Herbs.Length)];
-                    bool rare = rng.NextFloat() < 0.08f + 0.1f * c.Luck;
+                    bool rare = rng.NextFloat() < (0.08f + 0.1f * c.Luck) * (land == Biome.DocChuong || land == Biome.CamDia ? 2.5f : 1f);
                     c.Progress += Realms.Need(c.Realm, c.Stage) * (rare ? 0.3f : 0.08f);
                     ShowLoot(c, Loot.Herb, tick, rare ? 40 : 20);
                     if (rare)

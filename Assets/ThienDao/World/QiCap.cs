@@ -45,7 +45,9 @@ namespace ThienDao.World
                 float near = 1f - Mathf.Min(dist[(y - wy0) * ww + (x - wx0)], LeyReach) / (float)LeyReach;
                 float v = w.QiBase[i] / (float)WorldData.MaxQi + near * near * 0.8f;
                 if ((w.Zone[i] & ZoneFlags.Thunder) != 0) v += ThunderBonus;
-                if (TerrainInfo.IsWater(w.Terrain[i])) v *= 0.4f;
+                var biome = w.Biome[i];
+                v += BiomeInfo.QiBonus[(int)biome]; // the spirit of the land (Biomes)
+                if (TerrainInfo.IsWater(w.Terrain[i]) && biome != Biome.LinhHo) v *= 0.4f; // a linh hồ is a ley line rising through water
                 w.QiCap[i] = (ushort)(Mathf.Clamp01(v) * WorldData.MaxQi);
             }
         }

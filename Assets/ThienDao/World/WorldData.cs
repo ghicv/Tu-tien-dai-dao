@@ -36,6 +36,8 @@ namespace ThienDao.World
         public readonly byte[] Zone;          // ZoneFlags left by events (lôi địa, …)
         public readonly byte[] Scar;          // vết tích: ScarKind in the low 4 bits, strength 1..15 in the high 4 (ScarInfo)
         public readonly byte[] Region;        // RegionKind of each land cell (None at sea)
+        public readonly Biome[] Biome;        // biome tu tiên giới of each cell (devlog 37): the spirit of the land over its ground
+        public readonly List<BiomePatch> BiomePatches = new List<BiomePatch>(); // the named lands of each biome
         public readonly ushort[] KingdomOf;   // kingdom id + 1, 0 = no kingdom (sea, ice, wilds between)
         public readonly WorldObjects Objects;
         public readonly List<VillageSite> VillageSites = new List<VillageSite>();
@@ -79,6 +81,7 @@ namespace ThienDao.World
             Zone = new byte[n];
             Scar = new byte[n];
             Region = new byte[n];
+            Biome = new Biome[n];
             KingdomOf = new ushort[n];
             Objects = new WorldObjects(this);
         }

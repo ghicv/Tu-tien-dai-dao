@@ -359,6 +359,65 @@ namespace ThienDao.Render
             return c;
         }
 
+        // ---------------------------------------------------------------- biome tu tiên giới (devlog 37)
+
+        // One pixel of ground under the spirit of its land: the biome's tint laid over it, and now and then a pixel of
+        // its signature (mist on a linh sơn, petals in the đào hoa, embers in a hỏa vực, blood spots in a ma vực…).
+        // Flat colours only, picked by a hash of the world pixel, so the patterns hold still and stay pixel art.
+        public static Color32 BiomePixel(Color32 c, Biome b, int wx, int wy, uint n, bool water)
+        {
+            var t = BiomeInfo.Tint[(int)b];
+            c = Color32.Lerp(c, new Color32(t.r, t.g, t.b, 255), t.a / 255f);
+            uint h = (n >> 9) & 0xFFFF;
+            switch (b)
+            {
+                case Biome.LinhSon:
+                    if ((h & 63) == 0) return new Color32(220, 250, 240, 255);
+                    if ((h & 127) == 1) return new Color32(255, 240, 170, 255); // a glint of spirit stone
+                    break;
+                case Biome.TienDao:
+                    if ((h & 47) == 0) return new Color32(250, 252, 255, 255);
+                    break;
+                case Biome.TrucLam:
+                    if (((wx >> 1) + wy) % 5 == 0 && (h & 3) == 0) return SpriteLibrary.Shade(c, 0.78f);
+                    break;
+                case Biome.DaoHoa:
+                    if ((h & 31) == 0) return new Color32(255, 176, 206, 255);
+                    if ((h & 63) == 1) return new Color32(255, 230, 240, 255);
+                    break;
+                case Biome.LinhHo:
+                    if ((h & 31) == 0) return water ? new Color32(210, 255, 250, 255) : new Color32(150, 240, 220, 255);
+                    break;
+                case Biome.HanBang:
+                    if ((h & 15) == 0) return new Color32(236, 246, 255, 255);
+                    if (((wx * 3 + wy) & 15) == 0 && (h & 1) == 0) return new Color32(150, 190, 230, 255); // a crack in the ice
+                    break;
+                case Biome.HoaVuc:
+                    if ((h & 47) == 0) return new Color32(255, 186, 70, 255);
+                    if ((wx + wy * 3) % 11 == 0 && (h & 3) == 0) return new Color32(110, 24, 16, 255);
+                    break;
+                case Biome.LoiTrach:
+                    if ((h & 63) == 0) return new Color32(230, 214, 255, 255);
+                    if ((h & 15) == 1) return SpriteLibrary.Shade(c, 0.7f);
+                    break;
+                case Biome.MaVuc:
+                    if ((h & 31) == 0) return new Color32(150, 18, 40, 255);
+                    if ((h & 15) == 1) return SpriteLibrary.Shade(c, 0.65f);
+                    break;
+                case Biome.DocChuong:
+                    if ((h & 31) == 0) return new Color32(206, 226, 60, 255);
+                    break;
+                case Biome.CamDia:
+                    if ((h & 15) == 0) return new Color32(22, 16, 28, 255);
+                    if ((h & 63) == 1) return new Color32(200, 60, 80, 255);
+                    break;
+                case Biome.KimSon:
+                    if ((h & 47) == 0) return new Color32(240, 232, 200, 255);
+                    break;
+            }
+            return c;
+        }
+
         // ---------------------------------------------------------------- đường mòn, đường đất (PathSystem)
 
         static readonly Color32 RoadEarth = new Color32(160, 126, 86, 255);

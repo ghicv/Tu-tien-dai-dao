@@ -1167,6 +1167,48 @@ namespace ThienDao.Tests
             Assert.AreEqual("Thủy tổ tu tiên", other.Eras.EpochName);
         }
 
+        // Devlog 37: biome tu tiên giới. The land has a spirit: it shapes qi, cultivation, beasts, and can be changed.
+        [Test]
+        public void BiomesGiveTheLandItsSpirit()
+        {
+            var sim = new Simulation(MapGenerator.Generate("ThienDao", true));
+            var w = sim.World;
+            var count = new int[(int)Biome.Count];
+            long qiAll = 0, qiLinhSon = 0;
+            for (int i = 0; i < w.Biome.Length; i++)
+            {
+                count[(int)w.Biome[i]]++;
+                qiAll += w.QiCap[i];
+                if (w.Biome[i] == Biome.LinhSon) qiLinhSon += w.QiCap[i];
+            }
+            foreach (var b in new[] { Biome.LinhSon, Biome.MaVuc, Biome.HanBang, Biome.CamDia, Biome.TrucLam, Biome.HoaVuc })
+                Assert.Greater(count[(int)b], 0, $"the world has its {BiomeInfo.Names[(int)b]}");
+            Assert.Greater(qiLinhSon / (float)count[(int)Biome.LinhSon], qiAll / (float)w.Biome.Length * 1.5f, "qi gathers on a linh sơn");
+            var names = new HashSet<string>();
+            foreach (var p in w.BiomePatches) Assert.IsTrue(names.Add(p.Name), $"no two lands share a name: {p.Name}");
+            Assert.Greater(w.BiomePatches.Count, 10);
+
+            // Its element speeds those of that root; ma vực feeds ma tu and starves the rest.
+            Assert.Greater(BiomeInfo.CultivationFactor(Biome.LoiTrach, 1 << 5, false), BiomeInfo.CultivationFactor(Biome.LoiTrach, 1 << 0, false));
+            Assert.Greater(BiomeInfo.CultivationFactor(Biome.MaVuc, 1, true), 1f);
+            Assert.Less(BiomeInfo.CultivationFactor(Biome.MaVuc, 1, false), 1f);
+
+            // Thiên Đạo can raise a linh sơn: the qi ceiling follows.
+            var (x, y) = FindOpenLand(sim, 512, 512);
+            int cell = w.Idx(x, y);
+            var before = w.QiCap[cell];
+            sim.Enqueue(new PaintBiomeCommand(x, y, 6, Biome.LinhSon));
+            sim.ApplyPending();
+            Assert.AreEqual(Biome.LinhSon, w.Biome[cell]);
+            Assert.Greater(w.QiCap[cell], before);
+
+            // So much blood on one field that the land sours into ma vực.
+            var (bx, by) = FindOpenLand(sim, 300, 600);
+            sim.Disasters.MarkBattlefield(bx, by, 6, 30, sim.Clock.Tick, "test");
+            Assert.AreEqual(Biome.MaVuc, w.Biome[w.Idx(bx, by)]);
+            CollectionAssert.IsEmpty(WorldInvariants.Check(sim));
+        }
+
         // Devlog 36: the yêu tộc go to war over the land; their hosts meet on a field and the beaten one pays for it.
         [Test]
         public void YeuTocGoToWarOverTheLand()

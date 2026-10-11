@@ -372,6 +372,9 @@ namespace ThienDao.Sim
             float qiFactor = Mathf.Clamp(qi / Realms.RequiredQi[(int)c.Realm], 0f, 1.5f);
             float gain = SpiritRoots.SpeedMultiplier(c.Roots) * qiFactor * (0.6f + 0.8f * c.Comprehension) * (0.7f + 0.6f * c.DaoHeart);
             gain *= _sim.Techniques?.Speed(c) ?? 1f; // công pháp: its grade, and whether its element is among the roots
+            // The spirit of the land: its element speeds those of that root; ma vực feeds ma tu and starves the rest.
+            int at = _sim.World.Idx(Mathf.Clamp((int)x, 0, _sim.World.W - 1), Mathf.Clamp((int)y, 0, _sim.World.H - 1));
+            gain *= BiomeInfo.CultivationFactor(_sim.World.Biome[at], c.Roots, c.Demonic);
             if (c.Demonic)
             {
                 gain *= 1.5f; // ma đạo: fast, at a price

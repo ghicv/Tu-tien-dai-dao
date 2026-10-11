@@ -352,7 +352,7 @@ namespace ThienDao.Sim
             {
                 int x = rng.Range(16, _w.W - 16), y = rng.Range(16, _w.H - 16);
                 int i = _w.Idx(x, y);
-                if (_w.Terrain[i] != Terrain.Grass || _w.Owner[i] != 0 || !CanSettleAt(x, y) || TooCloseToOthers(x, y, null, 60)) continue;
+                if (_w.Terrain[i] != Terrain.Grass || _w.Owner[i] != 0 || BiomeInfo.IsDark(_w.Biome[i]) || _w.Biome[i] == Biome.DocChuong || !CanSettleAt(x, y) || TooCloseToOthers(x, y, null, 60)) continue;
                 bool lair = false;
                 foreach (var b in _sim.Beasts.All)
                 {
@@ -361,7 +361,15 @@ namespace ThienDao.Sim
                     if (dx * dx + dy * dy < 120f * 120f) { lair = true; break; }
                 }
                 if (lair) continue;
-                float score = _w.Fertility(i) * (_w.WaterDist[i] <= 12 ? 1.5f : 1f) * (0.5f + rng.NextFloat() * 0.5f);
+                // Men settle where few beasts den: each lair within 50 cells counts against the place.
+                int dens = 0;
+                foreach (var b in _sim.Beasts.All)
+                {
+                    if (!b.Alive) continue;
+                    float dx = b.HomeX - x, dy = b.HomeY - y;
+                    if (dx * dx + dy * dy < 50f * 50f) dens++;
+                }
+                float score = 1f / (1f + dens) * _w.Fertility(i) * (_w.WaterDist[i] <= 12 ? 1.5f : 1f) * (0.5f + rng.NextFloat() * 0.5f);
                 if (score > best) { best = score; bx = x; by = y; }
             }
             return bx >= 0;

@@ -477,6 +477,23 @@ namespace ThienDao.Sim
         public void Apply(Simulation sim) => sim.Disasters.Unleash(Kind, X, Y, Size, sim.Clock.Tick, true);
     }
 
+    // Thiên Đạo lays the spirit of a land over a disc of it (devlog 37): a linh sơn, a ma vực, a cấm địa…
+    public sealed class PaintBiomeCommand : IWorldCommand
+    {
+        public readonly int X, Y, Size;
+        public readonly Biome Biome;
+
+        public PaintBiomeCommand(int x, int y, int size, Biome biome)
+        {
+            X = x;
+            Y = y;
+            Size = size;
+            Biome = biome;
+        }
+
+        public void Apply(Simulation sim) => BiomeInfo.Paint(sim.World, X, Y, Size, Biome);
+    }
+
     // Positive amount pours qi in, negative drains it; amount is a fraction of MaxQi at the centre.
     public sealed class InfuseQiCommand : IWorldCommand
     {

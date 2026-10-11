@@ -361,6 +361,7 @@ namespace ThienDao.Render
                         if (l && tp && (links & (TerrainTexture.LinkL | TerrainTexture.LinkT)) == 0 && (zones[i + w - 1] & PathMask) != 0) links |= TerrainTexture.LinkTL;
                         if (r && tp && (links & (TerrainTexture.LinkR | TerrainTexture.LinkT)) == 0 && (zones[i + w + 1] & PathMask) != 0) links |= TerrainTexture.LinkTR;
                     }
+                    var biome = _world.Biome[i];
                     float amp = TerrainInfo.PixelNoiseAmp(t) * 2f;
                     Color32 baseC = _cellColor[i];
                     int rowBase = ly * CellPx * ChunkPx + lx * CellPx;
@@ -397,6 +398,7 @@ namespace ThienDao.Render
                             if (borderT != 0 && py == CellPx - 1 && (borderT == 2 ? (wx % 6) < 4 : (wx & 3) == 0))
                                 c = SpriteLibrary.Shade(c, borderT == 2 ? 0.55f : 0.72f);
                         }
+                        if (biome != Biome.None) c = TerrainTexture.BiomePixel(c, biome, wx, wy, n, water); // the spirit of the land (devlog 37)
                         buffer[rowBase + py * ChunkPx + px] = c;
                     }
                 }
@@ -654,6 +656,8 @@ namespace ThienDao.Render
             var c = _cellColor[i];
             byte scar = _world.Scar[i];
             if (scar != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = TerrainTexture.ScarTint(ScarInfo.Kind(scar), ScarInfo.Strength(scar), c);
+            var land = _world.Biome[i];
+            if (land != Biome.None) { var tint = BiomeInfo.Tint[(int)land]; c = Color32.Lerp(c, new Color32(tint.r, tint.g, tint.b, 255), Mathf.Min(1f, tint.a / 255f * 1.4f)); } // far off, the lands show as patches of their colour
             if ((_world.Zone[i] & ZoneFlags.Wall) != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = TerrainTexture.WallMap;
             else if ((_world.Zone[i] & ZoneFlags.Road) != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = Color32.Lerp(c, TerrainTexture.RoadMap, 0.6f); // far off, a road is a line of earth
             else if ((_world.Zone[i] & ZoneFlags.Trail) != 0 && TerrainInfo.IsLand(_world.Terrain[i])) c = Color32.Lerp(c, TerrainTexture.RoadMap, 0.3f);

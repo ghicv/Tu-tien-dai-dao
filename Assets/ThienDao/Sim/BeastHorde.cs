@@ -34,6 +34,23 @@ namespace ThienDao.Sim
             var region = (RegionKind)_w.Region[i];
             bool coast = _w.WaterDist[i] <= 3;
             float r = rng.NextFloat();
+            // The biome first (devlog 37): each land breeds its own.
+            switch (_w.Biome[i])
+            {
+                case Biome.LinhSon: return r < 0.45f ? BeastKind.Ape : r < 0.85f ? BeastKind.Eagle : BeastKind.Fox;
+                case Biome.TienDao: return r < 0.5f ? BeastKind.Eagle : BeastKind.Turtle;
+                case Biome.TrucLam: return r < 0.5f ? BeastKind.Ape : r < 0.8f ? BeastKind.Fox : BeastKind.Serpent;
+                case Biome.DaoHoa: return r < 0.7f ? BeastKind.Fox : BeastKind.Ape;
+                case Biome.LinhHo: return r < 0.5f ? BeastKind.Turtle : r < 0.8f ? BeastKind.Dragon : BeastKind.Serpent;
+                case Biome.HanBang: return r < 0.6f ? BeastKind.Bear : BeastKind.Wolf;
+                case Biome.HoaVuc: return r < 0.4f ? BeastKind.Qilin : r < 0.75f ? BeastKind.Ox : BeastKind.Scorpion;
+                case Biome.LoiTrach: return r < 0.5f ? BeastKind.Eagle : r < 0.8f ? BeastKind.Bat : BeastKind.Serpent;
+                case Biome.MaVuc: return r < 0.4f ? BeastKind.Ox : r < 0.8f ? BeastKind.Bat : r < 0.95f ? BeastKind.Wolf : BeastKind.Chaos;
+                case Biome.DocChuong: return r < 0.55f ? BeastKind.Serpent : r < 0.9f ? BeastKind.Scorpion : BeastKind.Tiger;
+                case Biome.CamDia: return r < 0.3f ? BeastKind.Chaos : r < 0.6f ? BeastKind.Tiger : BeastKind.Ape;
+                case Biome.HoangMac: return r < 0.7f ? BeastKind.Scorpion : BeastKind.Serpent;
+                case Biome.KimSon: return r < 0.5f ? BeastKind.Ape : r < 0.8f ? BeastKind.Tiger : BeastKind.Eagle;
+            }
             if (region == RegionKind.MaDao) return r < 0.45f ? BeastKind.Ox : r < 0.8f ? BeastKind.Bat : BeastKind.Wolf;
             if (coast && r < 0.3f) return r < 0.15f ? BeastKind.Turtle : BeastKind.Dragon; // the sea's own: huyền quy and long
             switch (t)

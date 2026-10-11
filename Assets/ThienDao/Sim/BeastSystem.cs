@@ -134,7 +134,7 @@ namespace ThienDao.Sim
                     foreach (var (lx, ly) in lairs)
                         if ((lx - x) * (lx - x) + (ly - y) * (ly - y) < ChanLinhApart * ChanLinhApart) far = false;
                     if (!far) continue;
-                    float score = _w.QiCap[i] * (water == (_w.WaterDist[i] <= 6) ? 1.4f : 1f);
+                    float score = _w.QiCap[i] * (water == (_w.WaterDist[i] <= 6) ? 1.4f : 1f) * (Likes(kind, _w.Biome[i]) ? 1.6f : 1f);
                     if (score > best) { best = score; bx = x; by = y; }
                 }
                 if (bx < 0) continue;
@@ -157,6 +157,20 @@ namespace ThienDao.Sim
                 var b = Spawn(from, grade, x + 0.5f, y + 0.5f, 0, ref rng);
                 made++;
                 Recruit(b);
+            }
+        }
+
+        // The land each chân linh would have for its lair (devlog 37).
+        static bool Likes(BeastKind kind, Biome b)
+        {
+            switch (kind)
+            {
+                case BeastKind.Dragon: return b == Biome.LinhHo || b == Biome.TienDao || b == Biome.LinhSon;
+                case BeastKind.Phoenix: return b == Biome.HoaVuc || b == Biome.LinhSon;
+                case BeastKind.Qilin: return b == Biome.HoaVuc || b == Biome.LinhSon || b == Biome.TrucLam;
+                case BeastKind.KunPeng: return b == Biome.TienDao || b == Biome.HanBang;
+                case BeastKind.Turtle: return b == Biome.LinhHo || b == Biome.TienDao;
+                default: return false;
             }
         }
 
@@ -378,6 +392,7 @@ namespace ThienDao.Sim
                 if (d < best) { best = d; target = s; }
             }
             if (target == null) return;
+            if (target.Population < 80 && rng.NextFloat() < 0.6f) return; // a handful of men hide in the caves and the reeds
             var guard = target.Sect ? target : _sim.Factions.ProtectorOf(target.X, target.Y);
             var defender = guard != null ? StrongestAtHome(guard.Id) : null;
             // Beasts have instinct: a land guarded by someone far stronger is left alone most of the time.
@@ -467,14 +482,15 @@ namespace ThienDao.Sim
             {
                 if (!king.Alive || !king.IsKing) continue;
                 int size = ClanSize(king);
-                // The yêu tộc comes down on the lands of men.
-                if (rng.NextFloat() < 0.15f + 0.03f * size)
+                // The yêu tộc comes down on the lands of men that lie within its own: men who settle on its land pay for
+                // it, those beyond are let be, and a handful huddled in huts is not worth a tide (devlog 37).
+                if (rng.NextFloat() < 0.06f + 0.006f * size)
                 {
                     Settlement target = null;
-                    float best = 200f * 200f;
+                    float reachLand = Territory(king), best = reachLand * reachLand;
                     foreach (var s in _sim.Settlements.All)
                     {
-                        if (!s.Alive) continue;
+                        if (!s.Alive || s.Population < 60) continue;
                         float dx = s.X - king.HomeX, dy = s.Y - king.HomeY, d = dx * dx + dy * dy;
                         if (d < best) { best = d; target = s; }
                     }

@@ -83,6 +83,28 @@ namespace ThienDao.UI
             return Make("terrain" + t, s, s, px);
         }
 
+        // A biome brush: grass under the biome's tint, speckled with its signature (devlog 37).
+        public static Sprite BiomeTile(Biome b)
+        {
+            const int s = 12;
+            var px = new Color32[s * s];
+            var tint = BiomeInfo.Tint[(int)b];
+            var ground = b == Biome.LinhHo ? TerrainInfo.Colors[(int)Terrain.Shallow] : TerrainInfo.Colors[(int)Terrain.Grass];
+            var c = b == Biome.None ? ground : Color32.Lerp(ground, new Color32(tint.r, tint.g, tint.b, 255), 0.65f);
+            var rng = new System.Random((int)b * 613 + 7);
+            for (int y = 0; y < s; y++)
+            for (int x = 0; x < s; x++)
+            {
+                float f = 1f + ((float)rng.NextDouble() - 0.5f) * 0.18f;
+                if (y >= s - 1) f *= 1.15f;
+                if (y <= 1) f *= 0.7f;
+                var p = SpriteLibrary.Shade(c, f);
+                if (b != Biome.None && rng.NextDouble() < 0.12) p = SpriteLibrary.Shade(new Color32(tint.r, tint.g, tint.b, 255), 1.35f);
+                px[y * s + x] = p;
+            }
+            return Make("biome" + b, s, s, px);
+        }
+
         // Horizontal gradient chip for an overlay mode.
         public static Sprite Gradient(string key, Color32 a, Color32 b)
         {

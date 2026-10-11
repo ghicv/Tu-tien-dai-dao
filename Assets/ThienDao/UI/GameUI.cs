@@ -69,6 +69,15 @@ namespace ThienDao.UI
 
         static readonly Dictionary<BrushTool, string> ToolHelp = new Dictionary<BrushTool, string>
         {
+            { BrushTool.BiomeLinhSon, "Tạo linh sơn: linh khí tụ hội, ai tu cũng nhanh; chân long, thiên phượng thích làm hang ổ" },
+            { BrushTool.BiomeLinhHo, "Tạo linh hồ: linh mạch lộ thiên dưới nước, hợp Thủy linh căn; huyền vũ, giao long tìm tới" },
+            { BrushTool.BiomeTrucLam, "Tạo trúc lâm: hợp Mộc linh căn, nhiều linh thảo" },
+            { BrushTool.BiomeDaoHoa, "Tạo đào hoa lâm: hợp Mộc linh căn, linh thảo, hồ yêu" },
+            { BrushTool.BiomeLoiTrach, "Tạo lôi trạch: hợp Lôi linh căn, sét đánh không ngớt" },
+            { BrushTool.BiomeHoaVuc, "Tạo hỏa vực: hợp Hỏa linh căn; kỳ lân, ma ngưu" },
+            { BrushTool.BiomeMaVuc, "Tạo ma vực: ma tu tu nhanh, chính đạo suy yếu; ma thú sinh sôi" },
+            { BrushTool.BiomeCamDia, "Tạo cấm địa: linh khí cực thịnh, hung thú thượng cổ, linh thảo ngàn năm" },
+            { BrushTool.BiomeErase, "Trả về đất thường: xóa tính linh của vùng đất" },
             { BrushTool.Inspect, "Xem — click vào tu sĩ, làng, tông môn để xem thông tin" },
             { BrushTool.Grass, "Cỏ — biến đất thành đồng cỏ" }, { BrushTool.Sand, "Cát — bãi cát" }, { BrushTool.Desert, "Sa mạc" },
             { BrushTool.Shallow, "Nước nông — ai đứng đó sẽ chết đuối" }, { BrushTool.DeepWater, "Biển sâu — nhấn chìm mọi thứ" },
@@ -380,6 +389,16 @@ namespace ThienDao.UI
                     AddTool(BrushTool.Hills, Icons.TerrainTile(Terrain.Hills));
                     AddTool(BrushTool.Mountain, Icons.TerrainTile(Terrain.Mountain));
                     AddTool(BrushTool.Snow, Icons.TerrainTile(Terrain.Snow));
+                    // Thiên Đạo tạo hóa: the spirit of the land (devlog 37)
+                    AddTool(BrushTool.BiomeLinhSon, Icons.BiomeTile(Biome.LinhSon));
+                    AddTool(BrushTool.BiomeLinhHo, Icons.BiomeTile(Biome.LinhHo));
+                    AddTool(BrushTool.BiomeTrucLam, Icons.BiomeTile(Biome.TrucLam));
+                    AddTool(BrushTool.BiomeDaoHoa, Icons.BiomeTile(Biome.DaoHoa));
+                    AddTool(BrushTool.BiomeLoiTrach, Icons.BiomeTile(Biome.LoiTrach));
+                    AddTool(BrushTool.BiomeHoaVuc, Icons.BiomeTile(Biome.HoaVuc));
+                    AddTool(BrushTool.BiomeMaVuc, Icons.BiomeTile(Biome.MaVuc));
+                    AddTool(BrushTool.BiomeCamDia, Icons.BiomeTile(Biome.CamDia));
+                    AddTool(BrushTool.BiomeErase, Icons.BiomeTile(Biome.None));
                     break;
                 case 1:
                     AddTool(BrushTool.Trees, Icons.Object(ObjectType.TreeOak));
@@ -1704,6 +1723,8 @@ namespace ThienDao.UI
             sb.Append($"Nhiệt độ {tempC:0}°C · độ ẩm {w.Moisture[i] * 100 / 255}%");
             if (TerrainInfo.IsLand(terrain)) sb.Append($" · màu mỡ {w.Fertility(i) * 100f:0}%");
             sb.Append('\n');
+            var land = w.Biome[i];
+            if (land != Biome.None) sb.Append($"<color=#c8ffe0>{BiomeInfo.Names[(int)land]}</color>: {BiomeInfo.Effects[(int)land]}\n"); // devlog 37
             sb.Append($"Linh khí {sim.Qi.SampleQi(x, y):0} / trần {w.QiCap[i]}{(w.LeyLine[i] ? " · <color=#9fe0ff>LINH MẠCH</color>" : "")}\n");
             if (TerrainInfo.IsLand(terrain))
                 sb.Append($"Cỏ khu {ForageSystem.Block}×{ForageSystem.Block} ô quanh đây {sim.Forage.At(x, y):0} / {sim.Forage.CapAt(x, y):0}{(w.IsWalkable(x, y) ? "" : " · không đi bộ qua được")}\n");
@@ -1777,6 +1798,14 @@ namespace ThienDao.UI
                     PlaceLabel(ref used, cam, new Vector3(r.LabelX, r.LabelY, 0f), Spaced(r.Name), regionColor, ppc < 2f ? 40 : 34);
                 if (world.SeaLabelX >= 0)
                     PlaceLabel(ref used, cam, new Vector3(world.SeaLabelX, world.SeaLabelY, 0f), Spaced(world.Lore.Sea), new Color(0.82f, 0.9f, 1f, 0.85f), 36);
+                // The named lands of the biomes (devlog 37), in a light tint of their colour; the small ones only when near.
+                foreach (var p in world.BiomePatches)
+                {
+                    if (p.Cells < (ppc < 2f ? 3000 : 400)) continue;
+                    var tint = BiomeInfo.Tint[(int)p.Biome];
+                    var col = Color.Lerp(new Color(tint.r / 255f, tint.g / 255f, tint.b / 255f, 1f), Color.white, 0.55f);
+                    PlaceLabel(ref used, cam, new Vector3(p.X + 0.5f, p.Y + 0.5f, 0f), p.Name, col, ppc < 2f ? 24 : 20);
+                }
                 if (ppc >= 1.2f)
                     foreach (var k in world.Kingdoms)
                         PlaceLabel(ref used, cam, new Vector3(k.CapitalX + 0.5f, k.CapitalY - 6f, 0f), k.Fallen ? "Cố " + k.Name : k.Name, k.Fallen ? new Color(0.75f, 0.72f, 0.66f, 0.8f) : new Color(1f, 0.88f, 0.62f, 0.95f), 26);
