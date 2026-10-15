@@ -45,6 +45,7 @@ Mỗi tính năng / milestone có một file ghi lại: mục tiêu, đã làm g
 | 38 | [38-son-mon.md](38-son-mon.md) | Sơn môn: xếp hạng thánh địa, đại tông, tiểu môn phái; quần thể 17 công trình xây dần trên trục bắc–nam (chính điện, sơn môn, đệ tử xá, tường, Tàng Kinh Các, Diễn Võ Trường, Luyện Đan Phòng, linh điền, trận đài, bảo tháp, điện trưởng lão, linh trì); bỏ hoang khi suy, phế tích khi diệt; pixel art mái ngọc tường kem, ma môn mái đỏ; khói đan, nhang, trận đài sáng; đệ tử sống bên trong | `8d44185` |
 | 39 | [39-sua-hung-thu-tan-sat.md](39-sua-hung-thu-tan-sat.md) | Sửa lỗi hung thú như không tấn công: xét mỗi ngày, xông vào làng ngay khi tới, tàn sát kéo dài 5–9 ngày, mạnh gấp đôi, tìm đường vòng sông núi; dân làng trên map bỏ chạy khi thấy yêu thú, bị hung thú xé xác khi đuổi kịp | `8372ac6` |
 | 40 | [40-phase-0-chot-nen.md](40-phase-0-chot-nen.md) | Phase 0′ theo bộ tài liệu mới: kiểm kê hệ thống (Systems.md, 9 khoản nợ), CLAUDE.md, DECISIONS.md, ROADMAP.md có trạng thái thật, giao thức chơi thử; tài liệu cũ đánh dấu thay thế; không đổi code | `59933d0` |
+| 41 | [41-thiet-ke-lai-loi.md](41-thiet-ke-lai-loi.md) | Thiết kế lại lõi mô phỏng (bản nháp): chốt phạm vi, giữ art pixel, tag archive/core-v1, CORE_DESIGN.md, Phase R; không đổi code | `PENDING` |
 
 Nguyên tắc xuyên suốt (người chơi đã chốt):
 - Mọi tên gọi / lore theo **Phàm Nhân Tu Tiên** (`Assets/ThienDao/Resources/Lore/*.json`, mỗi thế giới bốc thăm một phần).

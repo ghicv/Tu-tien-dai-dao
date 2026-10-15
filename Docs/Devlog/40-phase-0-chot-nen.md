@@ -10,7 +10,7 @@
 ## Đã làm (task 0.1, 0.2, 0.6)
 | Task | Kết quả |
 |---|---|
-| 0.1 Kiểm kê hệ thống | `Docs/Systems.md`: thứ tự chạy, bảng 25 hệ (sở hữu, đọc, ghi, test), phần trình bày, **9 khoản nợ kỹ thuật có bằng chứng** |
+| 0.1 Kiểm kê hệ thống | `Docs/Systems.md`: thứ tự chạy, bảng 27 mục (sở hữu, đọc, ghi, test), phần trình bày, **9 khoản nợ kỹ thuật có bằng chứng** |
 | 0.2 Hợp nhất tài liệu | `CLAUDE.md` ở root; `Docs/DECISIONS.md` đã điền; `Docs/ROADMAP.md` có bảng trạng thái thực tế và Phase A, B, C; `Docs/GAME_DESIGN.md`, `WORLD_RULES.md`, `PROJECT_INSTRUCTIONS.md` đưa vào từ pack; `GDD_ThienDao.md` và `WorldRuleSystem.md` đánh dấu đã thay thế / lỗi thời |
 | 0.6 Giao thức chơi thử | `Docs/Playtest.md` |
 

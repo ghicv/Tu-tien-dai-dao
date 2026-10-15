@@ -36,7 +36,9 @@ Record confirmed decisions here. Do not treat suggestions as decisions until the
 - **Decision:** theo bộ tài liệu mới (pack): mỗi lần một task nhỏ, có tiêu chí, báo cáo rồi chờ duyệt.
 - **Decision:** **lối chơi của tài liệu cũ (`GDD_ThienDao.md`) bị bỏ** vì "chơi nhàm lắm". Cùng ngày bro bảo xóa hết tài liệu cũ: đã xóa `GDD_ThienDao.md`, `WorldRuleSystem.md`, `Chronicle_ThienDao.md`, `Perf_ThienDao.md` và 12 ảnh cột mốc không còn ai dùng. Còn trong lịch sử git (commit `742670f`).
 - **Decision:** **giữ nguyên phong cách art 2D pixel hiện tại.** Bảng màu, sprite, pipeline chunk texture và cách vẽ hiệu ứng không bị làm lại.
-- **Decision:** **làm lại từ đầu hệ thống core game.** Phạm vi và cách làm chưa chốt; xem "Cần bro xác nhận".
+- **Decision:** **làm lại từ đầu hệ thống core game**, phạm vi là **lõi mô phỏng và luật**; **giữ** bản đồ, sinh thế giới, biome, linh khí, trình bày pixel, giao diện, đồng hồ, hàng đợi lệnh, lưu/tải.
+- **Decision:** cách làm là **lưu trữ rồi viết mới tại chỗ**; bản hiện tại gắn tag git `archive/core-v1` (commit `6558134`).
+- **Decision:** làm lại để đạt bốn mục tiêu: nhân vật có bản sắc, khát vọng, quan hệ (cảm xúc); nhân quả rõ ràng, không ngẫu nhiên; quá trình tu luyện hữu hình (đạo, tâm cảnh, bình cảnh, thiên kiếp); ít hệ nhưng sâu. Chi tiết và tiêu chí kiểm: `Docs/CORE_DESIGN.md` (bản nháp chờ duyệt).
 
 ## Quy ước làm việc đã chốt (không ghi ngày)
 - Mọi hình ảnh, kể cả hiệu ứng, là pixel art.
@@ -67,7 +69,7 @@ Record confirmed decisions here. Do not treat suggestions as decisions until the
 - **Multiplayer:** không thuộc vision hiện tại.
 
 ## Cần bro xác nhận
-- **Phạm vi "làm lại từ đầu core game":** phần nào là core (chỉ lõi mô phỏng? cả sinh thế giới? cả trình bày và giao diện?), giữ gì (hạ tầng tất định, hàng đợi lệnh, lưu/tải, test, trình bày pixel), và code hiện tại xử lý ra sao (lưu trữ rồi viết lại tại chỗ, hay viết song song). Đang chờ bro quyết.
+- **Bản thiết kế lõi mới (`Docs/CORE_DESIGN.md`):** bro duyệt hướng B (đổi dần sau mặt cắt đọc) hay A (viết một lần); nội dung khí chất, đạo, ràng buộc; yêu thú dùng chung mô hình sinh linh hay riêng; phàm nhân đáng chú ý có là cá thể hay không; cho phép bắt đầu task C1.
 - **Còn `Docs/Devlog`** (40 devlog và ảnh minh họa): giữ hay xóa nốt. Hiện giữ vì đó là nhật ký công việc, không phải tài liệu thiết kế.
 - **Chú thích trong code** còn nhắc "GDD §N" ở 5 chỗ và nhiều chỗ nhắc hệ đã gỡ (`Docs/Systems.md`, nợ D5): chưa sửa.
 

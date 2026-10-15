@@ -32,8 +32,23 @@ Chỉ tài liệu và một spike, không tính năng mới.
 | 0.5 | Chốt chính sách tên (IP) và tệp lưu | **Chờ bro quyết** | mục trong `DECISIONS.md` |
 | 0.6 | Giao thức chơi thử 15 phút | **Xong** (`Docs/Playtest.md`) | người khác làm theo được |
 
+### Phase R — Làm lại lõi mô phỏng (đã chốt phạm vi 2026-10-15, chờ duyệt thiết kế)
+Chi tiết, tiêu chí và đánh đổi nằm ở `Docs/CORE_DESIGN.md`. Giữ bản đồ, trình bày pixel, giao diện, lệnh, lưu/tải; viết mới lõi mô phỏng tại chỗ, bản cũ ở tag `archive/core-v1`.
+
+| ID | Task | Trạng thái |
+|---|---|---|
+| C0 | Lưu trữ (tag) | **Xong** |
+| C1 | Mặt cắt đọc `SimView` | Chờ duyệt |
+| C2 | Sinh linh, ràng buộc, tâm (dữ liệu) | Chưa |
+| C3 | Biên niên có nhân quả | Chưa |
+| C4 | Ý chí (quyết định có lý do) | Chưa |
+| C5 | Đạo (đột phá hữu hình) | Chưa |
+| C6 | Lát cắt dọc, chơi thử | Chưa |
+
+Phase A bên dưới **giờ phụ thuộc Phase R**: A3 (sợi nhân quả) và A4 (phản hồi quyền năng) trở thành phần của C3; A2 (bảng xếp hạng) làm sau C5. Thứ tự A giữ nguyên làm danh sách đích, không làm trước R.
+
 ### Phase A — Bản chơi thử 15 phút
-Điều kiện vào: 0.1–0.6 xong. Thứ tự đã chốt 2026-10-15.
+Điều kiện vào: 0.1–0.6 xong và Phase R tới C6. Thứ tự đã chốt 2026-10-15.
 
 | ID | Task | Tiêu chí hoàn thành |
 |---|---|---|
