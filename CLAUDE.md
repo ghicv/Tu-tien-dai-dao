@@ -38,7 +38,7 @@ Build a Xianxia God Game where the player acts as Heavenly Dao and observes/inte
 4. `Docs/GAME_DESIGN.md`, then `Docs/WORLD_RULES.md`, then `Docs/ROADMAP.md`.
 5. `Docs/Devlog/*` is history, not authority.
 
-Not authority: `Docs/GDD_ThienDao.md` (superseded, see its banner) and `Docs/WorldRuleSystem.md` (an audit from before the pivot).
+The old design documents (`GDD_ThienDao.md`, `WorldRuleSystem.md`) and the old generated reports were deleted on 2026-10-15 and live only in git history. Do not restore them as a source.
 `Docs/WorldRules.md` is the user's own long brief for the rule system; it is not ours to edit or commit.
 
 If documents disagree, say so and ask; do not pick silently.
