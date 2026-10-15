@@ -34,7 +34,9 @@ Record confirmed decisions here. Do not treat suggestions as decisions until the
 - **Decision:** thứ tự giai đoạn A: nhịp thời gian → thiên kiêu bảng, cường giả bảng → sợi nhân quả → phản hồi quyền năng → gom quyền năng → chơi thử 15 phút.
 - **Decision:** sandbox thuần, **có thành tựu nhẹ** (kiểu "người đầu tiên phi thăng", "tông môn ngàn năm"); không thắng thua.
 - **Decision:** theo bộ tài liệu mới (pack): mỗi lần một task nhỏ, có tiêu chí, báo cáo rồi chờ duyệt.
-- **Decision:** **lối chơi của tài liệu cũ (`GDD_ThienDao.md`) bị bỏ** vì "chơi nhàm lắm". Tài liệu đó không còn là nguồn.
+- **Decision:** **lối chơi của tài liệu cũ (`GDD_ThienDao.md`) bị bỏ** vì "chơi nhàm lắm". Cùng ngày bro bảo xóa hết tài liệu cũ: đã xóa `GDD_ThienDao.md`, `WorldRuleSystem.md`, `Chronicle_ThienDao.md`, `Perf_ThienDao.md` và 12 ảnh cột mốc không còn ai dùng. Còn trong lịch sử git (commit `742670f`).
+- **Decision:** **giữ nguyên phong cách art 2D pixel hiện tại.** Bảng màu, sprite, pipeline chunk texture và cách vẽ hiệu ứng không bị làm lại.
+- **Decision:** **làm lại từ đầu hệ thống core game.** Phạm vi và cách làm chưa chốt; xem "Cần bro xác nhận".
 
 ## Quy ước làm việc đã chốt (không ghi ngày)
 - Mọi hình ảnh, kể cả hiệu ứng, là pixel art.
@@ -65,7 +67,9 @@ Record confirmed decisions here. Do not treat suggestions as decisions until the
 - **Multiplayer:** không thuộc vision hiện tại.
 
 ## Cần bro xác nhận
-- **"Lối chơi của tài liệu cũ" cụ thể là phần nào?** `GDD_ThienDao.md` và bộ pack có **cùng một vòng lặp một dòng** (CREATE → SIMULATE → OBSERVE → INTERVENE → CONSEQUENCE → HISTORY). t đang hiểu "bỏ" là: bỏ cả tài liệu cũ, gồm "mười trụ cột sandbox" (2026-10-07), kinh tế, lộ trình M0–M7, kiểu quyền năng thả sinh vật và xem. Nếu bro muốn giữ một phần (ví dụ ba câu hỏi bắt buộc cho mỗi tính năng), hãy nói.
+- **Phạm vi "làm lại từ đầu core game":** phần nào là core (chỉ lõi mô phỏng? cả sinh thế giới? cả trình bày và giao diện?), giữ gì (hạ tầng tất định, hàng đợi lệnh, lưu/tải, test, trình bày pixel), và code hiện tại xử lý ra sao (lưu trữ rồi viết lại tại chỗ, hay viết song song). Đang chờ bro quyết.
+- **Còn `Docs/Devlog`** (40 devlog và ảnh minh họa): giữ hay xóa nốt. Hiện giữ vì đó là nhật ký công việc, không phải tài liệu thiết kế.
+- **Chú thích trong code** còn nhắc "GDD §N" ở 5 chỗ và nhiều chỗ nhắc hệ đã gỡ (`Docs/Systems.md`, nợ D5): chưa sửa.
 
 ## Decision template
 - Date:
