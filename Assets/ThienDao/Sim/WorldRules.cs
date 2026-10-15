@@ -4,7 +4,7 @@ namespace ThienDao.Sim
 {
     public enum Rule : byte { WorldQi, SpiritRoots, Breakthrough, TribulationHarshness, Births, Calamities, DemonicPath, Count }
 
-    // Quy luật (GDD §14): the laws of the world Thiên Đạo may rewrite. Plain numbers read by the systems; they change
+    // Quy luật: the laws of the world Thiên Đạo may rewrite. Plain numbers read by the systems; they change
     // only through SetRuleCommand, so a run stays replayable from seed + command log.
     public sealed class WorldRules
     {

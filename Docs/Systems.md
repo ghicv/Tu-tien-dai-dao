@@ -1,6 +1,6 @@
 # Kiểm kê hệ thống mô phỏng
 
-**Ngày:** 2026-10-15 · **Phạm vi:** `Assets/ThienDao` sau devlog 39 · **Task:** Phase 0′ / 0.1
+**Ngày:** 2026-10-15 · **Phạm vi:** `Assets/ThienDao` sau devlog 39 (đã xóa, còn ở tag `archive/core-v1`) · **Task:** Phase 0′ / 0.1
 
 **Mục đích:** biết chính xác mỗi hệ sở hữu dữ liệu gì, đọc gì, ghi gì, chạy lúc nào, test nào bao nó. Tài liệu này mô tả **code đang có**, không phải thiết kế mong muốn. Chưa đổi dòng code nào.
 
@@ -82,7 +82,7 @@ Kiểm tra nguyên tắc "render không giữ sự thật": không thấy chỗ 
 | D5 | **Chú thích sai thực tế:** nhắc `ProtagonistAI`, `PoliticsSystem`, `TradeSystem`, `FaithSystem`, `PathSystem` ở khoảng 15 chỗ; `ScarSystem` ghi "không hệ nào đọc sẹo" nhưng độ màu mỡ và oán khí đọc nó | `grep` | Hiểu nhầm | Thấp |
 | D6 | **Không có test cho phần trình bày** (render, UI, sơn môn, dân bỏ chạy) | — | Hỏng hình ảnh chỉ phát hiện khi chơi | Trung bình |
 | D7 | **Một file test duy nhất** (~1.500 dòng) | `Tests/SimulationTests.cs` | Khó tìm, khó chia | Thấp |
-| D8 | **Chưa có bằng chứng về bản build** ngoài Editor | không thấy trong repo hay devlog | Không biết hiệu năng và lưu/tải trên bản build | Chưa biết |
+| D8 | **Chưa có bằng chứng về bản build** ngoài Editor | không thấy trong repo | Không biết hiệu năng và lưu/tải trên bản build | Chưa biết |
 | D9 | **`WatchCommand` còn tồn tại** nhưng hết ý nghĩa mô phỏng (chỉ còn ghim, và hệ số ×1,3 của một trạng thái không bao giờ được đặt) | `CultivationSystem.cs:385` | Lệnh vô hại nhưng thừa | Thấp |
 
 **Chưa kiểm:** hiệu năng sau khi gỡ 7 hệ và thêm hồng hoang, biome, sơn môn (số đo gần nhất trong `Docs/Perf_ThienDao.md` đã lỗi thời, và thuộc chế độ cũ theo D1). Theo yêu cầu của bro, t chưa chạy lại; đây là task 0.3.

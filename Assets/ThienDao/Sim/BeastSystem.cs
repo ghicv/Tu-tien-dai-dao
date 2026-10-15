@@ -53,7 +53,7 @@ namespace ThienDao.Sim
         public string GradeText => GradeNames[Grade];
     }
 
-    // Yêu thú (GDD §10): wild animals that live long in rich qi open their spirit and become beasts of a grade,
+    // Yêu thú: wild animals that live long in rich qi open their spirit and become beasts of a grade,
     // growing stronger by drawing qi. They hold a lair, prey on the herds, raid villages and meet cultivators on
     // the road (yêu đan for the victor). A strong one may proclaim itself Yêu Vương and gather a yêu tộc, which
     // raids the lands of men until a sect comes to cut the king down.

@@ -11,7 +11,7 @@
 | 4 | Quyết định của NPC | **Một phần** | tu sĩ chọn việc theo trọng số (việc ngoài kia); chưa có chấm điểm tiện ích tổng quát |
 | 5 | Xã hội | **Một phần** | làng, thành, gia tộc có; "nước" chỉ còn là địa danh |
 | 6 | Tông môn và truyền thừa | **Xong** | gồm sơn môn |
-| 7 | Kinh tế | **Đã bỏ** | gỡ ở devlog 34 |
+| 7 | Kinh tế | **Đã bỏ** | gỡ ngày 2026-10-09; bản cũ ở tag `archive/core-v1` |
 | 8 | Xung đột | **Xong** | cá nhân, thú tộc, tông môn; khởi nghĩa đã bỏ |
 | 9 | Cơ duyên Tiên hiệp | **Xong, trừ phi thăng** | |
 | 10 | Lịch sử | **Một phần** | có biên niên và nhật ký; **chưa có liên kết nhân quả** |

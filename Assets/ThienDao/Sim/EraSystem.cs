@@ -12,7 +12,7 @@ namespace ThienDao.Sim
         public int Year => (int)(Start / SimClock.DaysPerYear) + 1;
     }
 
-    // Thời đại (GDD §13): ages are not scripted, they are recognised from the state of the world every half century
+    // Thời đại: ages are not scripted, they are recognised from the state of the world every half century
     // (and at once when a đại kiếp begins or ends). Under them runs the long breath of heaven and earth: the world's
     // qi waxes and wanes over thousands of years on a cycle of its own for each seed — mạt pháp at the bottom,
     // linh khí phục tô at the top — so no two worlds share their history.

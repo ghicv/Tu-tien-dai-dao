@@ -13,7 +13,7 @@ namespace ThienDao.Sim
         public int Year => (int)(Tick / SimClock.DaysPerYear) + 1;
     }
 
-    // Turns what happened into stories worth telling (GDD §12.3), and names the people history will remember.
+    // Turns what happened into stories worth telling, and names the people history will remember.
     // Patterns are checked where they happen (a kill, a breakthrough, a sect falling, a war) and once a year.
     public sealed class StoryDetector
     {

@@ -31,7 +31,7 @@ namespace ThienDao.Sim
         public int Technique = -1;   // a ngọc giản inside (index into Techniques.All), -1 if none: truyền thừa (TechniqueSystem)
     }
 
-    // Bí cảnh (GDD §11): the past becomes the present. Strong cultivators who die leave their caves (and whatever
+    // Bí cảnh: the past becomes the present. Strong cultivators who die leave their caves (and whatever
     // treasure was not taken from them); fallen sects leave ruins; the land itself hides wonders under its volcanoes
     // and lôi địa. These lie hidden until someone passing by finds them; then the bold go in, for the dead's
     // pháp bảo and truyền thừa, or never come out.

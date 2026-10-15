@@ -34,7 +34,7 @@ Record confirmed decisions here. Do not treat suggestions as decisions until the
 - **Decision:** thứ tự giai đoạn A: nhịp thời gian → thiên kiêu bảng, cường giả bảng → sợi nhân quả → phản hồi quyền năng → gom quyền năng → chơi thử 15 phút.
 - **Decision:** sandbox thuần, **có thành tựu nhẹ** (kiểu "người đầu tiên phi thăng", "tông môn ngàn năm"); không thắng thua.
 - **Decision:** theo bộ tài liệu mới (pack): mỗi lần một task nhỏ, có tiêu chí, báo cáo rồi chờ duyệt.
-- **Decision:** **lối chơi của tài liệu cũ (`GDD_ThienDao.md`) bị bỏ** vì "chơi nhàm lắm". Cùng ngày bro bảo xóa hết tài liệu cũ: đã xóa `GDD_ThienDao.md`, `WorldRuleSystem.md`, `Chronicle_ThienDao.md`, `Perf_ThienDao.md` và 12 ảnh cột mốc không còn ai dùng. Còn trong lịch sử git (commit `742670f`).
+- **Decision:** **lối chơi của tài liệu cũ (`GDD_ThienDao.md`) bị bỏ** vì "chơi nhàm lắm". Cùng ngày bro bảo xóa hết tài liệu cũ: đã xóa `GDD_ThienDao.md`, `WorldRuleSystem.md`, `Chronicle_ThienDao.md`, `Perf_ThienDao.md` và 12 ảnh cột mốc không còn ai dùng. Còn trong lịch sử git (commit `742670f`). Sau đó bro dặn "xóa sạch sẽ": đã xóa nốt 40 devlog cũ (00–39) và 12 ảnh minh họa của chúng; còn ở tag `archive/core-v1`.
 - **Decision:** **giữ nguyên phong cách art 2D pixel hiện tại.** Bảng màu, sprite, pipeline chunk texture và cách vẽ hiệu ứng không bị làm lại.
 - **Decision:** **làm lại từ đầu hệ thống core game**, phạm vi là **lõi mô phỏng và luật**; **giữ** bản đồ, sinh thế giới, biome, linh khí, trình bày pixel, giao diện, đồng hồ, hàng đợi lệnh, lưu/tải.
 - **Decision:** cách làm là **lưu trữ rồi viết mới tại chỗ**; bản hiện tại gắn tag git `archive/core-v1` (commit `6558134`).
@@ -70,8 +70,7 @@ Record confirmed decisions here. Do not treat suggestions as decisions until the
 
 ## Cần bro xác nhận
 - **Bản thiết kế lõi mới (`Docs/CORE_DESIGN.md`):** bro duyệt hướng B (đổi dần sau mặt cắt đọc) hay A (viết một lần); nội dung khí chất, đạo, ràng buộc; yêu thú dùng chung mô hình sinh linh hay riêng; phàm nhân đáng chú ý có là cá thể hay không; cho phép bắt đầu task C1.
-- **Còn `Docs/Devlog`** (40 devlog và ảnh minh họa): giữ hay xóa nốt. Hiện giữ vì đó là nhật ký công việc, không phải tài liệu thiết kế.
-- **Chú thích trong code** còn nhắc "GDD §N" ở 5 chỗ và nhiều chỗ nhắc hệ đã gỡ (`Docs/Systems.md`, nợ D5): chưa sửa.
+- **Chú thích trong code** còn nhắc tên các hệ đã gỡ và khoảng 66 chỗ ghi "devlog N" (trỏ về lịch sử ở tag `archive/core-v1`); không sửa vì lõi sẽ được viết lại (`Docs/Systems.md`, nợ D5).
 
 ## Decision template
 - Date:
