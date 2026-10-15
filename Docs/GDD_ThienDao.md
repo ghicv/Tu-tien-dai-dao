@@ -1,3 +1,7 @@
+> **ĐÃ THAY THẾ (2026-10-15).** Tài liệu này là bản thiết kế v0.1 của giai đoạn "WorldBox kiểu tu tiên". Theo yêu cầu của bro, **lối chơi trong tài liệu này bị bỏ** ("chơi nhàm lắm"); nó không còn là nguồn sự thật.
+> Nguồn hiện hành: `Docs/DECISIONS.md`, `Docs/Vision.md`, `Docs/GAME_DESIGN.md`, `Docs/WORLD_RULES.md`, `Docs/ROADMAP.md`. Trạng thái code thật: `Docs/Systems.md`.
+> Chỉ còn giá trị tham khảo kỹ thuật ở các mục kiến trúc, dữ liệu thế giới và hiệu năng (1, 2, 16). Các mục kinh tế, lộ trình M0–M7, "mười trụ cột sandbox" và kiểu quyền năng thả sinh vật không còn hiệu lực. Giữ lại để tra cứu, không sửa.
+
 # THIÊN ĐẠO — Xianxia World Simulation (GDD v0.1)
 
 > Người chơi là Thiên Đạo. Không điều khiển ai. Tạo thế giới → quan sát → can thiệp → chứng kiến lịch sử tự sinh.

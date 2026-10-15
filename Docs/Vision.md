@@ -86,7 +86,9 @@ Không đạt thì biết chỗ hỏng; đạt và vui thì hướng đi đúng.
 | Nền (giữ, không đầu tư thêm) | làng phàm nhân, thú hoang, cỏ, thương mại, đường mòn, chính trị hoàng triều (chỗ dựa hoặc con rối của tông môn), tin đồn (quyết định ai tới tranh đoạt) |
 | Đề xuất bỏ (chờ duyệt) | Thiên mệnh; AI riêng của "nhân vật chính"; công cụ đặt nhà, đặt tông môn |
 
-## Thứ tự làm (đề xuất)
+## Thứ tự làm
+
+> Lộ trình hiện hành (kèm tiêu chí hoàn thành) nằm ở `Docs/ROADMAP.md`; đoạn dưới là đề xuất ban đầu, giữ lại để tham khảo.
 1. **Sơn môn sống:**
    - bộ sinh quần thể theo mô-đun, mọc và tàn theo mô phỏng;
    - tu sĩ sống bên trong;

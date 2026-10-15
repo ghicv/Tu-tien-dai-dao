@@ -1,3 +1,6 @@
+> **ĐÃ LỖI THỜI (2026-10-15).** Bản đối chiếu này viết ngày 2026-10-08, **trước** khi gỡ Thiên mệnh, chính trị, thương mại, đường mòn, tín ngưỡng, tin đồn (devlog 34) và trước hồng hoang, biome, yêu tộc tranh bá, sơn môn (devlog 35–38). Nhiều dòng "Có" ở đây không còn đúng.
+> Nguồn hiện hành về hệ nào đang chạy: `Docs/Systems.md`. File này giữ làm bản ghi lịch sử của việc đối chiếu `Docs/WorldRules.md`.
+
 # Hệ quy luật thế giới Thiên Đạo (đối chiếu `Docs/WorldRules.md`)
 
 **Cập nhật:** 2026-10-08, sau devlog 30 (công pháp, tin đồn, chính trị nước phàm nhân và gia tộc đã có).
